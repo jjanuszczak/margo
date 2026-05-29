@@ -69,6 +69,23 @@ func slideTemplate(name string, order int, meta archetype.Metadata) string {
 	if layout == "" {
 		layout = "content"
 	}
+	slideType := meta.DefaultType
+	if slideType == "" {
+		slideType = "basic"
+	}
+
+	if layout == "section" || slideType == "section" {
+		return fmt.Sprintf(`---
+title: %s
+order: %d
+layout: section
+type: section
+section: %s
+---
+
+# %s
+`, yamlString(title), order, yamlString(title), yamlString(title))
+	}
 
 	return fmt.Sprintf(`---
 title: %s
@@ -80,7 +97,7 @@ type: %s
 ## %s
 
 Replace this content.
-`, yamlString(title), order, yamlString(layout), yamlString(meta.DefaultType), yamlString(title))
+`, yamlString(title), order, yamlString(layout), yamlString(slideType), yamlString(title))
 }
 
 func slugify(value string) string {

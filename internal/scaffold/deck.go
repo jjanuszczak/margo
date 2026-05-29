@@ -31,6 +31,7 @@ func CreateDeck(opts DeckOptions) error {
 		filepath.Join("slides", "01-title", "index.md"):          slideTitle(opts.Name),
 		filepath.Join("slides", "02-why", "index.md"):            slideWhy(),
 		filepath.Join("archetypes", "default", "archetype.yaml"): defaultArchetypeMetadata(),
+		filepath.Join("archetypes", "section", "archetype.yaml"): sectionArchetypeMetadata(),
 		filepath.Join("shortcodes", "eyebrow.html"):              defaultDeckEyebrowShortcode(),
 	}
 	for path, content := range ThemeFiles("default", true) {
@@ -147,6 +148,14 @@ default_type: basic
 `
 }
 
+func sectionArchetypeMetadata() string {
+	return `name: section
+description: Explicit section divider slide
+default_layout: section
+default_type: section
+`
+}
+
 func defaultThemeMetadata() string {
 	return `name: default
 version: 0.1.0
@@ -159,6 +168,7 @@ func ThemeFiles(themeName string, includeStyles bool) map[string]string {
 		filepath.Join("themes", themeName, "theme.yaml"):                    defaultThemeMetadataWithName(themeName),
 		filepath.Join("themes", themeName, "layouts", "deck.html"):          defaultThemeDeckLayout(),
 		filepath.Join("themes", themeName, "layouts", "slide-default.html"): defaultThemeSlideLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-section.html"): defaultThemeSectionLayout(),
 		filepath.Join("themes", themeName, "layouts", "slide-title.html"):   defaultThemeTitleLayout(),
 		filepath.Join("themes", themeName, "shortcodes", "callout.html"):    defaultThemeCalloutShortcode(),
 	}
@@ -334,6 +344,14 @@ func defaultThemeTitleLayout() string {
 <div class="slide-meta">{{ .Slide.Title }}</div>
 <div class="slide-body">
   {{ .Body }}
+</div>
+`
+}
+
+func defaultThemeSectionLayout() string {
+	return `<div class="slide-meta">Section</div>
+<div class="slide-body">
+  <h1>{{ .Slide.Title }}</h1>
 </div>
 `
 }

@@ -14,7 +14,11 @@ import (
 
 const DefaultPort = "1313"
 
-func Start(projectRoot string, rebuild func() error) error {
+type Options struct {
+	OpenBrowser bool
+}
+
+func Start(projectRoot string, rebuild func() error, opts Options) error {
 	distDir := filepath.Join(projectRoot, "dist", "html")
 	addr := "127.0.0.1:" + DefaultPort
 	var revision atomic.Uint64
@@ -35,7 +39,9 @@ func Start(projectRoot string, rebuild func() error) error {
 
 	url := fmt.Sprintf("http://%s", addr)
 	fmt.Printf("serve: preview available at http://%s\n", addr)
-	go openBrowser(url)
+	if opts.OpenBrowser {
+		go openBrowser(url)
+	}
 
 	serverErr := make(chan error, 1)
 	go func() {

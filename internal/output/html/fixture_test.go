@@ -1,6 +1,8 @@
 package html
 
 import (
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,8 +39,12 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 	if got, want := len(filtered), 2; got != want {
 		t.Fatalf("expected %d build-visible slides, got %d", want, got)
 	}
+	shaped := deck.ApplySectionDividers(filtered)
+	if got, want := len(shaped), 3; got != want {
+		t.Fatalf("expected %d build-rendered slides, got %d", want, got)
+	}
 
-	sections := deck.BuildSections(filtered)
+	sections := deck.BuildSections(shaped)
 	if got, want := len(sections), 1; got != want {
 		t.Fatalf("expected %d section, got %d", want, got)
 	}
@@ -62,7 +68,7 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 	model := deck.Model{
 		Config:   parsed.Config,
 		Sections: sections,
-		Slides:   filtered,
+		Slides:   shaped,
 	}
 	if err := Write(projectRoot, model, activeTheme); err != nil {
 		t.Fatalf("write html: %v", err)
@@ -105,31 +111,131 @@ func TestReferenceDeckServeFilteringIncludesDrafts(t *testing.T) {
 	if got, want := len(filtered), 3; got != want {
 		t.Fatalf("expected %d serve-visible slides, got %d", want, got)
 	}
+	shaped := deck.ApplySectionDividers(filtered)
+	if got, want := len(shaped), 4; got != want {
+		t.Fatalf("expected %d serve-rendered slides, got %d", want, got)
+	}
 
-	for _, slide := range filtered {
+	for _, slide := range shaped {
 		if slide.Title == "Hidden Slide" {
 			t.Fatal("hidden slide should not appear in serve-visible set")
 		}
 	}
 
 	foundDraft := false
-	for _, slide := range filtered {
+	foundDivider := false
+	for _, slide := range shaped {
 		if slide.Title == "Draft Slide" {
 			foundDraft = true
+		}
+		if slide.Synthetic && slide.Layout == "section" && slide.Title == "Strategy" {
+			foundDivider = true
 		}
 	}
 	if !foundDraft {
 		t.Fatal("expected draft slide to appear in serve-visible set")
 	}
+	if !foundDivider {
+		t.Fatal("expected synthetic Strategy section divider to appear in serve-rendered set")
+	}
 }
 
 func fixtureProjectRoot(t *testing.T) string {
 	t.Helper()
-	root, err := filepath.Abs(filepath.Join("..", "..", "..", "examples", "reference-deck"))
+	sourceRoot, err := filepath.Abs(filepath.Join("..", "..", "..", "examples", "reference-deck"))
 	if err != nil {
 		t.Fatalf("resolve fixture project root: %v", err)
 	}
-	return root
+
+	projectRoot := filepath.Join(t.TempDir(), "reference-deck")
+	if err := copyFixtureDeck(sourceRoot, projectRoot); err != nil {
+		t.Fatalf("copy fixture project root: %v", err)
+	}
+	return projectRoot
+}
+
+func copyFixtureDeck(srcRoot string, dstRoot string) error {
+	return filepath.WalkDir(srcRoot, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		relPath, err := filepath.Rel(srcRoot, path)
+		if err != nil {
+			return err
+		}
+		if relPath == "." {
+			return os.MkdirAll(dstRoot, 0o755)
+		}
+		if relPath == "dist" && d.IsDir() {
+			return filepath.SkipDir
+		}
+		if strings.HasPrefix(relPath, "dist"+string(filepath.Separator)) {
+			return nil
+		}
+		if !shouldCopyFixturePath(relPath, d.IsDir()) {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		targetPath := filepath.Join(dstRoot, relPath)
+		if d.IsDir() {
+			return os.MkdirAll(targetPath, 0o755)
+		}
+
+		srcFile, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer srcFile.Close()
+
+		dstFile, err := os.Create(targetPath)
+		if err != nil {
+			return err
+		}
+		defer dstFile.Close()
+
+		if _, err := io.Copy(dstFile, srcFile); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func shouldCopyFixturePath(relPath string, isDir bool) bool {
+	exact := map[string]bool{
+		"archetypes": true,
+		"slides":     true,
+		"themes":     true,
+		"margo.yaml": true,
+	}
+
+	if exact[relPath] {
+		return true
+	}
+
+	allowedSubtrees := []string{
+		"archetypes/default",
+		"archetypes/section",
+		"slides/01-title",
+		"slides/02-why",
+		"slides/03-draft",
+		"slides/04-hidden",
+		"themes/default",
+	}
+
+	for _, prefix := range allowedSubtrees {
+		if relPath == prefix {
+			return true
+		}
+		if strings.HasPrefix(relPath, prefix+string(filepath.Separator)) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func findSlideByID(t *testing.T, slides []deck.Slide, id string) deck.Slide {

@@ -66,9 +66,9 @@ func dispatch(args []string, stdout io.Writer, stderr io.Writer) error {
 		fmt.Fprintf(stdout, "%s %s\n", version.Name, version.Version)
 		return nil
 	case "build":
-		return runBuildLikeCommand("build", stdout)
+		return runBuildLikeCommand("build", args[1:], stdout)
 	case "serve":
-		return runBuildLikeCommand("serve", stdout)
+		return runBuildLikeCommand("serve", args[1:], stdout)
 	case "new":
 		return runNestedNew(args[1:], stdout, stderr)
 	case "init":
@@ -138,7 +138,11 @@ func runInit(stdout io.Writer) error {
 }
 
 func runNewSlide(args []string, stdout io.Writer) error {
-	if len(args) == 0 {
+	slideName, archetypeName, err := parseNewSlideArgs(args)
+	if err != nil {
+		return err
+	}
+	if slideName == "" {
 		return fmt.Errorf("new slide requires a slide name")
 	}
 
@@ -164,8 +168,8 @@ func runNewSlide(args []string, stdout io.Writer) error {
 
 	indexPath, err := scaffold.CreateSlide(scaffold.SlideOptions{
 		ProjectRoot: root.Dir,
-		Name:        args[0],
-		Archetype:   "default",
+		Name:        slideName,
+		Archetype:   archetypeName,
 	})
 	if err != nil {
 		return fmt.Errorf("create slide scaffold: %w", err)
@@ -176,7 +180,11 @@ func runNewSlide(args []string, stdout io.Writer) error {
 }
 
 func runNewTheme(args []string, stdout io.Writer) error {
-	if len(args) == 0 {
+	themeName, blank, err := parseNewThemeArgs(args)
+	if err != nil {
+		return err
+	}
+	if themeName == "" {
 		return fmt.Errorf("new theme requires a theme name")
 	}
 
@@ -200,11 +208,9 @@ func runNewTheme(args []string, stdout io.Writer) error {
 		}
 	}
 
-	name := args[0]
-	blank := len(args) > 1 && args[1] == "blank"
 	themeDir, err := scaffold.CreateTheme(scaffold.ThemeOptions{
 		ProjectRoot: root.Dir,
-		Name:        name,
+		Name:        themeName,
 		Blank:       blank,
 	})
 	if err != nil {
@@ -249,10 +255,15 @@ func runClean(stdout io.Writer) error {
 	return nil
 }
 
-func runBuildLikeCommand(name string, stdout io.Writer) error {
+func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 	wd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get working directory: %w", err)
+	}
+
+	includeDrafts, openBrowser, err := parseBuildLikeArgs(name, args)
+	if err != nil {
+		return err
 	}
 
 	root, err := project.Discover(wd)
@@ -353,6 +364,22 @@ func runBuildLikeCommand(name string, stdout io.Writer) error {
 	}
 	fmt.Fprintf(stdout, "%s: loaded theme %s\n", name, activeTheme.Name)
 
+	resolveSlides := func(includeDrafts bool) ([]deck.Slide, error) {
+		resolvedSlides, err := content.DiscoverSlides(root.Dir)
+		if err != nil {
+			return nil, err
+		}
+		if hasManifest {
+			resolvedSlides, err = manifest.Apply(resolvedSlides, manifestFile)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return deck.FilterSlides(resolvedSlides, deck.FilterOptions{
+			IncludeDrafts: includeDrafts,
+		}), nil
+	}
+
 	rebuild := func() error {
 		raw, err := config.LoadRaw(root.ConfigPath)
 		if err != nil {
@@ -362,28 +389,15 @@ func runBuildLikeCommand(name string, stdout io.Writer) error {
 		if err != nil {
 			return err
 		}
-		slides, err := content.DiscoverSlides(root.Dir)
-		if err != nil {
-			return err
-		}
 		activeTheme, err := theme.Load(root.Dir, parsed.Config.Theme.Name)
 		if err != nil {
 			return err
 		}
-		manifestFile, hasManifest, err := manifest.Load(root.Dir)
+		slides, err = resolveSlides(includeDrafts)
 		if err != nil {
 			return err
 		}
-		if hasManifest {
-			slides, err = manifest.Apply(slides, manifestFile)
-			if err != nil {
-				return err
-			}
-		}
-		includeDrafts := name == "serve"
-		slides = deck.FilterSlides(slides, deck.FilterOptions{
-			IncludeDrafts: includeDrafts,
-		})
+		slides = deck.ApplySectionDividers(slides)
 		model := deck.Model{
 			Config:   parsed.Config,
 			Sections: deck.BuildSections(slides),
@@ -399,13 +413,11 @@ func runBuildLikeCommand(name string, stdout io.Writer) error {
 		if err := rebuild(); err != nil {
 			return fmt.Errorf("write html output: %w", err)
 		}
-		if hasManifest {
-			slides, err = manifest.Apply(slides, manifestFile)
-			if err != nil {
-				return fmt.Errorf("apply manifest: %w", err)
-			}
+		filteredSlides, err := resolveSlides(includeDrafts)
+		if err != nil {
+			return fmt.Errorf("resolve filtered slides: %w", err)
 		}
-		filteredSlides := deck.FilterSlides(slides, deck.FilterOptions{})
+		filteredSlides = deck.ApplySectionDividers(filteredSlides)
 		fmt.Fprintf(stdout, "%s: rendering %d slides after filtering\n", name, len(filteredSlides))
 		fmt.Fprintf(stdout, "%s: wrote %s\n", name, html.OutputFile)
 		return nil
@@ -416,19 +428,17 @@ func runBuildLikeCommand(name string, stdout io.Writer) error {
 			if err := rebuild(); err != nil {
 				return fmt.Errorf("write html output: %w", err)
 			}
-			if hasManifest {
-				slides, err = manifest.Apply(slides, manifestFile)
-				if err != nil {
-					return fmt.Errorf("apply manifest: %w", err)
-				}
+			filteredSlides, err := resolveSlides(includeDrafts)
+			if err != nil {
+				return fmt.Errorf("resolve filtered slides: %w", err)
 			}
-			filteredSlides := deck.FilterSlides(slides, deck.FilterOptions{
-				IncludeDrafts: true,
-			})
+			filteredSlides = deck.ApplySectionDividers(filteredSlides)
 			fmt.Fprintf(stdout, "%s: rendering %d slides after filtering\n", name, len(filteredSlides))
 			fmt.Fprintf(stdout, "%s: wrote %s\n", name, html.OutputFile)
 		}
-		return serve.Start(root.Dir, rebuild)
+		return serve.Start(root.Dir, rebuild, serve.Options{
+			OpenBrowser: openBrowser,
+		})
 	}
 
 	fmt.Fprintf(stdout, "%s: not implemented\n", name)
@@ -451,6 +461,75 @@ func writeHelp(w io.Writer) {
 	fmt.Fprintln(w, "  init         Initialize a deck in the current directory")
 	fmt.Fprintln(w, "  clean        Remove generated output and tool-managed build state")
 	fmt.Fprintln(w, "  version      Print version information")
+}
+
+func parseBuildLikeArgs(command string, args []string) (bool, bool, error) {
+	includeDrafts := command == "serve"
+	openBrowser := command == "serve"
+
+	for _, arg := range args {
+		switch arg {
+		case "--include-drafts":
+			includeDrafts = true
+		case "--no-open":
+			if command != "serve" {
+				return false, false, fmt.Errorf("%s does not support %s", command, arg)
+			}
+			openBrowser = false
+		default:
+			return false, false, fmt.Errorf("unknown %s option %q", command, arg)
+		}
+	}
+
+	return includeDrafts, openBrowser, nil
+}
+
+func parseNewSlideArgs(args []string) (string, string, error) {
+	var slideName string
+	archetypeName := "default"
+
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--archetype":
+			if i+1 >= len(args) {
+				return "", "", fmt.Errorf("new slide requires a value for --archetype")
+			}
+			archetypeName = args[i+1]
+			i++
+		default:
+			if strings.HasPrefix(args[i], "--") {
+				return "", "", fmt.Errorf("unknown new slide option %q", args[i])
+			}
+			if slideName != "" {
+				return "", "", fmt.Errorf("new slide accepts exactly one slide name")
+			}
+			slideName = args[i]
+		}
+	}
+
+	return slideName, archetypeName, nil
+}
+
+func parseNewThemeArgs(args []string) (string, bool, error) {
+	var themeName string
+	blank := false
+
+	for _, arg := range args {
+		switch arg {
+		case "--blank", "blank":
+			blank = true
+		default:
+			if strings.HasPrefix(arg, "--") {
+				return "", false, fmt.Errorf("unknown new theme option %q", arg)
+			}
+			if themeName != "" {
+				return "", false, fmt.Errorf("new theme accepts exactly one theme name")
+			}
+			themeName = arg
+		}
+	}
+
+	return themeName, blank, nil
 }
 
 func min(a, b int) int {

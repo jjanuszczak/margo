@@ -44,6 +44,7 @@ type Section struct {
 type Slide struct {
 	ID         string
 	BundlePath string
+	Synthetic  bool
 	FrontMatter
 	BodyMarkdown string
 	Notes        []string

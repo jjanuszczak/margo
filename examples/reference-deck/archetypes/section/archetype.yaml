@@ -1,0 +1,4 @@
+name: section
+description: Explicit section divider slide
+default_layout: section
+default_type: section
