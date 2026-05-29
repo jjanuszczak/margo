@@ -1,0 +1,108 @@
+package scaffold
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"margo/internal/archetype"
+	"margo/internal/content"
+)
+
+type SlideOptions struct {
+	ProjectRoot string
+	Name        string
+	Archetype   string
+}
+
+func CreateSlide(opts SlideOptions) (string, error) {
+	if opts.ProjectRoot == "" {
+		return "", errors.New("project root is required")
+	}
+	if strings.TrimSpace(opts.Name) == "" {
+		return "", errors.New("slide name is required")
+	}
+
+	meta, err := archetype.Load(opts.ProjectRoot, opts.Archetype)
+	if err != nil {
+		return "", err
+	}
+
+	slides, err := content.DiscoverSlides(opts.ProjectRoot)
+	if err != nil {
+		return "", fmt.Errorf("discover existing slides: %w", err)
+	}
+
+	nextOrder := 1
+	for _, slide := range slides {
+		if slide.Order >= nextOrder {
+			nextOrder = slide.Order + 1
+		}
+	}
+
+	slug := slugify(opts.Name)
+	bundleDir := filepath.Join(opts.ProjectRoot, "slides", slug)
+	if _, err := os.Stat(bundleDir); err == nil {
+		return "", fmt.Errorf("slide bundle already exists: %s", bundleDir)
+	} else if !os.IsNotExist(err) {
+		return "", fmt.Errorf("stat slide bundle %q: %w", bundleDir, err)
+	}
+
+	if err := os.MkdirAll(bundleDir, 0o755); err != nil {
+		return "", fmt.Errorf("create slide bundle %q: %w", bundleDir, err)
+	}
+
+	indexPath := filepath.Join(bundleDir, "index.md")
+	body := slideTemplate(opts.Name, nextOrder, meta)
+	if err := os.WriteFile(indexPath, []byte(body), 0o644); err != nil {
+		return "", fmt.Errorf("write slide file %q: %w", indexPath, err)
+	}
+
+	return indexPath, nil
+}
+
+func slideTemplate(name string, order int, meta archetype.Metadata) string {
+	title := humanize(name)
+	layout := meta.DefaultLayout
+	if layout == "" {
+		layout = "content"
+	}
+
+	return fmt.Sprintf(`---
+title: %s
+order: %d
+layout: %s
+type: %s
+---
+
+## %s
+
+Replace this content.
+`, yamlString(title), order, yamlString(layout), yamlString(meta.DefaultType), yamlString(title))
+}
+
+func slugify(value string) string {
+	value = strings.TrimSpace(strings.ToLower(value))
+	replacer := strings.NewReplacer(" ", "-", "_", "-", "/", "-", "\\", "-", ".", "-")
+	value = replacer.Replace(value)
+	for strings.Contains(value, "--") {
+		value = strings.ReplaceAll(value, "--", "-")
+	}
+	value = strings.Trim(value, "-")
+	if value == "" {
+		return "new-slide"
+	}
+	return value
+}
+
+func humanize(value string) string {
+	value = strings.ReplaceAll(value, "-", " ")
+	value = strings.ReplaceAll(value, "_", " ")
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "Untitled Slide"
+	}
+	return strings.ToUpper(value[:1]) + value[1:]
+}

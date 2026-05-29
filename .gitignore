@@ -1,0 +1,28 @@
+# Go build and test artifacts
+bin/
+*.test
+*.out
+coverage.out
+
+# Local Go cache used in this workspace
+.gocache/
+
+# Generated deck artifacts
+dist/
+
+# macOS noise
+.DS_Store
+
+# Editor and IDE files
+.idea/
+.vscode/
+
+# Temporary local sandbox decks created during development
+demo-deck/
+acme-deck/
+brand-deck/
+reload-deck/
+semantics-deck/
+sections-deck/
+notes-deck/
+scratch-init/
