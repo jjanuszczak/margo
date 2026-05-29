@@ -1,6 +1,12 @@
 package cli
 
-import "testing"
+import (
+	"bytes"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
 
 func TestParseBuildLikeArgs(t *testing.T) {
 	includeDrafts, openBrowser, err := parseBuildLikeArgs("serve", []string{"--include-drafts", "--no-open"})
@@ -39,6 +45,50 @@ func TestParseNewSlideArgs(t *testing.T) {
 	}
 }
 
+func TestChooseSlideArchetypeInteractive(t *testing.T) {
+	projectRoot := t.TempDir()
+	writeArchetype(t, projectRoot, "default", "Default slide")
+	writeArchetype(t, projectRoot, "section", "Section divider")
+	writeArchetype(t, projectRoot, "title", "Title slide")
+
+	inputPath := filepath.Join(t.TempDir(), "input.txt")
+	if err := os.WriteFile(inputPath, []byte("2\n"), 0o644); err != nil {
+		t.Fatalf("write input fixture: %v", err)
+	}
+	input, err := os.Open(inputPath)
+	if err != nil {
+		t.Fatalf("open input fixture: %v", err)
+	}
+	defer input.Close()
+
+	var out bytes.Buffer
+	name, err := chooseSlideArchetypeFromReader(projectRoot, input, &out, true)
+	if err != nil {
+		t.Fatalf("chooseSlideArchetypeFromReader returned error: %v", err)
+	}
+	if name != "title" {
+		t.Fatalf("expected interactive choice %q, got %q", "title", name)
+	}
+	if !strings.Contains(out.String(), "select archetype [1]:") {
+		t.Fatalf("expected prompt output, got %q", out.String())
+	}
+}
+
+func TestChooseSlideArchetypeNonInteractiveDefaultsFirst(t *testing.T) {
+	projectRoot := t.TempDir()
+	writeArchetype(t, projectRoot, "default", "Default slide")
+	writeArchetype(t, projectRoot, "section", "Section divider")
+
+	var out bytes.Buffer
+	name, err := chooseSlideArchetypeFromReader(projectRoot, strings.NewReader(""), &out, false)
+	if err != nil {
+		t.Fatalf("chooseSlideArchetypeFromReader returned error: %v", err)
+	}
+	if name != "default" {
+		t.Fatalf("expected non-interactive fallback %q, got %q", "default", name)
+	}
+}
+
 func TestParseNewThemeArgs(t *testing.T) {
 	name, blank, err := parseNewThemeArgs([]string{"custom", "--blank"})
 	if err != nil {
@@ -49,5 +99,20 @@ func TestParseNewThemeArgs(t *testing.T) {
 	}
 	if !blank {
 		t.Fatal("expected blank theme mode")
+	}
+}
+
+func writeArchetype(t *testing.T, projectRoot string, name string, description string) {
+	t.Helper()
+	dir := filepath.Join(projectRoot, "archetypes", name)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("mkdir archetype dir: %v", err)
+	}
+	content := "name: " + name + "\n" +
+		"description: " + description + "\n" +
+		"default_layout: " + name + "\n" +
+		"default_type: " + name + "\n"
+	if err := os.WriteFile(filepath.Join(dir, "archetype.yaml"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write archetype metadata: %v", err)
 	}
 }

@@ -31,6 +31,7 @@ func CreateDeck(opts DeckOptions) error {
 		filepath.Join("slides", "01-title", "index.md"):          slideTitle(opts.Name),
 		filepath.Join("slides", "02-why", "index.md"):            slideWhy(),
 		filepath.Join("archetypes", "default", "archetype.yaml"): defaultArchetypeMetadata(),
+		filepath.Join("archetypes", "title", "archetype.yaml"):   titleArchetypeMetadata(),
 		filepath.Join("archetypes", "section", "archetype.yaml"): sectionArchetypeMetadata(),
 		filepath.Join("shortcodes", "eyebrow.html"):              defaultDeckEyebrowShortcode(),
 	}
@@ -153,6 +154,14 @@ func sectionArchetypeMetadata() string {
 description: Explicit section divider slide
 default_layout: section
 default_type: section
+`
+}
+
+func titleArchetypeMetadata() string {
+	return `name: title
+description: Title or opening slide
+default_layout: title
+default_type: title
 `
 }
 

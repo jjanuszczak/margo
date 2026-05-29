@@ -218,6 +218,7 @@ func shouldCopyFixturePath(relPath string, isDir bool) bool {
 
 	allowedSubtrees := []string{
 		"archetypes/default",
+		"archetypes/title",
 		"archetypes/section",
 		"slides/01-title",
 		"slides/02-why",

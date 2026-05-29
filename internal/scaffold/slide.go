@@ -87,6 +87,20 @@ section: %s
 `, yamlString(title), order, yamlString(title), yamlString(title))
 	}
 
+	if layout == "title" || slideType == "title" {
+		return fmt.Sprintf(`---
+title: %s
+order: %d
+layout: title
+type: title
+---
+
+# %s
+
+Add a subtitle or opening statement.
+`, yamlString(title), order, yamlString(title))
+	}
+
 	return fmt.Sprintf(`---
 title: %s
 order: %d

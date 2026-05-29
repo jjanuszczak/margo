@@ -1,13 +1,16 @@
 package cli
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
+	"margo/internal/archetype"
 	"margo/internal/clean"
 	"margo/internal/config"
 	"margo/internal/content"
@@ -163,6 +166,13 @@ func runNewSlide(args []string, stdout io.Writer) error {
 		return commandError{
 			message: "new slide requires a Margo project root",
 			report:  report,
+		}
+	}
+
+	if archetypeName == "" {
+		archetypeName, err = chooseSlideArchetype(root.Dir, os.Stdin, stdout)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -486,7 +496,7 @@ func parseBuildLikeArgs(command string, args []string) (bool, bool, error) {
 
 func parseNewSlideArgs(args []string) (string, string, error) {
 	var slideName string
-	archetypeName := "default"
+	var archetypeName string
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
@@ -508,6 +518,67 @@ func parseNewSlideArgs(args []string) (string, string, error) {
 	}
 
 	return slideName, archetypeName, nil
+}
+
+func chooseSlideArchetype(projectRoot string, stdin *os.File, stdout io.Writer) (string, error) {
+	return chooseSlideArchetypeFromReader(projectRoot, stdin, stdout, isInteractiveStdin(stdin))
+}
+
+func chooseSlideArchetypeFromReader(projectRoot string, input io.Reader, stdout io.Writer, interactive bool) (string, error) {
+	available, err := archetype.List(projectRoot)
+	if err != nil {
+		return "", fmt.Errorf("list archetypes: %w", err)
+	}
+	if len(available) == 0 {
+		return "default", nil
+	}
+	if len(available) == 1 {
+		return available[0].Name, nil
+	}
+	if !interactive {
+		return available[0].Name, nil
+	}
+
+	fmt.Fprintln(stdout, "choose an archetype for the new slide:")
+	for i, meta := range available {
+		label := meta.Name
+		if strings.TrimSpace(meta.Description) != "" {
+			label += " - " + meta.Description
+		}
+		fmt.Fprintf(stdout, "  %d. %s\n", i+1, label)
+	}
+
+	reader := bufio.NewReader(input)
+	for {
+		fmt.Fprintf(stdout, "select archetype [1]: ")
+		line, err := reader.ReadString('\n')
+		if err != nil && !errors.Is(err, io.EOF) {
+			return "", fmt.Errorf("read archetype selection: %w", err)
+		}
+		line = strings.TrimSpace(line)
+		if line == "" {
+			return available[0].Name, nil
+		}
+		choice, convErr := strconv.Atoi(line)
+		if convErr == nil && choice >= 1 && choice <= len(available) {
+			return available[choice-1].Name, nil
+		}
+		fmt.Fprintln(stdout, "invalid selection; enter a number from the list")
+		if errors.Is(err, io.EOF) {
+			return "", fmt.Errorf("invalid archetype selection %q", line)
+		}
+	}
+}
+
+func isInteractiveStdin(stdin *os.File) bool {
+	if stdin == nil {
+		return false
+	}
+	info, err := stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return (info.Mode() & os.ModeCharDevice) != 0
 }
 
 func parseNewThemeArgs(args []string) (string, bool, error) {
