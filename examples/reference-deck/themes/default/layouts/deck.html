@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ .Deck.Title }}</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f4f1ea;
+      --fg: #1c1a17;
+      --muted: #6d655c;
+      --card: #fffdf9;
+      --shadow: rgba(28, 26, 23, 0.12);
+    }
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      background: linear-gradient(180deg, #ebe5d8 0%, #f7f3ea 100%);
+      color: var(--fg);
+    }
+    main {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+    .deck {
+      width: min(1200px, 100%);
+      aspect-ratio: 16 / 9;
+      background: var(--card);
+      box-shadow: 0 24px 80px var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+    .slide {
+      display: none;
+      height: 100%;
+      padding: 72px;
+      box-sizing: border-box;
+    }
+    .slide.active {
+      display: block;
+    }
+    .slide-meta {
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+    .section-meta {
+      margin-bottom: 12px;
+      font: 12px/1.2 sans-serif;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #8f6f33;
+    }
+    .draft-badge {
+      display: inline-block;
+      margin-bottom: 18px;
+      padding: 6px 10px;
+      border: 1px solid currentColor;
+      font: 12px/1 sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #8a3b12;
+      background: #f7dcc9;
+    }
+    .slide-body h1,
+    .slide-body h2,
+    .slide-body p,
+    .slide-body ul {
+      margin: 0 0 16px;
+    }
+    .slide-body ul {
+      padding-left: 24px;
+    }
+    .controls {
+      position: absolute;
+      right: 24px;
+      bottom: 18px;
+      color: var(--muted);
+      font: 14px/1.2 sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="deck">
+      {{ range $i, $slide := .Slides }}
+      <section class="slide{{ if eq $i 0 }} active{{ end }}">
+        {{ if $slide.IsDraft }}<div class="draft-badge">Draft</div>{{ end }}
+        {{ $slide.Body }}
+      </section>
+      {{ end }}
+      <div class="controls">Use left/right arrow keys</div>
+    </div>
+  </main>
+  <script>
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    let index = 0;
+    const show = (nextIndex) => {
+      if (!slides.length) return;
+      index = Math.max(0, Math.min(nextIndex, slides.length - 1));
+      slides.forEach((slide, i) => slide.classList.toggle('active', i === index));
+    };
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowRight' || event.key === 'PageDown') show(index + 1);
+      if (event.key === 'ArrowLeft' || event.key === 'PageUp') show(index - 1);
+    });
+    let currentRevision = null;
+    const checkRevision = async () => {
+      try {
+        const response = await fetch('/__margo/version', { cache: 'no-store' });
+        const nextRevision = (await response.text()).trim();
+        if (currentRevision === null) {
+          currentRevision = nextRevision;
+          return;
+        }
+        if (nextRevision !== currentRevision) {
+          window.location.reload();
+        }
+      } catch (_) {}
+    };
+    setInterval(checkRevision, 1000);
+    checkRevision();
+  </script>
+</body>
+</html>
