@@ -5,6 +5,7 @@ type ProjectConfig struct {
 	Deck    DeckMetadata
 	Theme   ThemeSelection
 	Outputs OutputSettings
+	Snippets SnippetSettings
 }
 
 type DeckMetadata struct {
@@ -29,6 +30,11 @@ type OutputSettings struct {
 	HTML bool
 	PDF  bool
 	PPTX bool
+}
+
+type SnippetSettings struct {
+	Head    string
+	BodyEnd string
 }
 
 type Model struct {

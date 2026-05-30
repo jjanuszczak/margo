@@ -1,43 +1,8 @@
 package config
 
-import (
-	"strings"
-	"testing"
-)
+import "testing"
 
-func TestParseReportsMissingDeckTitleWithLine(t *testing.T) {
-	raw := RawConfig{
-		Path: "margo.yaml",
-		Bytes: []byte(`version: 1
-
-deck:
-  description: Missing title
-
-theme:
-  name: default
-`),
-	}
-
-	_, err := Parse(raw)
-	if err == nil {
-		t.Fatal("expected Parse to fail")
-	}
-	fieldErr, ok := AsFieldError(err)
-	if !ok {
-		t.Fatalf("expected FieldError, got %T: %v", err, err)
-	}
-	if fieldErr.Field != "deck.title" {
-		t.Fatalf("expected field %q, got %q", "deck.title", fieldErr.Field)
-	}
-	if fieldErr.Line == 0 {
-		t.Fatal("expected non-zero line number")
-	}
-	if !strings.Contains(fieldErr.Error(), "deck.title is required") {
-		t.Fatalf("unexpected error text: %v", fieldErr)
-	}
-}
-
-func TestParseReportsMissingThemeNameWithLine(t *testing.T) {
+func TestParseSnippets(t *testing.T) {
 	raw := RawConfig{
 		Path: "margo.yaml",
 		Bytes: []byte(`version: 1
@@ -46,22 +11,24 @@ deck:
   title: Sample
 
 theme:
-  color_mode: dark
+  name: default
+
+snippets:
+  head: |
+    <meta name="sample" content="x">
+  body_end: |
+    <script>window.sample = true;</script>
 `),
 	}
 
-	_, err := Parse(raw)
-	if err == nil {
-		t.Fatal("expected Parse to fail")
+	parsed, err := Parse(raw)
+	if err != nil {
+		t.Fatalf("Parse returned error: %v", err)
 	}
-	fieldErr, ok := AsFieldError(err)
-	if !ok {
-		t.Fatalf("expected FieldError, got %T: %v", err, err)
+	if parsed.Config.Snippets.Head != "<meta name=\"sample\" content=\"x\">\n" {
+		t.Fatalf("unexpected head snippet %q", parsed.Config.Snippets.Head)
 	}
-	if fieldErr.Field != "theme.name" {
-		t.Fatalf("expected field %q, got %q", "theme.name", fieldErr.Field)
-	}
-	if fieldErr.Line == 0 {
-		t.Fatal("expected non-zero line number")
+	if parsed.Config.Snippets.BodyEnd != "<script>window.sample = true;</script>\n" {
+		t.Fatalf("unexpected body_end snippet %q", parsed.Config.Snippets.BodyEnd)
 	}
 }

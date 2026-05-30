@@ -28,6 +28,7 @@ type pageData struct {
 	PDFEnabled   bool
 	Theme        theme.Metadata
 	ThemeOptions map[string]any
+	Snippets     renderedSnippets
 	Sections     []deck.Section
 	Slides       []renderedSlide
 }
@@ -36,6 +37,11 @@ type renderedLogo struct {
 	Text     string
 	ImageSrc string
 	IsImage  bool
+}
+
+type renderedSnippets struct {
+	Head    template.HTML
+	BodyEnd template.HTML
 }
 
 type renderedSlide struct {
@@ -85,6 +91,7 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) (di
 		PDFEnabled:   model.Config.Outputs.PDF,
 		Theme:        activeTheme,
 		ThemeOptions: model.Config.Theme.Options,
+		Snippets:     resolveSnippets(model.Config.Snippets),
 		Sections:     model.Sections,
 		Slides:       slides,
 	}
@@ -311,6 +318,13 @@ func looksLikeImageURL(value string) bool {
 
 func configFilenameForDiagnostics() string {
 	return "margo.yaml"
+}
+
+func resolveSnippets(value deck.SnippetSettings) renderedSnippets {
+	return renderedSnippets{
+		Head:    template.HTML(strings.TrimSpace(value.Head)),
+		BodyEnd: template.HTML(strings.TrimSpace(value.BodyEnd)),
+	}
 }
 
 func renderBodyColumns(slide deck.Slide, body template.HTML) []template.HTML {

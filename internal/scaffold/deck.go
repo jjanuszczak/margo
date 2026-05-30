@@ -384,6 +384,7 @@ func defaultThemeDeckLayout() string {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ .Deck.Title }}</title>
+  {{ .Snippets.Head }}
   <style>
     :root {
       color-scheme: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}dark{{ else }}light{{ end }};
@@ -1001,6 +1002,7 @@ func defaultThemeDeckLayout() string {
     setInterval(checkRevision, 1000);
     checkRevision();
   </script>
+  {{ .Snippets.BodyEnd }}
 </body>
 </html>
 `

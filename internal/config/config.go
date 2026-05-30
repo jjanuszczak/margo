@@ -70,6 +70,10 @@ func Parse(raw RawConfig) (ParseResult, error) {
 			PDF  bool `yaml:"pdf"`
 			PPTX bool `yaml:"pptx"`
 		} `yaml:"outputs"`
+		Snippets struct {
+			Head    string `yaml:"head"`
+			BodyEnd string `yaml:"body_end"`
+		} `yaml:"snippets"`
 	}
 
 	var parsed fileConfig
@@ -105,6 +109,10 @@ func Parse(raw RawConfig) (ParseResult, error) {
 				HTML: parsed.Outputs.HTML,
 				PDF:  parsed.Outputs.PDF,
 				PPTX: parsed.Outputs.PPTX,
+			},
+			Snippets: deck.SnippetSettings{
+				Head:    parsed.Snippets.Head,
+				BodyEnd: parsed.Snippets.BodyEnd,
 			},
 		},
 	}

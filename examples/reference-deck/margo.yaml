@@ -16,3 +16,9 @@ theme:
 outputs:
   html: true
   pdf: true
+
+snippets:
+  head: |
+    <meta name="margo-fixture" content="reference-deck">
+  body_end: |
+    <script>window.__margoFixture = "reference-deck";</script>

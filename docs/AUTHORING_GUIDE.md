@@ -129,6 +129,24 @@ deck:
 
 The default theme will render text directly, or render an `<img>` when the value resolves to a shared image asset.
 
+### Deck-level snippets
+
+The current config also supports approved deck-level snippet slots:
+
+```yaml
+snippets:
+  head: |
+    <meta name="analytics-env" content="staging">
+  body_end: |
+    <script>window.__deckMode = "preview";</script>
+```
+
+Current supported locations:
+- `snippets.head`
+- `snippets.body_end`
+
+These are injected into both `serve` and `build` output in the default theme.
+
 ## 4. Preview and Build
 
 Build the configured outputs:
