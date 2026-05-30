@@ -449,6 +449,9 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			fmt.Fprintf(stdout, "%s: wrote %s\n", name, html.OutputFile)
 		}
 		if parsed.Config.Outputs.PDF {
+			if browser, browserErr := pdf.DetectBrowser(); browserErr == nil {
+				fmt.Fprintf(stdout, "%s: pdf browser %s (%s)\n", name, browser.Path, browser.Source)
+			}
 			fmt.Fprintf(stdout, "%s: wrote %s\n", name, pdf.OutputFile)
 		}
 		return nil

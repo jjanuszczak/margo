@@ -1,6 +1,7 @@
 package pdf
 
 import (
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -51,5 +52,32 @@ func TestBrowserCandidatesIncludeExpectedDefaults(t *testing.T) {
 		if !strings.Contains(joined, "google-chrome-stable") {
 			t.Fatalf("expected non-darwin candidates to include google-chrome-stable, got %v", values)
 		}
+	}
+}
+
+func TestFindBrowserUsesOverride(t *testing.T) {
+	override := filepath.Join(t.TempDir(), "chrome")
+	if err := os.WriteFile(override, []byte(""), 0o755); err != nil {
+		t.Fatalf("write override browser: %v", err)
+	}
+
+	t.Setenv(browserEnvVar, override)
+	info, err := findBrowser()
+	if err != nil {
+		t.Fatalf("findBrowser returned error: %v", err)
+	}
+	if info.Path != override {
+		t.Fatalf("expected override path %q, got %q", override, info.Path)
+	}
+	if info.Source != browserEnvVar {
+		t.Fatalf("expected override source %q, got %q", browserEnvVar, info.Source)
+	}
+}
+
+func TestFindBrowserInvalidOverride(t *testing.T) {
+	t.Setenv(browserEnvVar, "/tmp/does-not-exist-chrome")
+	_, err := findBrowser()
+	if err == nil || !strings.Contains(err.Error(), browserEnvVar) {
+		t.Fatalf("expected override error mentioning %s, got %v", browserEnvVar, err)
 	}
 }

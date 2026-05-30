@@ -20,6 +20,10 @@ const (
 	browserEnvVar = "MARGO_CHROME_PATH"
 )
 
+func DetectBrowser() (BrowserInfo, error) {
+	return findBrowser()
+}
+
 func Write(projectRoot string) error {
 	htmlPath := filepath.Join(projectRoot, html.OutputFile)
 	if _, err := os.Stat(htmlPath); err != nil {
@@ -29,7 +33,7 @@ func Write(projectRoot string) error {
 		return fmt.Errorf("create pdf output directory: %w", err)
 	}
 
-	browserPath, err := findBrowserPath()
+	browser, err := findBrowser()
 	if err != nil {
 		return err
 	}
@@ -51,11 +55,11 @@ func Write(projectRoot string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, browserPath, buildPrintArgs(absHTML, absPDF, userDataDir)...)
+	cmd := exec.CommandContext(ctx, browser.Path, buildPrintArgs(absHTML, absPDF, userDataDir)...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			return fmt.Errorf("pdf export timed out after %s", 45*time.Second)
+			return fmt.Errorf("pdf export timed out after %s using %s (%s)", 45*time.Second, browser.Path, browser.Source)
 		}
 		message := strings.TrimSpace(string(output))
 		hint := ""
@@ -63,9 +67,9 @@ func Write(projectRoot string) error {
 			hint = " headless Chrome may be blocked in this environment; verify the browser can run headless locally or set " + browserEnvVar + " to a compatible binary."
 		}
 		if message != "" {
-			return fmt.Errorf("print pdf with %q: %w: %s", browserPath, err, message)
+			return fmt.Errorf("print pdf with %q (%s): %w: %s", browser.Path, browser.Source, err, message)
 		}
-		return fmt.Errorf("print pdf with %q: %w.%s", browserPath, err, hint)
+		return fmt.Errorf("print pdf with %q (%s): %w.%s", browser.Path, browser.Source, err, hint)
 	}
 
 	if _, err := os.Stat(absPDF); err != nil {
@@ -87,27 +91,43 @@ func buildPrintArgs(absHTML string, absPDF string, userDataDir string) []string 
 	}
 }
 
-func findBrowserPath() (string, error) {
+type BrowserInfo struct {
+	Path   string
+	Source string
+}
+
+func findBrowser() (BrowserInfo, error) {
 	if override := strings.TrimSpace(os.Getenv(browserEnvVar)); override != "" {
 		if _, err := os.Stat(override); err != nil {
-			return "", fmt.Errorf("%s points to an unavailable browser %q: %w", browserEnvVar, override, err)
+			return BrowserInfo{}, fmt.Errorf("%s points to an unavailable browser %q: %w", browserEnvVar, override, err)
 		}
-		return override, nil
+		return BrowserInfo{
+			Path:   override,
+			Source: browserEnvVar,
+		}, nil
 	}
 
+	attempts := make([]string, 0, len(browserCandidates()))
 	for _, candidate := range browserCandidates() {
+		attempts = append(attempts, candidate.value)
 		if candidate.kind == browserCandidateFile {
 			if _, err := os.Stat(candidate.value); err == nil {
-				return candidate.value, nil
+				return BrowserInfo{
+					Path:   candidate.value,
+					Source: "app-path",
+				}, nil
 			}
 			continue
 		}
 		if resolved, err := exec.LookPath(candidate.value); err == nil {
-			return resolved, nil
+			return BrowserInfo{
+				Path:   resolved,
+				Source: "PATH:" + candidate.value,
+			}, nil
 		}
 	}
 
-	return "", fmt.Errorf("could not find a Chrome/Chromium browser; set %s to override", browserEnvVar)
+	return BrowserInfo{}, fmt.Errorf("could not find a Chrome/Chromium browser; tried %s; set %s to override", strings.Join(attempts, ", "), browserEnvVar)
 }
 
 type candidateKind int
