@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"margo/internal/ignore"
 )
 
 func TestParseSlideExtractsFrontMatterAndBodyNotes(t *testing.T) {
@@ -32,7 +34,7 @@ notes:
 Remember to mention future PPTX export intent.
 `
 
-	slide, err := parseSlide(projectRoot, filepath.Join(bundlePath, "index.md"), bundlePath, source)
+	slide, err := parseSlide(projectRoot, filepath.Join(bundlePath, "index.md"), bundlePath, source, ignore.Matcher{})
 	if err != nil {
 		t.Fatalf("parseSlide returned error: %v", err)
 	}
@@ -77,7 +79,7 @@ title: Included Content
 {{< include "shared/agenda.md" >}}
 `
 
-	slide, err := parseSlide(projectRoot, filepath.Join(bundlePath, "index.md"), bundlePath, source)
+	slide, err := parseSlide(projectRoot, filepath.Join(bundlePath, "index.md"), bundlePath, source, ignore.Matcher{})
 	if err != nil {
 		t.Fatalf("parseSlide returned error: %v", err)
 	}
@@ -113,7 +115,7 @@ title: Cycles
 {{< include "shared/a.md" >}}
 `
 
-	_, err := parseSlide(projectRoot, filepath.Join(bundlePath, "index.md"), bundlePath, source)
+	_, err := parseSlide(projectRoot, filepath.Join(bundlePath, "index.md"), bundlePath, source, ignore.Matcher{})
 	if err == nil {
 		t.Fatal("expected parseSlide to fail on include cycle")
 	}
@@ -136,11 +138,73 @@ title: Escaping Include
 {{< include "../outside.md" >}}
 `
 
-	_, err := parseSlide(projectRoot, filepath.Join(bundlePath, "index.md"), bundlePath, source)
+	_, err := parseSlide(projectRoot, filepath.Join(bundlePath, "index.md"), bundlePath, source, ignore.Matcher{})
 	if err == nil {
 		t.Fatal("expected parseSlide to fail on escaping include path")
 	}
 	if !strings.Contains(err.Error(), "escapes the project root") {
 		t.Fatalf("expected project-root error, got %v", err)
+	}
+}
+
+func TestDiscoverSlidesHonorsIgnoreFile(t *testing.T) {
+	projectRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(projectRoot, "slides", "visible"), 0o755); err != nil {
+		t.Fatalf("create visible slide dir: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(projectRoot, "slides", "ignored"), 0o755); err != nil {
+		t.Fatalf("create ignored slide dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(projectRoot, ignore.DefaultFilename), []byte("slides/ignored/\n"), 0o644); err != nil {
+		t.Fatalf("write ignore file: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(projectRoot, "slides", "visible", "index.md"), []byte("---\ntitle: Visible\norder: 1\n---\n"), 0o644); err != nil {
+		t.Fatalf("write visible slide: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(projectRoot, "slides", "ignored", "index.md"), []byte("---\ntitle: Ignored\norder: 2\n---\n"), 0o644); err != nil {
+		t.Fatalf("write ignored slide: %v", err)
+	}
+
+	slides, err := DiscoverSlides(projectRoot)
+	if err != nil {
+		t.Fatalf("DiscoverSlides returned error: %v", err)
+	}
+	if got, want := len(slides), 1; got != want {
+		t.Fatalf("expected %d visible slide, got %d", want, got)
+	}
+	if slides[0].Title != "Visible" {
+		t.Fatalf("expected visible slide title, got %q", slides[0].Title)
+	}
+}
+
+func TestDiscoverBundleAssetsHonorsIgnoreFile(t *testing.T) {
+	projectRoot := t.TempDir()
+	bundlePath := filepath.Join(projectRoot, "slides", "sample")
+	if err := os.MkdirAll(bundlePath, 0o755); err != nil {
+		t.Fatalf("create bundle dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(projectRoot, ignore.DefaultFilename), []byte("slides/sample/secret.png\n"), 0o644); err != nil {
+		t.Fatalf("write ignore file: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(bundlePath, "public.png"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("write public asset: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(bundlePath, "secret.png"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("write secret asset: %v", err)
+	}
+
+	matcher, err := ignore.Load(projectRoot)
+	if err != nil {
+		t.Fatalf("load ignore matcher: %v", err)
+	}
+	assets, err := discoverBundleAssets(projectRoot, bundlePath, matcher)
+	if err != nil {
+		t.Fatalf("discoverBundleAssets returned error: %v", err)
+	}
+	if got, want := len(assets), 1; got != want {
+		t.Fatalf("expected %d visible asset, got %d: %#v", want, got, assets)
+	}
+	if assets[0] != "public.png" {
+		t.Fatalf("expected remaining asset public.png, got %#v", assets)
 	}
 }

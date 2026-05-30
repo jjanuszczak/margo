@@ -10,12 +10,17 @@ import (
 	"strings"
 
 	"margo/internal/deck"
+	"margo/internal/ignore"
 )
 
 var markdownAssetRefPattern = regexp.MustCompile(`\]\(([^)\s]+)([^)]*)\)`)
 
 func stageAssets(projectRoot string, slides []deck.Slide) error {
-	if err := copyDeckAssets(projectRoot); err != nil {
+	ignored, err := ignore.Load(projectRoot)
+	if err != nil {
+		return fmt.Errorf("load ignore file: %w", err)
+	}
+	if err := copyDeckAssets(projectRoot, ignored); err != nil {
 		return err
 	}
 	for _, slide := range slides {
@@ -33,7 +38,7 @@ func stageAssets(projectRoot string, slides []deck.Slide) error {
 	return nil
 }
 
-func copyDeckAssets(projectRoot string) error {
+func copyDeckAssets(projectRoot string, ignored ignore.Matcher) error {
 	srcRoot := filepath.Join(projectRoot, "assets")
 	info, err := os.Stat(srcRoot)
 	if err != nil {
@@ -55,6 +60,14 @@ func copyDeckAssets(projectRoot string) error {
 			return err
 		}
 		if relPath == "." {
+			return nil
+		}
+		projectRel := filepath.ToSlash(filepath.Join("assets", relPath))
+		if d.IsDir() {
+			if ignored.ShouldIgnore(projectRel, true) {
+				return filepath.SkipDir
+			}
+		} else if ignored.ShouldIgnore(projectRel, false) {
 			return nil
 		}
 

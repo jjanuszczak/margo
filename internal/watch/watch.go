@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"margo/internal/ignore"
 )
 
 type Snapshot struct {
@@ -48,8 +50,12 @@ func Poll(projectRoot string, interval time.Duration, onChange func() error) err
 }
 
 func SnapshotProject(projectRoot string) (Snapshot, error) {
+	ignored, err := ignore.Load(projectRoot)
+	if err != nil {
+		return Snapshot{}, fmt.Errorf("load ignore file: %w", err)
+	}
 	var entries []Entry
-	err := filepath.WalkDir(projectRoot, func(path string, d fs.DirEntry, err error) error {
+	err = filepath.WalkDir(projectRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -66,10 +72,16 @@ func SnapshotProject(projectRoot string) (Snapshot, error) {
 			if shouldSkipDir(rel) {
 				return filepath.SkipDir
 			}
+			if ignored.ShouldIgnore(rel, true) {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 
 		if !shouldWatchFile(rel) {
+			return nil
+		}
+		if ignored.ShouldIgnore(rel, false) {
 			return nil
 		}
 

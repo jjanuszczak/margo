@@ -9,12 +9,17 @@ import (
 
 	"gopkg.in/yaml.v3"
 	"margo/internal/deck"
+	"margo/internal/ignore"
 )
 
 const slidesDirName = "slides"
 
 func DiscoverSlides(projectRoot string) ([]deck.Slide, error) {
 	slidesRoot := filepath.Join(projectRoot, slidesDirName)
+	ignored, err := ignore.Load(projectRoot)
+	if err != nil {
+		return nil, fmt.Errorf("load ignore file: %w", err)
+	}
 	entries, err := os.ReadDir(slidesRoot)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -28,6 +33,10 @@ func DiscoverSlides(projectRoot string) ([]deck.Slide, error) {
 		if !entry.IsDir() {
 			continue
 		}
+		bundleRel := filepath.ToSlash(filepath.Join(slidesDirName, entry.Name()))
+		if ignored.ShouldIgnore(bundleRel, true) {
+			continue
+		}
 
 		bundlePath := filepath.Join(slidesRoot, entry.Name())
 		indexPath := filepath.Join(bundlePath, "index.md")
@@ -36,7 +45,7 @@ func DiscoverSlides(projectRoot string) ([]deck.Slide, error) {
 			return nil, fmt.Errorf("read slide bundle %q: %w", indexPath, err)
 		}
 
-		slide, err := parseSlide(projectRoot, indexPath, bundlePath, string(data))
+		slide, err := parseSlide(projectRoot, indexPath, bundlePath, string(data), ignored)
 		if err != nil {
 			return nil, err
 		}
@@ -54,13 +63,13 @@ func DiscoverSlides(projectRoot string) ([]deck.Slide, error) {
 	return slides, nil
 }
 
-func parseSlide(projectRoot, indexPath, bundlePath, source string) (deck.Slide, error) {
+func parseSlide(projectRoot, indexPath, bundlePath, source string, ignored ignore.Matcher) (deck.Slide, error) {
 	slide := deck.Slide{
 		ID:           filepath.Base(bundlePath),
 		BundlePath:   bundlePath,
 		BodyMarkdown: source,
 	}
-	assets, err := discoverBundleAssets(bundlePath)
+	assets, err := discoverBundleAssets(projectRoot, bundlePath, ignored)
 	if err != nil {
 		return deck.Slide{}, fmt.Errorf("%s: discover bundle assets: %w", indexPath, err)
 	}
@@ -162,7 +171,7 @@ func extractBodyNotes(body string, notes []string) (string, []string) {
 	return bodyLines, notes
 }
 
-func discoverBundleAssets(bundlePath string) ([]string, error) {
+func discoverBundleAssets(projectRoot string, bundlePath string, ignored ignore.Matcher) ([]string, error) {
 	var assets []string
 
 	err := filepath.WalkDir(bundlePath, func(path string, d os.DirEntry, err error) error {
@@ -170,12 +179,23 @@ func discoverBundleAssets(bundlePath string) ([]string, error) {
 			return err
 		}
 		if d.IsDir() {
+			relToProject, relErr := filepath.Rel(projectRoot, path)
+			if relErr == nil && relToProject != "." && ignored.ShouldIgnore(relToProject, true) {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 
 		relPath, err := filepath.Rel(bundlePath, path)
 		if err != nil {
 			return err
+		}
+		relToProject, err := filepath.Rel(projectRoot, path)
+		if err != nil {
+			return err
+		}
+		if ignored.ShouldIgnore(relToProject, false) {
+			return nil
 		}
 		if relPath == "index.md" {
 			return nil
