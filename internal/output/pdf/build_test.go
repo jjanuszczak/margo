@@ -14,6 +14,9 @@ func TestBuildPrintArgs(t *testing.T) {
 
 	for _, needle := range []string{
 		"--headless",
+		"--run-all-compositor-stages-before-draw",
+		"--virtual-time-budget=10000",
+		"--print-to-pdf-no-header",
 		"--user-data-dir=/tmp/chrome-profile",
 		"--print-to-pdf=/tmp/deck/deck.pdf",
 		"file:///tmp/deck/index.html",

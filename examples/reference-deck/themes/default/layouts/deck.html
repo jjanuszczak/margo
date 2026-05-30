@@ -383,6 +383,47 @@
     .pdf-export:hover {
       background: #fffdf9;
     }
+    @media print {
+      @page {
+        size: 13.333in 7.5in;
+        margin: 0;
+      }
+      html, body {
+        width: 100%;
+        height: auto;
+        margin: 0;
+        padding: 0;
+        background: #fff;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      main {
+        display: block;
+        min-height: auto;
+        padding: 0;
+      }
+      .deck {
+        width: 100%;
+        aspect-ratio: auto;
+        background: transparent;
+        box-shadow: none;
+      }
+      .slide {
+        display: block !important;
+        width: 100%;
+        min-height: 7.5in;
+        height: 7.5in;
+        break-after: page;
+        page-break-after: always;
+      }
+      .slide:last-of-type {
+        break-after: auto;
+        page-break-after: auto;
+      }
+      .controls {
+        display: none !important;
+      }
+    }
   </style>
 </head>
 <body>
