@@ -64,6 +64,16 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load theme: %v", err)
 	}
+	parsed.Config.Theme.Options, err = theme.ResolveOptions(activeTheme, parsed.Config.Theme.Options)
+	if err != nil {
+		t.Fatalf("resolve theme options: %v", err)
+	}
+	if got, want := parsed.Config.Theme.Options["color_mode"], "dark"; got != want {
+		t.Fatalf("resolved color_mode = %v, want %q", got, want)
+	}
+	if got, want := parsed.Config.Theme.Options["typography"], "executive"; got != want {
+		t.Fatalf("resolved typography = %v, want %q", got, want)
+	}
 
 	model := deck.Model{
 		Config:   parsed.Config,
@@ -81,13 +91,16 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 	}
 	out := string(rendered)
 
-	for _, needle := range []string{"Margo Reference Deck", "Strategy", "Why Margo", "Export PDF", "MARGO", "Product Strategy", "Authoring and output model overview", "image-fit-contain", "#4db6ac"} {
+	for _, needle := range []string{"Margo Reference Deck", "Strategy", "Why Margo", "Export PDF", "MARGO", "Product Strategy", "Authoring and output model overview", "image-fit-contain", "#4db6ac", "color-scheme: dark", "\"Avenir Next\", \"Helvetica Neue\", sans-serif", "slides/02-why/diagram.svg"} {
 		if !strings.Contains(out, needle) {
 			t.Fatalf("expected rendered output to contain %q", needle)
 		}
 	}
 	if !strings.Contains(out, "Internal Strategy Review") {
 		t.Fatalf("expected rendered output to contain deck footer %q", "Internal Strategy Review")
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "slides", "02-why", "diagram.svg")); err != nil {
+		t.Fatalf("expected staged slide asset to exist: %v", err)
 	}
 
 	for _, forbidden := range []string{

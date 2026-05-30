@@ -8,6 +8,12 @@ import (
 )
 
 func TestParseSlideExtractsFrontMatterAndBodyNotes(t *testing.T) {
+	projectRoot := t.TempDir()
+	bundlePath := filepath.Join(projectRoot, "slides", "02-why")
+	if err := os.MkdirAll(bundlePath, 0o755); err != nil {
+		t.Fatalf("create bundle dir: %v", err)
+	}
+
 	source := `---
 title: Why Margo
 order: 2
@@ -26,7 +32,7 @@ notes:
 Remember to mention future PPTX export intent.
 `
 
-	slide, err := parseSlide(t.TempDir(), "slides/02-why/index.md", "slides/02-why", source)
+	slide, err := parseSlide(projectRoot, filepath.Join(bundlePath, "index.md"), bundlePath, source)
 	if err != nil {
 		t.Fatalf("parseSlide returned error: %v", err)
 	}
@@ -48,6 +54,10 @@ Remember to mention future PPTX export intent.
 
 func TestParseSlideResolvesNestedIncludes(t *testing.T) {
 	projectRoot := t.TempDir()
+	bundlePath := filepath.Join(projectRoot, "slides", "01-title")
+	if err := os.MkdirAll(bundlePath, 0o755); err != nil {
+		t.Fatalf("create bundle dir: %v", err)
+	}
 	if err := os.MkdirAll(filepath.Join(projectRoot, "shared"), 0o755); err != nil {
 		t.Fatalf("create shared dir: %v", err)
 	}
@@ -67,7 +77,7 @@ title: Included Content
 {{< include "shared/agenda.md" >}}
 `
 
-	slide, err := parseSlide(projectRoot, filepath.Join(projectRoot, "slides/01-title/index.md"), filepath.Join(projectRoot, "slides/01-title"), source)
+	slide, err := parseSlide(projectRoot, filepath.Join(bundlePath, "index.md"), bundlePath, source)
 	if err != nil {
 		t.Fatalf("parseSlide returned error: %v", err)
 	}
@@ -82,6 +92,10 @@ title: Included Content
 
 func TestParseSlideRejectsIncludeCycles(t *testing.T) {
 	projectRoot := t.TempDir()
+	bundlePath := filepath.Join(projectRoot, "slides", "01-title")
+	if err := os.MkdirAll(bundlePath, 0o755); err != nil {
+		t.Fatalf("create bundle dir: %v", err)
+	}
 	if err := os.MkdirAll(filepath.Join(projectRoot, "shared"), 0o755); err != nil {
 		t.Fatalf("create shared dir: %v", err)
 	}
@@ -99,7 +113,7 @@ title: Cycles
 {{< include "shared/a.md" >}}
 `
 
-	_, err := parseSlide(projectRoot, filepath.Join(projectRoot, "slides/01-title/index.md"), filepath.Join(projectRoot, "slides/01-title"), source)
+	_, err := parseSlide(projectRoot, filepath.Join(bundlePath, "index.md"), bundlePath, source)
 	if err == nil {
 		t.Fatal("expected parseSlide to fail on include cycle")
 	}
@@ -110,6 +124,10 @@ title: Cycles
 
 func TestParseSlideRejectsEscapingIncludePaths(t *testing.T) {
 	projectRoot := t.TempDir()
+	bundlePath := filepath.Join(projectRoot, "slides", "01-title")
+	if err := os.MkdirAll(bundlePath, 0o755); err != nil {
+		t.Fatalf("create bundle dir: %v", err)
+	}
 
 	source := `---
 title: Escaping Include
@@ -118,7 +136,7 @@ title: Escaping Include
 {{< include "../outside.md" >}}
 `
 
-	_, err := parseSlide(projectRoot, filepath.Join(projectRoot, "slides/01-title/index.md"), filepath.Join(projectRoot, "slides/01-title"), source)
+	_, err := parseSlide(projectRoot, filepath.Join(bundlePath, "index.md"), bundlePath, source)
 	if err == nil {
 		t.Fatal("expected parseSlide to fail on escaping include path")
 	}

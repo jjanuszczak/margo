@@ -49,6 +49,9 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) err
 	if err := os.MkdirAll(filepath.Join(projectRoot, OutputDir), 0o755); err != nil {
 		return fmt.Errorf("create html output directory: %w", err)
 	}
+	if err := stageAssets(projectRoot, model.Slides); err != nil {
+		return fmt.Errorf("stage html assets: %w", err)
+	}
 
 	file, err := os.Create(filepath.Join(projectRoot, OutputFile))
 	if err != nil {
@@ -100,7 +103,8 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) err
 func renderSlides(projectRoot string, deckMeta deck.DeckMetadata, slides []deck.Slide, sections []deck.Section, activeTheme theme.Metadata) ([]renderedSlide, error) {
 	result := make([]renderedSlide, 0, len(slides))
 	for i, slide := range slides {
-		expanded, err := shortcode.Render(slide.BodyMarkdown, shortcode.Context{
+		bodySource := rewriteMarkdownAssetRefs(projectRoot, slide, slide.BodyMarkdown)
+		expanded, err := shortcode.Render(bodySource, shortcode.Context{
 			ProjectRoot: projectRoot,
 			Theme:       activeTheme,
 			Slide:       slide,
@@ -127,7 +131,7 @@ func renderSlides(projectRoot string, deckMeta deck.DeckMetadata, slides []deck.
 				HideLogo:           slide.HideLogo,
 				HideFooter:         slide.HideFooter,
 				ResolvedFooterText: resolveFooterText(slide, deckMeta.Footer),
-				BackgroundStyle:    resolveBackgroundStyle(slide),
+				BackgroundStyle:    resolveBackgroundStyle(projectRoot, slide),
 				ImageHintClass:     resolveImageHintClass(slide.ImageHints),
 				ImageHintStyle:     resolveImageHintStyle(slide.ImageHints),
 				ImageCaption:       resolveImageCaption(slide.ImageHints),
@@ -136,7 +140,7 @@ func renderSlides(projectRoot string, deckMeta deck.DeckMetadata, slides []deck.
 		}
 
 		layoutPath := resolveLayoutPath(activeTheme, slide)
-		rendered, err := executeSlideLayout(layoutPath, slide, i, body, sectionID, sectionTitle, deckMeta.Footer)
+		rendered, err := executeSlideLayout(projectRoot, layoutPath, slide, i, body, sectionID, sectionTitle, deckMeta.Footer)
 		if err != nil {
 			return nil, err
 		}
@@ -145,7 +149,7 @@ func renderSlides(projectRoot string, deckMeta deck.DeckMetadata, slides []deck.
 	return result, nil
 }
 
-func executeSlideLayout(layoutPath string, slide deck.Slide, index int, body template.HTML, sectionID string, sectionTitle string, deckFooter string) (renderedSlide, error) {
+func executeSlideLayout(projectRoot string, layoutPath string, slide deck.Slide, index int, body template.HTML, sectionID string, sectionTitle string, deckFooter string) (renderedSlide, error) {
 	tmpl, err := template.New("slide").Funcs(template.FuncMap{
 		"markdownToHTML": markdownToHTML,
 	}).ParseFiles(layoutPath)
@@ -183,7 +187,7 @@ func executeSlideLayout(layoutPath string, slide deck.Slide, index int, body tem
 		HideLogo:           slide.HideLogo,
 		HideFooter:         slide.HideFooter,
 		ResolvedFooterText: resolveFooterText(slide, deckFooter),
-		BackgroundStyle:    resolveBackgroundStyle(slide),
+		BackgroundStyle:    resolveBackgroundStyle(projectRoot, slide),
 		ImageHintClass:     resolveImageHintClass(slide.ImageHints),
 		ImageHintStyle:     resolveImageHintStyle(slide.ImageHints),
 		ImageCaption:       resolveImageCaption(slide.ImageHints),
@@ -231,13 +235,17 @@ func resolveFooterText(slide deck.Slide, deckFooter string) string {
 	return deckFooter
 }
 
-func resolveBackgroundStyle(slide deck.Slide) string {
+func resolveBackgroundStyle(projectRoot string, slide deck.Slide) string {
 	parts := make([]string, 0, 3)
 	if strings.TrimSpace(slide.Background.Color) != "" {
 		parts = append(parts, "background-color: "+slide.Background.Color)
 	}
 	if strings.TrimSpace(slide.Background.Image) != "" {
-		parts = append(parts, "background-image: url('"+template.HTMLEscapeString(slide.Background.Image)+"')")
+		imageRef := slide.Background.Image
+		if projectRoot != "" {
+			imageRef = resolveAssetReference(projectRoot, slide, imageRef)
+		}
+		parts = append(parts, "background-image: url('"+template.HTMLEscapeString(imageRef)+"')")
 		parts = append(parts, "background-size: cover")
 		parts = append(parts, "background-position: center")
 	}

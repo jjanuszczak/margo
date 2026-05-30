@@ -358,6 +358,20 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			report:  report,
 		}
 	}
+	parsed.Config.Theme.Options, err = theme.ResolveOptions(activeTheme, parsed.Config.Theme.Options)
+	if err != nil {
+		report := diagnostics.Report{}
+		report.Add(diagnostics.Diagnostic{
+			Severity: diagnostics.SeverityError,
+			Code:     "theme_option_validation_failed",
+			Message:  err.Error(),
+			Path:     root.ConfigPath,
+		})
+		return commandError{
+			message: fmt.Sprintf("%s could not resolve theme options", name),
+			report:  report,
+		}
+	}
 
 	manifestFile, hasManifest, err := manifest.Load(root.Dir)
 	if err != nil {
@@ -408,6 +422,10 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			return err
 		}
 		activeTheme, err := theme.Load(root.Dir, parsed.Config.Theme.Name)
+		if err != nil {
+			return err
+		}
+		parsed.Config.Theme.Options, err = theme.ResolveOptions(activeTheme, parsed.Config.Theme.Options)
 		if err != nil {
 			return err
 		}

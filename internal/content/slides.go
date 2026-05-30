@@ -60,6 +60,11 @@ func parseSlide(projectRoot, indexPath, bundlePath, source string) (deck.Slide, 
 		BundlePath:   bundlePath,
 		BodyMarkdown: source,
 	}
+	assets, err := discoverBundleAssets(bundlePath)
+	if err != nil {
+		return deck.Slide{}, fmt.Errorf("%s: discover bundle assets: %w", indexPath, err)
+	}
+	slide.Assets = assets
 
 	if !strings.HasPrefix(source, "---\n") {
 		slide.Title = humanize(filepath.Base(bundlePath))
@@ -155,4 +160,34 @@ func extractBodyNotes(body string, notes []string) (string, []string) {
 	}
 
 	return bodyLines, notes
+}
+
+func discoverBundleAssets(bundlePath string) ([]string, error) {
+	var assets []string
+
+	err := filepath.WalkDir(bundlePath, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+
+		relPath, err := filepath.Rel(bundlePath, path)
+		if err != nil {
+			return err
+		}
+		if relPath == "index.md" {
+			return nil
+		}
+
+		assets = append(assets, filepath.ToSlash(relPath))
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Strings(assets)
+	return assets, nil
 }
