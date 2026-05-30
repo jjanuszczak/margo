@@ -454,7 +454,50 @@ Example use:
 {{< eyebrow label="Why this exists" />}}
 ```
 
-## 11. Create or Choose a Theme
+## 11. Reuse Project-Local Markdown with Includes
+
+`margo` supports explicit project-local Markdown includes.
+
+Supported syntax:
+
+```md
+{{< include "shared/summary.md" >}}
+```
+
+Current rules:
+- include paths are project-local
+- include paths may not escape the project root
+- includes are expanded before normal Markdown rendering
+- nested includes work
+- include cycles are rejected with a clear error
+
+Example project structure:
+
+```text
+my-deck/
+  shared/
+    authoring.md
+    output.md
+  slides/
+    02-why/index.md
+```
+
+Example slide usage:
+
+```md
+{{< columns >}}
+{{< column >}}
+{{< include "shared/authoring.md" >}}
+{{< /column >}}
+{{< column >}}
+{{< include "shared/output.md" >}}
+{{< /column >}}
+{{< /columns >}}
+```
+
+This keeps repeated Markdown content in one place without introducing a parameterized content system.
+
+## 12. Create or Choose a Theme
 
 ### Use the default theme
 
@@ -496,7 +539,7 @@ theme:
 
 Current rule: one active theme per deck.
 
-## 12. Edit Theme Layouts
+## 13. Edit Theme Layouts
 
 The default theme uses:
 
@@ -522,7 +565,7 @@ The easiest way to customize appearance today is:
 2. point `margo.yaml` at it
 3. edit the theme's `layouts/` and `shortcodes/`
 
-## 13. Common Authoring Patterns
+## 14. Common Authoring Patterns
 
 ### Standard content slide
 
@@ -571,7 +614,7 @@ For `media-left` or `media-right`, place the first image in the body before the 
 - Shared brand assets
 ```
 
-## 14. Known Current Limitations
+## 15. Known Current Limitations
 
 This guide reflects the current prototype. Important limitations:
 
@@ -581,7 +624,7 @@ This guide reflects the current prototype. Important limitations:
 - theme APIs and project conventions may still evolve
 - browser auto-refresh is currently wired through the scaffolded default theme
 
-## 15. Good Files to Study
+## 16. Good Files to Study
 
 If you want real working examples, start with:
 

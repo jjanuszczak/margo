@@ -30,18 +30,10 @@ Theme-provided shortcodes make expressive slides possible without abandoning Mar
 
 {{< columns >}}
 {{< column >}}
-### Authoring
-
-- Markdown
-- Front matter
-- Archetypes
+{{< include "shared/authoring-pillars.md" >}}
 {{< /column >}}
 {{< column >}}
-### Output
-
-- HTML first
-- PDF next
-- PPTX later
+{{< include "shared/output-pillars.md" >}}
 {{< /column >}}
 {{< /columns >}}
 
