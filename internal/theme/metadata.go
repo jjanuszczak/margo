@@ -1,10 +1,10 @@
 package theme
 
 type Metadata struct {
-	Name           string
-	Version        string
-	Description    string
-	ConfigOptions  []ConfigOption
+	Name           string         `yaml:"name"`
+	Version        string         `yaml:"version"`
+	Description    string         `yaml:"description"`
+	ConfigOptions  []ConfigOption `yaml:"config_options"`
 	RequiredLayout []string
 	RootDir        string
 	DefaultLayout  string
@@ -13,9 +13,9 @@ type Metadata struct {
 }
 
 type ConfigOption struct {
-	Name        string
-	Type        string
-	Description string
-	Required    bool
-	Default     any
+	Name        string `yaml:"name"`
+	Type        string `yaml:"type"`
+	Description string `yaml:"description"`
+	Required    bool   `yaml:"required"`
+	Default     any    `yaml:"default"`
 }

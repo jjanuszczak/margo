@@ -20,11 +20,12 @@ const (
 )
 
 type pageData struct {
-	Deck       deck.DeckMetadata
-	PDFEnabled bool
-	Theme      theme.Metadata
-	Sections   []deck.Section
-	Slides     []renderedSlide
+	Deck         deck.DeckMetadata
+	PDFEnabled   bool
+	Theme        theme.Metadata
+	ThemeOptions map[string]any
+	Sections     []deck.Section
+	Slides       []renderedSlide
 }
 
 type renderedSlide struct {
@@ -61,16 +62,18 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) err
 	}
 
 	data := pageData{
-		Deck:       model.Config.Deck,
-		PDFEnabled: model.Config.Outputs.PDF,
-		Theme:      activeTheme,
-		Sections:   model.Sections,
-		Slides:     slides,
+		Deck:         model.Config.Deck,
+		PDFEnabled:   model.Config.Outputs.PDF,
+		Theme:        activeTheme,
+		ThemeOptions: model.Config.Theme.Options,
+		Sections:     model.Sections,
+		Slides:       slides,
 	}
 
 	if activeTheme.DeckLayout == "" {
 		tmpl, err := template.New("deck").Funcs(template.FuncMap{
 			"markdownToHTML": markdownToHTML,
+			"themeOption":    themeOption,
 		}).ParseFiles(activeTheme.DefaultLayout)
 		if err != nil {
 			return fmt.Errorf("parse html template: %w", err)
@@ -81,7 +84,9 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) err
 		return nil
 	}
 
-	tmpl, err := template.New("deck").ParseFiles(activeTheme.DeckLayout)
+	tmpl, err := template.New("deck").Funcs(template.FuncMap{
+		"themeOption": themeOption,
+	}).ParseFiles(activeTheme.DeckLayout)
 	if err != nil {
 		return fmt.Errorf("parse deck layout: %w", err)
 	}
@@ -279,4 +284,18 @@ func imageHintString(hints map[string]any, key string) string {
 		return value
 	}
 	return ""
+}
+
+func themeOption(options map[string]any, key string, fallback string) string {
+	if options == nil {
+		return fallback
+	}
+	raw, ok := options[key]
+	if !ok {
+		return fallback
+	}
+	if value, ok := raw.(string); ok && strings.TrimSpace(value) != "" {
+		return value
+	}
+	return fallback
 }

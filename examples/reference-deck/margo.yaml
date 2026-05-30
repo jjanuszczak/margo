@@ -9,6 +9,9 @@ deck:
 
 theme:
   name: default
+  color_mode: dark
+  typography: executive
+  accent_color: "#4db6ac"
 
 outputs:
   html: true

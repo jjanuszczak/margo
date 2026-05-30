@@ -6,17 +6,18 @@
   <title>{{ .Deck.Title }}</title>
   <style>
     :root {
-      color-scheme: light dark;
-      --bg: #f4f1ea;
-      --fg: #1c1a17;
-      --muted: #6d655c;
-      --card: #fffdf9;
-      --shadow: rgba(28, 26, 23, 0.12);
+      color-scheme: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}dark{{ else }}light{{ end }};
+      --accent: {{ themeOption .ThemeOptions "accent_color" "#8f6f33" }};
+      --bg: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}#131617{{ else }}#f4f1ea{{ end }};
+      --fg: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}#f3efe8{{ else }}#1c1a17{{ end }};
+      --muted: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}#a9b0ac{{ else }}#6d655c{{ end }};
+      --card: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}#1c2123{{ else }}#fffdf9{{ end }};
+      --shadow: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}rgba(0, 0, 0, 0.28){{ else }}rgba(28, 26, 23, 0.12){{ end }};
     }
     body {
       margin: 0;
-      font-family: Georgia, "Times New Roman", serif;
-      background: linear-gradient(180deg, #ebe5d8 0%, #f7f3ea 100%);
+      font-family: {{ if eq (themeOption .ThemeOptions "typography" "editorial") "executive" }}"Avenir Next", "Helvetica Neue", sans-serif{{ else }}"Iowan Old Style", Georgia, serif{{ end }};
+      background: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}linear-gradient(180deg, #0f1213 0%, #1a2022 100%){{ else }}linear-gradient(180deg, #ebe5d8 0%, #f7f3ea 100%){{ end }};
       color: var(--fg);
     }
     main {
@@ -89,7 +90,7 @@
       font: 12px/1.2 sans-serif;
       letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: #8f6f33;
+      color: var(--accent);
     }
     .draft-badge {
       display: inline-block;
@@ -156,10 +157,10 @@
     .quote-slide blockquote {
       margin: 0;
       padding-left: 28px;
-      border-left: 4px solid #b88a44;
+      border-left: 4px solid var(--accent);
       font-size: 42px;
       line-height: 1.2;
-      color: #2b251d;
+      color: var(--fg);
     }
     .quote-slide p:last-child {
       margin: 0;
@@ -178,14 +179,14 @@
     .metric-shell {
       padding: 40px 48px;
       border-radius: 28px;
-      background: linear-gradient(180deg, rgba(184, 138, 68, 0.08), rgba(255, 253, 249, 0.96));
-      border: 1px solid rgba(184, 138, 68, 0.14);
+      background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 12%, transparent), rgba(255, 253, 249, 0.96));
+      border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
     }
     .metric-slide h1 {
       margin: 0;
       font-size: 132px;
       line-height: 0.95;
-      color: #8f6f33;
+      color: var(--accent);
     }
     .metric-slide p {
       margin: 0;
@@ -206,9 +207,9 @@
     }
     .closing-shell {
       background:
-        radial-gradient(circle at top, rgba(184, 138, 68, 0.18), transparent 45%),
+        radial-gradient(circle at top, color-mix(in srgb, var(--accent) 18%, transparent), transparent 45%),
         linear-gradient(180deg, rgba(248, 244, 235, 0.9), rgba(255, 253, 249, 1));
-      border: 1px solid rgba(184, 138, 68, 0.18);
+      border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
       border-radius: 28px;
       padding: 32px;
       box-sizing: border-box;
