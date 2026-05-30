@@ -342,6 +342,9 @@ func defaultThemeDeckLayout() string {
       align-content: center;
       height: 100%;
     }
+    .quote-shell {
+      max-width: 880px;
+    }
     .quote-slide blockquote {
       margin: 0;
       padding-left: 28px;
@@ -363,6 +366,12 @@ func defaultThemeDeckLayout() string {
       align-content: center;
       height: 100%;
       text-align: center;
+    }
+    .metric-shell {
+      padding: 40px 48px;
+      border-radius: 28px;
+      background: linear-gradient(180deg, rgba(184, 138, 68, 0.08), rgba(255, 253, 249, 0.96));
+      border: 1px solid rgba(184, 138, 68, 0.14);
     }
     .metric-slide h1 {
       margin: 0;
@@ -386,6 +395,8 @@ func defaultThemeDeckLayout() string {
       place-items: center;
       height: 100%;
       text-align: center;
+    }
+    .closing-shell {
       background:
         radial-gradient(circle at top, rgba(184, 138, 68, 0.18), transparent 45%),
         linear-gradient(180deg, rgba(248, 244, 235, 0.9), rgba(255, 253, 249, 1));
@@ -394,11 +405,11 @@ func defaultThemeDeckLayout() string {
       padding: 32px;
       box-sizing: border-box;
     }
-    .closing-slide h1 {
+    .closing-shell h1 {
       font-size: 72px;
       margin-bottom: 18px;
     }
-    .closing-slide p {
+    .closing-shell p {
       max-width: 540px;
       margin-inline: auto;
       color: var(--muted);
@@ -495,7 +506,9 @@ func defaultThemeAgendaLayout() string {
 func defaultThemeQuoteLayout() string {
 	return `<div class="slide-meta">Quote</div>
 <div class="slide-body quote-slide">
-  {{ .Body }}
+  <div class="quote-shell">
+    {{ .Body }}
+  </div>
 </div>
 `
 }
@@ -503,7 +516,9 @@ func defaultThemeQuoteLayout() string {
 func defaultThemeMetricLayout() string {
 	return `<div class="slide-meta">Metric</div>
 <div class="slide-body metric-slide">
-  {{ .Body }}
+  <div class="metric-shell">
+    {{ .Body }}
+  </div>
 </div>
 `
 }
@@ -511,7 +526,9 @@ func defaultThemeMetricLayout() string {
 func defaultThemeClosingLayout() string {
 	return `<div class="slide-meta">Closing</div>
 <div class="slide-body closing-slide">
-  {{ .Body }}
+  <div class="closing-shell">
+    {{ .Body }}
+  </div>
 </div>
 `
 }
