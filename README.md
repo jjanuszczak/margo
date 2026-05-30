@@ -114,3 +114,9 @@ my-deck/
 - `examples/reference-deck` is the committed fixture deck for manual checks and regression work.
 - `examples/benchmark-deck` is the committed 20-slide deck for manual performance and density checks.
 - Some local preview verification required running outside the sandbox because binding `127.0.0.1:1313` is restricted in this environment.
+
+Benchmark the committed 20-slide deck build path with:
+
+```bash
+go test -run '^$' -bench BenchmarkBenchmarkDeckBuildFlow ./internal/output/html
+```

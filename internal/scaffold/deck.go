@@ -463,14 +463,77 @@ func defaultThemeDeckLayout() string {
       letter-spacing: 0.08em;
       text-transform: uppercase;
       color: var(--muted);
-      margin-bottom: 24px;
+      margin-bottom: 0;
     }
     .section-meta {
-      margin-bottom: 12px;
+      margin-bottom: 0;
       font: 12px/1.2 sans-serif;
       letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--accent);
+    }
+    .slide-shell {
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      align-content: start;
+      gap: 14px;
+      height: 100%;
+      min-width: 0;
+    }
+    .slide-body {
+      min-width: 0;
+    }
+    .prose-body {
+      max-width: 860px;
+    }
+    .content-slide .slide-body {
+      align-self: start;
+    }
+    .title-slide {
+      gap: 18px;
+      align-content: end;
+    }
+    .title-stack {
+      display: grid;
+      gap: 18px;
+      align-content: end;
+      max-width: 920px;
+      padding-bottom: 24px;
+    }
+    .title-stack h1 {
+      font-size: 88px;
+      line-height: 0.94;
+      letter-spacing: -0.04em;
+      max-width: 9ch;
+    }
+    .title-stack p {
+      max-width: 24ch;
+      font-size: 27px;
+      line-height: 1.28;
+      color: var(--muted);
+    }
+    .section-slide {
+      align-content: center;
+      gap: 20px;
+    }
+    .section-stack {
+      display: grid;
+      align-content: center;
+      gap: 18px;
+      max-width: 760px;
+    }
+    .section-stack::before {
+      content: "";
+      width: 92px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 28%, transparent);
+    }
+    .section-stack h1 {
+      font-size: 84px;
+      line-height: 0.94;
+      letter-spacing: -0.04em;
     }
     .draft-badge {
       display: inline-block;
@@ -485,12 +548,43 @@ func defaultThemeDeckLayout() string {
     }
     .slide-body h1,
     .slide-body h2,
+    .slide-body h3,
     .slide-body p,
-    .slide-body ul {
+    .slide-body ul,
+    .slide-body ol,
+    .slide-body blockquote,
+    .slide-body figure {
       margin: 0 0 16px;
+    }
+    .slide-body h1 {
+      font-size: 64px;
+      line-height: 0.98;
+      letter-spacing: -0.035em;
+    }
+    .slide-body h2 {
+      font-size: 34px;
+      line-height: 1.1;
+      letter-spacing: -0.025em;
+    }
+    .slide-body h3 {
+      font-size: 22px;
+      line-height: 1.2;
+      letter-spacing: -0.015em;
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+    }
+    .slide-body p,
+    .slide-body li {
+      font-size: 22px;
+      line-height: 1.42;
     }
     .slide-body ul {
       padding-left: 24px;
+    }
+    .slide-body ol {
+      padding-left: 28px;
+    }
+    .slide-body strong {
+      color: color-mix(in srgb, var(--fg) 82%, var(--accent));
     }
     .slide-body img {
       max-width: 100%;
@@ -583,7 +677,7 @@ func defaultThemeDeckLayout() string {
       color: var(--muted);
     }
     .agenda-slide ol {
-      margin: 32px 0 0;
+      margin: 22px 0 0;
       padding-left: 28px;
       font-size: 28px;
       line-height: 1.45;
@@ -621,6 +715,10 @@ func defaultThemeDeckLayout() string {
     }
     .two-column-slide .column {
       min-width: 0;
+      padding: 22px 24px;
+      border-radius: 24px;
+      background: color-mix(in srgb, var(--card) 90%, var(--accent) 10%);
+      border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
     }
     .two-column-slide .column > :first-child {
       margin-top: 0;
@@ -659,6 +757,9 @@ func defaultThemeDeckLayout() string {
     .content-pane > :first-child {
       margin-top: 0;
     }
+    .content-pane > :last-child {
+      margin-bottom: 0;
+    }
     .quote-slide {
       display: grid;
       gap: 28px;
@@ -667,6 +768,7 @@ func defaultThemeDeckLayout() string {
     }
     .quote-shell {
       max-width: 880px;
+      padding: 24px 0;
     }
     .quote-slide blockquote {
       margin: 0;
@@ -693,8 +795,9 @@ func defaultThemeDeckLayout() string {
     .metric-shell {
       padding: 40px 48px;
       border-radius: 28px;
-      background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 12%, transparent), rgba(255, 253, 249, 0.96));
+      background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--card) 96%, white 4%));
       border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+      box-shadow: 0 24px 56px var(--shadow);
     }
     .metric-slide h1 {
       margin: 0;
@@ -722,11 +825,12 @@ func defaultThemeDeckLayout() string {
     .closing-shell {
       background:
         radial-gradient(circle at top, color-mix(in srgb, var(--accent) 18%, transparent), transparent 45%),
-        linear-gradient(180deg, rgba(248, 244, 235, 0.9), rgba(255, 253, 249, 1));
+        linear-gradient(180deg, color-mix(in srgb, var(--card) 92%, white 8%), color-mix(in srgb, var(--card) 98%, white 2%));
       border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
       border-radius: 28px;
-      padding: 32px;
+      padding: 40px 42px;
       box-sizing: border-box;
+      box-shadow: 0 24px 56px var(--shadow);
     }
     .closing-shell h1 {
       font-size: 72px;
@@ -762,6 +866,23 @@ func defaultThemeDeckLayout() string {
     }
     .pdf-export:hover {
       background: #fffdf9;
+    }
+    @media (max-width: 900px) {
+      .slide {
+        padding: 48px;
+      }
+      .title-stack h1,
+      .section-stack h1 {
+        font-size: 64px;
+      }
+      .slide-body h1 {
+        font-size: 48px;
+      }
+      .media-split-slide,
+      .two-column-slide,
+      .shortcode-columns {
+        grid-template-columns: 1fr;
+      }
     }
     @media print {
       @page {
@@ -874,115 +995,137 @@ func defaultThemeDeckLayout() string {
 }
 
 func defaultThemeSlideLayout() string {
-	return `{{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
-<div class="slide-meta">{{ .Slide.Title }}</div>
-<div class="slide-body">{{ .Body }}</div>
+	return `<div class="slide-shell content-slide">
+  {{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
+  <div class="slide-meta">{{ .Slide.Title }}</div>
+  <div class="slide-body prose-body">{{ .Body }}</div>
+</div>
 `
 }
 
 func defaultThemeTitleLayout() string {
-	return `{{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
-<div class="slide-meta">{{ .Slide.Title }}</div>
-<div class="slide-body">
-  {{ .Body }}
+	return `<div class="slide-shell title-slide">
+  {{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
+  <div class="slide-meta">{{ .Slide.Title }}</div>
+  <div class="slide-body title-stack">
+    {{ .Body }}
+  </div>
 </div>
 `
 }
 
 func defaultThemeSectionLayout() string {
-	return `<div class="slide-meta">Section</div>
-<div class="slide-body">
-  <h1>{{ .Slide.Title }}</h1>
+	return `<div class="slide-shell section-slide">
+  <div class="slide-meta">Section</div>
+  <div class="slide-body section-stack">
+    <h1>{{ .Slide.Title }}</h1>
+  </div>
 </div>
 `
 }
 
 func defaultThemeAgendaLayout() string {
-	return `<div class="slide-meta">Agenda</div>
-<div class="slide-body agenda-slide">
-  {{ .Body }}
+	return `<div class="slide-shell agenda-layout">
+  <div class="slide-meta">Agenda</div>
+  <div class="slide-body agenda-slide prose-body">
+    {{ .Body }}
+  </div>
 </div>
 `
 }
 
 func defaultThemeQuoteLayout() string {
-	return `<div class="slide-meta">Quote</div>
-<div class="slide-body quote-slide">
-  <div class="quote-shell">
-    {{ .Body }}
+	return `<div class="slide-shell quote-layout">
+  <div class="slide-meta">Quote</div>
+  <div class="slide-body quote-slide">
+    <div class="quote-shell">
+      {{ .Body }}
+    </div>
   </div>
 </div>
 `
 }
 
 func defaultThemeImageLayout() string {
-	return `{{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
-<div class="slide-meta">{{ .Slide.Title }}</div>
-<div class="slide-body image-slide">
-  <div class="image-shell">
-    {{ .Body }}
+	return `<div class="slide-shell image-layout">
+  {{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
+  <div class="slide-meta">{{ .Slide.Title }}</div>
+  <div class="slide-body image-slide">
+    <div class="image-shell prose-body">
+      {{ .Body }}
+    </div>
   </div>
 </div>
 `
 }
 
 func defaultThemeTwoColumnLayout() string {
-	return `{{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
-<div class="slide-meta">{{ .Slide.Title }}</div>
-<div class="slide-body two-column-slide">
-  <div class="column">
-    {{ if .BodyColumns }}{{ index .BodyColumns 0 }}{{ else }}{{ .Body }}{{ end }}
-  </div>
-  <div class="column">
-    {{ if gt (len .BodyColumns) 1 }}{{ index .BodyColumns 1 }}{{ end }}
+	return `<div class="slide-shell split-layout">
+  {{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
+  <div class="slide-meta">{{ .Slide.Title }}</div>
+  <div class="slide-body two-column-slide prose-body">
+    <div class="column">
+      {{ if .BodyColumns }}{{ index .BodyColumns 0 }}{{ else }}{{ .Body }}{{ end }}
+    </div>
+    <div class="column">
+      {{ if gt (len .BodyColumns) 1 }}{{ index .BodyColumns 1 }}{{ end }}
+    </div>
   </div>
 </div>
 `
 }
 
 func defaultThemeMediaRightLayout() string {
-	return `{{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
-<div class="slide-meta">{{ .Slide.Title }}</div>
-<div class="slide-body media-split-slide media-right">
-  <div class="content-pane">
-    {{ .LeadContent }}
-  </div>
-  <div class="media-pane">
-    {{ .LeadMedia }}
+	return `<div class="slide-shell split-layout">
+  {{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
+  <div class="slide-meta">{{ .Slide.Title }}</div>
+  <div class="slide-body media-split-slide media-right">
+    <div class="content-pane prose-body">
+      {{ .LeadContent }}
+    </div>
+    <div class="media-pane">
+      {{ .LeadMedia }}
+    </div>
   </div>
 </div>
 `
 }
 
 func defaultThemeMediaLeftLayout() string {
-	return `{{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
-<div class="slide-meta">{{ .Slide.Title }}</div>
-<div class="slide-body media-split-slide media-left">
-  <div class="media-pane">
-    {{ .LeadMedia }}
-  </div>
-  <div class="content-pane">
-    {{ .LeadContent }}
+	return `<div class="slide-shell split-layout">
+  {{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
+  <div class="slide-meta">{{ .Slide.Title }}</div>
+  <div class="slide-body media-split-slide media-left">
+    <div class="media-pane">
+      {{ .LeadMedia }}
+    </div>
+    <div class="content-pane prose-body">
+      {{ .LeadContent }}
+    </div>
   </div>
 </div>
 `
 }
 
 func defaultThemeMetricLayout() string {
-	return `<div class="slide-meta">Metric</div>
-<div class="slide-body metric-slide">
-  <div class="metric-shell">
-    {{ .Body }}
+	return `<div class="slide-shell metric-layout">
+  <div class="slide-meta">Metric</div>
+  <div class="slide-body metric-slide">
+    <div class="metric-shell">
+      {{ .Body }}
+    </div>
   </div>
 </div>
 `
 }
 
 func defaultThemeClosingLayout() string {
-	return `<div class="slide-meta">Closing</div>
-<div class="slide-body closing-slide">
-  <div class="closing-shell">
-    {{ .Body }}
+	return `<div class="slide-shell closing-layout">
+  <div class="slide-meta">Closing</div>
+  <div class="slide-body closing-slide">
+    <div class="closing-shell">
+      {{ .Body }}
+    </div>
   </div>
 </div>
 `

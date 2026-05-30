@@ -1,8 +1,6 @@
 package html
 
 import (
-	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,7 +13,7 @@ import (
 )
 
 func TestReferenceDeckBuildFlow(t *testing.T) {
-	projectRoot := fixtureProjectRoot(t)
+	projectRoot := fixtureProjectRoot(t, "reference-deck")
 
 	raw, err := config.LoadRaw(filepath.Join(projectRoot, config.DefaultFilename))
 	if err != nil {
@@ -95,7 +93,7 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 	}
 	out := string(rendered)
 
-	for _, needle := range []string{"Margo Reference Deck", "Strategy", "Why Margo", "Customer Story", "Architecture View", "Export PDF", "MARGO", "Product Strategy", "Customer Momentum", "Authoring and output model overview", "image-fit-contain", "#4db6ac", "color-scheme: dark", "\"Avenir Next\", \"Helvetica Neue\", sans-serif", "slides/02-why/diagram.svg", "slides/02-why/backdrop.svg", "slides/05-customer-story/spotlight.svg", "assets/shared-grid.svg", "assets/video-poster.svg", "https://example.com/demo.mp4", "class=\"callout", "class=\"shortcode-columns\"", "class=\"shortcode-stat\"", "class=\"shortcode-video\"", "media-split-slide media-right", "media-split-slide media-left", "@media print", "size: 13.333in 7.5in", "display: block !important", "break-after: page", "A reasonably sized deck should still feel fast.", "Shortcodes can carry shared deck assets cleanly."} {
+	for _, needle := range []string{"Margo Reference Deck", "Strategy", "Why Margo", "Customer Story", "Architecture View", "Export PDF", "MARGO", "Product Strategy", "Customer Momentum", "Authoring and output model overview", "image-fit-contain", "#4db6ac", "color-scheme: dark", "\"Avenir Next\", \"Helvetica Neue\", sans-serif", "class=\"slide-shell content-slide\"", "class=\"slide-shell title-slide\"", "class=\"slide-shell section-slide\"", "class=\"slide-shell split-layout\"", "class=\"slide-body section-stack\"", "slides/02-why/diagram.svg", "slides/02-why/backdrop.svg", "slides/05-customer-story/spotlight.svg", "assets/shared-grid.svg", "assets/video-poster.svg", "https://example.com/demo.mp4", "class=\"callout", "class=\"shortcode-columns\"", "class=\"shortcode-stat\"", "class=\"shortcode-video\"", "media-split-slide media-right", "media-split-slide media-left", "@media print", "size: 13.333in 7.5in", "display: block !important", "break-after: page", "A reasonably sized deck should still feel fast.", "Shortcodes can carry shared deck assets cleanly."} {
 		if !strings.Contains(out, needle) {
 			t.Fatalf("expected rendered output to contain %q", needle)
 		}
@@ -132,7 +130,7 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 }
 
 func TestReferenceDeckServeFilteringIncludesDrafts(t *testing.T) {
-	projectRoot := fixtureProjectRoot(t)
+	projectRoot := fixtureProjectRoot(t, "reference-deck")
 
 	slides, err := content.DiscoverSlides(projectRoot)
 	if err != nil {
@@ -170,118 +168,6 @@ func TestReferenceDeckServeFilteringIncludesDrafts(t *testing.T) {
 	if !foundDivider {
 		t.Fatal("expected synthetic Strategy section divider to appear in serve-rendered set")
 	}
-}
-
-func fixtureProjectRoot(t *testing.T) string {
-	t.Helper()
-	sourceRoot, err := filepath.Abs(filepath.Join("..", "..", "..", "examples", "reference-deck"))
-	if err != nil {
-		t.Fatalf("resolve fixture project root: %v", err)
-	}
-
-	projectRoot := filepath.Join(t.TempDir(), "reference-deck")
-	if err := copyFixtureDeck(sourceRoot, projectRoot); err != nil {
-		t.Fatalf("copy fixture project root: %v", err)
-	}
-	return projectRoot
-}
-
-func copyFixtureDeck(srcRoot string, dstRoot string) error {
-	return filepath.WalkDir(srcRoot, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		relPath, err := filepath.Rel(srcRoot, path)
-		if err != nil {
-			return err
-		}
-		if relPath == "." {
-			return os.MkdirAll(dstRoot, 0o755)
-		}
-		if relPath == "dist" && d.IsDir() {
-			return filepath.SkipDir
-		}
-		if strings.HasPrefix(relPath, "dist"+string(filepath.Separator)) {
-			return nil
-		}
-		if !shouldCopyFixturePath(relPath, d.IsDir()) {
-			if d.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-
-		targetPath := filepath.Join(dstRoot, relPath)
-		if d.IsDir() {
-			return os.MkdirAll(targetPath, 0o755)
-		}
-
-		srcFile, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		defer srcFile.Close()
-
-		dstFile, err := os.Create(targetPath)
-		if err != nil {
-			return err
-		}
-		defer dstFile.Close()
-
-		if _, err := io.Copy(dstFile, srcFile); err != nil {
-			return err
-		}
-		return nil
-	})
-}
-
-func shouldCopyFixturePath(relPath string, isDir bool) bool {
-	exact := map[string]bool{
-		"archetypes": true,
-		"assets":     true,
-		"slides":     true,
-		"themes":     true,
-		"margo.yaml": true,
-	}
-
-	if exact[relPath] {
-		return true
-	}
-
-	allowedSubtrees := []string{
-		"archetypes/agenda",
-		"archetypes/closing",
-		"archetypes/default",
-		"archetypes/image",
-		"archetypes/media-left",
-		"archetypes/media-right",
-		"archetypes/metric",
-		"archetypes/quote",
-		"archetypes/section",
-		"archetypes/title",
-		"archetypes/two-column",
-		"assets/shared-grid.svg",
-		"assets/video-poster.svg",
-		"slides/01-title",
-		"slides/02-why",
-		"slides/03-draft",
-		"slides/04-hidden",
-		"slides/05-customer-story",
-		"slides/06-architecture-view",
-		"themes/default",
-	}
-
-	for _, prefix := range allowedSubtrees {
-		if relPath == prefix {
-			return true
-		}
-		if strings.HasPrefix(relPath, prefix+string(filepath.Separator)) {
-			return true
-		}
-	}
-
-	return false
 }
 
 func findSlideByID(t *testing.T, slides []deck.Slide, id string) deck.Slide {

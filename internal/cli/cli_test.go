@@ -266,6 +266,61 @@ order: 1
 	}
 }
 
+func TestRunNewDeckThenBuildStarterDeck(t *testing.T) {
+	parentDir := t.TempDir()
+
+	restoreWD := withWorkingDir(t, parentDir)
+	defer restoreWD()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	if code := Run([]string{"new", "starter-deck"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("expected new deck to succeed, stderr=%q", stderr.String())
+	}
+
+	projectRoot := filepath.Join(parentDir, "starter-deck")
+	configPath := filepath.Join(projectRoot, "margo.yaml")
+	raw, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("read starter config: %v", err)
+	}
+	updated := strings.Replace(string(raw), "  pdf: true\n", "  pdf: false\n", 1)
+	if err := os.WriteFile(configPath, []byte(updated), 0o644); err != nil {
+		t.Fatalf("write starter config: %v", err)
+	}
+
+	restoreDeckWD := withWorkingDir(t, projectRoot)
+	defer restoreDeckWD()
+
+	stdout.Reset()
+	stderr.Reset()
+	if code := Run([]string{"build"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("expected starter deck build to succeed, stderr=%q", stderr.String())
+	}
+
+	rendered, err := os.ReadFile(filepath.Join(projectRoot, "dist", "html", "index.html"))
+	if err != nil {
+		t.Fatalf("read starter output: %v", err)
+	}
+	out := string(rendered)
+
+	for _, needle := range []string{
+		"starter-deck",
+		"Why Margo",
+		"Why this exists",
+		"class=\"callout",
+		"class=\"shortcode-columns\"",
+		"class=\"shortcode-stat\"",
+	} {
+		if !strings.Contains(out, needle) {
+			t.Fatalf("expected starter deck output to contain %q", needle)
+		}
+	}
+	if strings.Contains(out, "Export PDF") {
+		t.Fatalf("expected starter deck output to omit PDF control when pdf output is disabled")
+	}
+}
+
 func writeArchetype(t *testing.T, projectRoot string, name string, description string) {
 	t.Helper()
 	dir := filepath.Join(projectRoot, "archetypes", name)

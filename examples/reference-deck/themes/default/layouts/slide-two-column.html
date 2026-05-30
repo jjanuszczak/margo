@@ -1,10 +1,12 @@
-{{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
-<div class="slide-meta">{{ .Slide.Title }}</div>
-<div class="slide-body two-column-slide">
-  <div class="column">
-    {{ if .BodyColumns }}{{ index .BodyColumns 0 }}{{ else }}{{ .Body }}{{ end }}
-  </div>
-  <div class="column">
-    {{ if gt (len .BodyColumns) 1 }}{{ index .BodyColumns 1 }}{{ end }}
+<div class="slide-shell split-layout">
+  {{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
+  <div class="slide-meta">{{ .Slide.Title }}</div>
+  <div class="slide-body two-column-slide prose-body">
+    <div class="column">
+      {{ if .BodyColumns }}{{ index .BodyColumns 0 }}{{ else }}{{ .Body }}{{ end }}
+    </div>
+    <div class="column">
+      {{ if gt (len .BodyColumns) 1 }}{{ index .BodyColumns 1 }}{{ end }}
+    </div>
   </div>
 </div>

@@ -1,7 +1,9 @@
-{{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
-<div class="slide-meta">{{ .Slide.Title }}</div>
-<div class="slide-body image-slide">
-  <div class="image-shell">
-    {{ .Body }}
+<div class="slide-shell image-layout">
+  {{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
+  <div class="slide-meta">{{ .Slide.Title }}</div>
+  <div class="slide-body image-slide">
+    <div class="image-shell prose-body">
+      {{ .Body }}
+    </div>
   </div>
 </div>
