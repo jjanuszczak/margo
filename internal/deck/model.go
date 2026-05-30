@@ -16,6 +16,8 @@ type DeckMetadata struct {
 	Language     string
 	Organization string
 	Copyright    string
+	Logo         string
+	Footer       string
 }
 
 type ThemeSelection struct {

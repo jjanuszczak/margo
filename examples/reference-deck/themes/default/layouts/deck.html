@@ -39,9 +39,43 @@
       height: 100%;
       padding: 72px;
       box-sizing: border-box;
+      position: relative;
+      background-repeat: no-repeat;
+      background-size: cover;
+      background-position: center;
+    }
+    .slide::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: var(--margo-background-overlay, transparent);
+      opacity: var(--margo-background-opacity, 1);
+      pointer-events: none;
     }
     .slide.active {
       display: block;
+    }
+    .slide > * {
+      position: relative;
+      z-index: 1;
+    }
+    .deck-logo {
+      position: absolute;
+      top: 24px;
+      right: 28px;
+      font: 12px/1 sans-serif;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .deck-footer {
+      position: absolute;
+      left: 72px;
+      bottom: 28px;
+      font: 12px/1.2 sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
     }
     .slide-meta {
       font-size: 14px;
@@ -197,9 +231,11 @@
   <main>
     <div class="deck">
       {{ range $i, $slide := .Slides }}
-      <section class="slide{{ if eq $i 0 }} active{{ end }}">
+      <section class="slide{{ if eq $i 0 }} active{{ end }}"{{ if $slide.BackgroundStyle }} style="{{ $slide.BackgroundStyle }}"{{ end }}>
         {{ if $slide.IsDraft }}<div class="draft-badge">Draft</div>{{ end }}
+        {{ if and $.Deck.Logo (not $slide.HideLogo) }}<div class="deck-logo">{{ $.Deck.Logo }}</div>{{ end }}
         {{ $slide.Body }}
+        {{ if and $slide.ResolvedFooterText (not $slide.HideFooter) }}<div class="deck-footer">{{ $slide.ResolvedFooterText }}</div>{{ end }}
       </section>
       {{ end }}
       <div class="controls">

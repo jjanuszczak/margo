@@ -4,6 +4,8 @@ deck:
   title: Margo Reference Deck
   description: Committed fixture deck for development and regression checks
   language: en
+  logo: MARGO
+  footer: Internal Strategy Review
 
 theme:
   name: default

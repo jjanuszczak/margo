@@ -81,10 +81,13 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 	}
 	out := string(rendered)
 
-	for _, needle := range []string{"Margo Reference Deck", "Strategy", "Why Margo", "Export PDF"} {
+	for _, needle := range []string{"Margo Reference Deck", "Strategy", "Why Margo", "Export PDF", "MARGO", "Product Strategy"} {
 		if !strings.Contains(out, needle) {
 			t.Fatalf("expected rendered output to contain %q", needle)
 		}
+	}
+	if !strings.Contains(out, "Internal Strategy Review") {
+		t.Fatalf("expected rendered output to contain deck footer %q", "Internal Strategy Review")
 	}
 
 	for _, forbidden := range []string{

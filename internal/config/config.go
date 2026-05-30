@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"margo/internal/deck"
 	"gopkg.in/yaml.v3"
+	"margo/internal/deck"
 )
 
 const DefaultFilename = "margo.yaml"
@@ -43,6 +43,8 @@ func Parse(raw RawConfig) (ParseResult, error) {
 			Language     string `yaml:"language"`
 			Organization string `yaml:"organization"`
 			Copyright    string `yaml:"copyright"`
+			Logo         string `yaml:"logo"`
+			Footer       string `yaml:"footer"`
 		} `yaml:"deck"`
 		Theme struct {
 			Name    string         `yaml:"name"`
@@ -72,6 +74,8 @@ func Parse(raw RawConfig) (ParseResult, error) {
 				Language:     parsed.Deck.Language,
 				Organization: parsed.Deck.Organization,
 				Copyright:    parsed.Deck.Copyright,
+				Logo:         parsed.Deck.Logo,
+				Footer:       parsed.Deck.Footer,
 			},
 			Theme: deck.ThemeSelection{
 				Name:    parsed.Theme.Name,

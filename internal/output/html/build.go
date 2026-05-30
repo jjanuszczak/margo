@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/yuin/goldmark"
 	"margo/internal/deck"
@@ -27,13 +28,17 @@ type pageData struct {
 }
 
 type renderedSlide struct {
-	Index        int
-	Title        string
-	Layout       string
-	Body         template.HTML
-	IsDraft      bool
-	SectionID    string
-	SectionTitle string
+	Index              int
+	Title              string
+	Layout             string
+	Body               template.HTML
+	IsDraft            bool
+	SectionID          string
+	SectionTitle       string
+	HideLogo           bool
+	HideFooter         bool
+	ResolvedFooterText string
+	BackgroundStyle    string
 }
 
 func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) error {
@@ -47,7 +52,7 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) err
 	}
 	defer file.Close()
 
-	slides, err := renderSlides(projectRoot, model.Slides, model.Sections, activeTheme)
+	slides, err := renderSlides(projectRoot, model.Config.Deck, model.Slides, model.Sections, activeTheme)
 	if err != nil {
 		return err
 	}
@@ -84,7 +89,7 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) err
 	return nil
 }
 
-func renderSlides(projectRoot string, slides []deck.Slide, sections []deck.Section, activeTheme theme.Metadata) ([]renderedSlide, error) {
+func renderSlides(projectRoot string, deckMeta deck.DeckMetadata, slides []deck.Slide, sections []deck.Section, activeTheme theme.Metadata) ([]renderedSlide, error) {
 	result := make([]renderedSlide, 0, len(slides))
 	for i, slide := range slides {
 		expanded, err := shortcode.Render(slide.BodyMarkdown, shortcode.Context{
@@ -105,18 +110,22 @@ func renderSlides(projectRoot string, slides []deck.Slide, sections []deck.Secti
 		}
 		if activeTheme.DeckLayout == "" {
 			result = append(result, renderedSlide{
-				Index:        i,
-				Title:        slide.Title,
-				Layout:       resolveLayoutName(slide),
-				Body:         body,
-				SectionID:    sectionID,
-				SectionTitle: sectionTitle,
+				Index:              i,
+				Title:              slide.Title,
+				Layout:             resolveLayoutName(slide),
+				Body:               body,
+				SectionID:          sectionID,
+				SectionTitle:       sectionTitle,
+				HideLogo:           slide.HideLogo,
+				HideFooter:         slide.HideFooter,
+				ResolvedFooterText: resolveFooterText(slide, deckMeta.Footer),
+				BackgroundStyle:    resolveBackgroundStyle(slide),
 			})
 			continue
 		}
 
 		layoutPath := resolveLayoutPath(activeTheme, slide)
-		rendered, err := executeSlideLayout(layoutPath, slide, i, body, sectionID, sectionTitle)
+		rendered, err := executeSlideLayout(layoutPath, slide, i, body, sectionID, sectionTitle, deckMeta.Footer)
 		if err != nil {
 			return nil, err
 		}
@@ -125,7 +134,7 @@ func renderSlides(projectRoot string, slides []deck.Slide, sections []deck.Secti
 	return result, nil
 }
 
-func executeSlideLayout(layoutPath string, slide deck.Slide, index int, body template.HTML, sectionID string, sectionTitle string) (renderedSlide, error) {
+func executeSlideLayout(layoutPath string, slide deck.Slide, index int, body template.HTML, sectionID string, sectionTitle string, deckFooter string) (renderedSlide, error) {
 	tmpl, err := template.New("slide").Funcs(template.FuncMap{
 		"markdownToHTML": markdownToHTML,
 	}).ParseFiles(layoutPath)
@@ -153,13 +162,17 @@ func executeSlideLayout(layoutPath string, slide deck.Slide, index int, body tem
 	}
 
 	return renderedSlide{
-		Index:        index,
-		Title:        slide.Title,
-		Layout:       resolveLayoutName(slide),
-		Body:         template.HTML(buf.String()),
-		IsDraft:      slide.Draft,
-		SectionID:    sectionID,
-		SectionTitle: sectionTitle,
+		Index:              index,
+		Title:              slide.Title,
+		Layout:             resolveLayoutName(slide),
+		Body:               template.HTML(buf.String()),
+		IsDraft:            slide.Draft,
+		SectionID:          sectionID,
+		SectionTitle:       sectionTitle,
+		HideLogo:           slide.HideLogo,
+		HideFooter:         slide.HideFooter,
+		ResolvedFooterText: resolveFooterText(slide, deckFooter),
+		BackgroundStyle:    resolveBackgroundStyle(slide),
 	}, nil
 }
 
@@ -195,4 +208,30 @@ func markdownToHTML(source string) template.HTML {
 	}
 
 	return template.HTML(buf.String())
+}
+
+func resolveFooterText(slide deck.Slide, deckFooter string) string {
+	if strings.TrimSpace(slide.FooterText) != "" {
+		return slide.FooterText
+	}
+	return deckFooter
+}
+
+func resolveBackgroundStyle(slide deck.Slide) string {
+	parts := make([]string, 0, 3)
+	if strings.TrimSpace(slide.Background.Color) != "" {
+		parts = append(parts, "background-color: "+slide.Background.Color)
+	}
+	if strings.TrimSpace(slide.Background.Image) != "" {
+		parts = append(parts, "background-image: url('"+template.HTMLEscapeString(slide.Background.Image)+"')")
+		parts = append(parts, "background-size: cover")
+		parts = append(parts, "background-position: center")
+	}
+	if strings.TrimSpace(slide.Background.Overlay) != "" {
+		parts = append(parts, "--margo-background-overlay: "+slide.Background.Overlay)
+	}
+	if slide.Background.Opacity > 0 {
+		parts = append(parts, fmt.Sprintf("--margo-background-opacity: %.2f", slide.Background.Opacity))
+	}
+	return strings.Join(parts, "; ")
 }
