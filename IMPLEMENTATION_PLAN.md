@@ -10,7 +10,7 @@ It is optimized for:
 - controlling scope around theming, authoring, and export
 - preserving room for later PDF hardening and eventual PPTX work
 
-The implementation plan assumes `Go` as the primary implementation language, while keeping product requirements anchored in [PRD.md](/Users/johnjanuszczak/Projects/margo/PRD.md).
+The implementation plan assumes `Go` as the primary implementation language, while keeping product requirements anchored in [PRD.md](./PRD.md).
 
 ## 2. Delivery Strategy
 

@@ -648,8 +648,8 @@ This guide reflects the current prototype. Important limitations:
 
 If you want real working examples, start with:
 
-- [examples/reference-deck/margo.yaml](/Users/johnjanuszczak/Projects/margo/examples/reference-deck/margo.yaml)
-- [examples/reference-deck/slides/02-why/index.md](/Users/johnjanuszczak/Projects/margo/examples/reference-deck/slides/02-why/index.md)
-- [examples/reference-deck/themes/default/theme.yaml](/Users/johnjanuszczak/Projects/margo/examples/reference-deck/themes/default/theme.yaml)
-- [examples/reference-deck/themes/default/layouts/deck.html](/Users/johnjanuszczak/Projects/margo/examples/reference-deck/themes/default/layouts/deck.html)
-- [examples/benchmark-deck](/Users/johnjanuszczak/Projects/margo/examples/benchmark-deck)
+- [examples/reference-deck/margo.yaml](../examples/reference-deck/margo.yaml)
+- [examples/reference-deck/slides/02-why/index.md](../examples/reference-deck/slides/02-why/index.md)
+- [examples/reference-deck/themes/default/theme.yaml](../examples/reference-deck/themes/default/theme.yaml)
+- [examples/reference-deck/themes/default/layouts/deck.html](../examples/reference-deck/themes/default/layouts/deck.html)
+- [examples/benchmark-deck](../examples/benchmark-deck)

@@ -1,6 +1,5 @@
 package version
 
-const (
-	Name    = "margo"
-	Version = "0.0.0-dev"
-)
+const Name = "margo"
+
+var Version = "0.0.0-dev"
