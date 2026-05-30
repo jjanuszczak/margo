@@ -64,3 +64,38 @@ func Apply(slides []deck.Slide, file File) ([]deck.Slide, error) {
 
 	return ordered, nil
 }
+
+func AppendSlide(projectRoot string, slideID string) error {
+	file, ok, err := Load(projectRoot)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return nil
+	}
+
+	for _, existing := range file.Slides {
+		if existing == slideID {
+			return fmt.Errorf("manifest already contains slide %q", slideID)
+		}
+	}
+
+	file.Slides = append(file.Slides, slideID)
+	return Save(projectRoot, file)
+}
+
+func Save(projectRoot string, file File) error {
+	if len(file.Slides) == 0 {
+		return fmt.Errorf("manifest slides must contain at least one slide bundle id")
+	}
+
+	data, err := yaml.Marshal(file)
+	if err != nil {
+		return fmt.Errorf("marshal manifest: %w", err)
+	}
+	path := filepath.Join(projectRoot, Filename)
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return fmt.Errorf("write manifest %q: %w", path, err)
+	}
+	return nil
+}

@@ -1,6 +1,8 @@
 package manifest
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -59,5 +61,36 @@ func TestApplyRejectsUnknownOrDuplicateSlides(t *testing.T) {
 	_, err = Apply(slides, File{Slides: []string{"01-title", "01-title"}})
 	if err == nil || !strings.Contains(err.Error(), `duplicate slide "01-title"`) {
 		t.Fatalf("expected duplicate slide error, got %v", err)
+	}
+}
+
+func TestAppendSlideUpdatesManifestFile(t *testing.T) {
+	projectRoot := t.TempDir()
+	if err := Save(projectRoot, File{Slides: []string{"01-title", "02-why"}}); err != nil {
+		t.Fatalf("save manifest: %v", err)
+	}
+
+	if err := AppendSlide(projectRoot, "03-roadmap"); err != nil {
+		t.Fatalf("append slide: %v", err)
+	}
+
+	manifestFile, ok, err := Load(projectRoot)
+	if err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected manifest to exist")
+	}
+	got := strings.Join(manifestFile.Slides, ",")
+	if got != "01-title,02-why,03-roadmap" {
+		t.Fatalf("unexpected manifest order %q", got)
+	}
+
+	raw, err := os.ReadFile(filepath.Join(projectRoot, Filename))
+	if err != nil {
+		t.Fatalf("read manifest file: %v", err)
+	}
+	if !strings.Contains(string(raw), "- 03-roadmap") {
+		t.Fatalf("expected manifest file to contain appended slide, got:\n%s", string(raw))
 	}
 }

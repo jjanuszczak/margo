@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"margo/internal/manifest"
+	"margo/internal/scaffold"
 )
 
 func TestParseBuildLikeArgs(t *testing.T) {
@@ -102,6 +105,58 @@ func TestParseNewThemeArgs(t *testing.T) {
 	}
 }
 
+func TestRunNewSlideAppendsToManifestWhenPresent(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := scaffold.CreateDeck(scaffold.DeckOptions{
+		Name:      "test-deck",
+		TargetDir: projectRoot,
+	}); err != nil {
+		t.Fatalf("create deck: %v", err)
+	}
+	if err := manifest.Save(projectRoot, manifest.File{
+		Slides: []string{"01-title", "02-why"},
+	}); err != nil {
+		t.Fatalf("save manifest: %v", err)
+	}
+
+	restoreWD := withWorkingDir(t, projectRoot)
+	defer restoreWD()
+
+	var out bytes.Buffer
+	if err := runNewSlide([]string{"roadmap", "--archetype", "default"}, &out); err != nil {
+		t.Fatalf("runNewSlide returned error: %v", err)
+	}
+
+	file, ok, err := manifest.Load(projectRoot)
+	if err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected manifest to exist")
+	}
+	got := strings.Join(file.Slides, ",")
+	if got != "01-title,02-why,roadmap" {
+		t.Fatalf("unexpected manifest order %q", got)
+	}
+}
+
+func TestRunNewDeckSupportsAbsoluteTarget(t *testing.T) {
+	targetRoot := t.TempDir()
+	targetDir := filepath.Join(targetRoot, "absolute-deck")
+
+	restoreWD := withWorkingDir(t, t.TempDir())
+	defer restoreWD()
+
+	var out bytes.Buffer
+	if err := runNewDeck(targetDir, &out); err != nil {
+		t.Fatalf("runNewDeck returned error: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(targetDir, "margo.yaml")); err != nil {
+		t.Fatalf("expected deck scaffold at absolute target, stat failed: %v", err)
+	}
+}
+
 func writeArchetype(t *testing.T, projectRoot string, name string, description string) {
 	t.Helper()
 	dir := filepath.Join(projectRoot, "archetypes", name)
@@ -114,5 +169,21 @@ func writeArchetype(t *testing.T, projectRoot string, name string, description s
 		"default_type: " + name + "\n"
 	if err := os.WriteFile(filepath.Join(dir, "archetype.yaml"), []byte(content), 0o644); err != nil {
 		t.Fatalf("write archetype metadata: %v", err)
+	}
+}
+
+func withWorkingDir(t *testing.T, dir string) func() {
+	t.Helper()
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("get working directory: %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("change working directory: %v", err)
+	}
+	return func() {
+		if err := os.Chdir(wd); err != nil {
+			t.Fatalf("restore working directory: %v", err)
+		}
 	}
 }

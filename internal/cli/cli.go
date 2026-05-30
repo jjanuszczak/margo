@@ -108,7 +108,10 @@ func runNewDeck(target string, stdout io.Writer) error {
 		return fmt.Errorf("get working directory: %w", err)
 	}
 
-	targetDir := filepath.Join(wd, target)
+	targetDir := target
+	if !filepath.IsAbs(targetDir) {
+		targetDir = filepath.Join(wd, target)
+	}
 	if err := scaffold.CreateDeck(scaffold.DeckOptions{
 		Name:      target,
 		TargetDir: targetDir,
@@ -183,6 +186,10 @@ func runNewSlide(args []string, stdout io.Writer) error {
 	})
 	if err != nil {
 		return fmt.Errorf("create slide scaffold: %w", err)
+	}
+	slideID := filepath.Base(filepath.Dir(indexPath))
+	if err := manifest.AppendSlide(root.Dir, slideID); err != nil {
+		return fmt.Errorf("append new slide to manifest: %w", err)
 	}
 
 	fmt.Fprintf(stdout, "created slide at %s\n", indexPath)
