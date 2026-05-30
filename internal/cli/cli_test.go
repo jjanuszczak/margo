@@ -157,6 +157,33 @@ func TestRunNewDeckSupportsAbsoluteTarget(t *testing.T) {
 	}
 }
 
+func TestRunBuildReportsConfigFieldLine(t *testing.T) {
+	projectRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(projectRoot, "margo.yaml"), []byte(`version: 1
+
+deck:
+  description: Missing title
+
+theme:
+  name: default
+`), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	restoreWD := withWorkingDir(t, projectRoot)
+	defer restoreWD()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := Run([]string{"build"}, &stdout, &stderr)
+	if code == 0 {
+		t.Fatal("expected build to fail")
+	}
+	if !strings.Contains(stderr.String(), "margo.yaml:4") {
+		t.Fatalf("expected stderr to contain config line reference, got %q", stderr.String())
+	}
+}
+
 func writeArchetype(t *testing.T, projectRoot string, name string, description string) {
 	t.Helper()
 	dir := filepath.Join(projectRoot, "archetypes", name)

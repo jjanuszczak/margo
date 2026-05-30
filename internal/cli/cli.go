@@ -316,12 +316,17 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 
 	parsed, err := config.Parse(raw)
 	if err != nil {
+		line := 0
+		if fieldErr, ok := config.AsFieldError(err); ok {
+			line = fieldErr.Line
+		}
 		report := diagnostics.Report{}
 		report.Add(diagnostics.Diagnostic{
 			Severity: diagnostics.SeverityError,
 			Code:     "config_parse_failed",
 			Message:  err.Error(),
 			Path:     root.ConfigPath,
+			Line:     line,
 		})
 		return commandError{
 			message: fmt.Sprintf("%s could not parse the root config", name),
