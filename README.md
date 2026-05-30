@@ -7,6 +7,7 @@ The current repo contains:
 - the product docs in [PRD.md](/Users/johnjanuszczak/Projects/margo/PRD.md) and [IMPLEMENTATION_PLAN.md](/Users/johnjanuszczak/Projects/margo/IMPLEMENTATION_PLAN.md)
 - a working local deck scaffold/build/serve flow
 - one committed reference fixture deck in [examples/reference-deck](/Users/johnjanuszczak/Projects/margo/examples/reference-deck)
+- one committed benchmark deck in [examples/benchmark-deck](/Users/johnjanuszczak/Projects/margo/examples/benchmark-deck)
 
 ## Current Status
 
@@ -111,4 +112,5 @@ my-deck/
 - The repository root is the CLI source repo, not a deck project.
 - Generated test decks and local caches are ignored by `.gitignore`.
 - `examples/reference-deck` is the committed fixture deck for manual checks and regression work.
+- `examples/benchmark-deck` is the committed 20-slide deck for manual performance and density checks.
 - Some local preview verification required running outside the sandbox because binding `127.0.0.1:1313` is restricted in this environment.

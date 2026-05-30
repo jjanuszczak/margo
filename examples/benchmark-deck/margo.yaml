@@ -1,0 +1,18 @@
+version: 1
+
+deck:
+  title: Margo Benchmark Deck
+  description: 20-slide benchmark deck for serve/build performance and manual QA
+  language: en
+  logo: MARGO
+  footer: Benchmark Review
+
+theme:
+  name: default
+  color_mode: dark
+  typography: executive
+  accent_color: "#4db6ac"
+
+outputs:
+  html: true
+  pdf: false
