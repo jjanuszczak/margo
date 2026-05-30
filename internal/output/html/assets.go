@@ -106,6 +106,10 @@ func resolveAssetReference(projectRoot string, slide deck.Slide, ref string) str
 	}
 
 	baseRef, suffix := splitURLSuffix(ref)
+	if deckRef, ok := resolveDeckAssetReference(projectRoot, baseRef); ok {
+		return deckRef + suffix
+	}
+
 	candidate := filepath.Clean(filepath.Join(slide.BundlePath, filepath.FromSlash(baseRef)))
 	if withinRoot(candidate, slide.BundlePath) {
 		if _, err := os.Stat(candidate); err == nil {
@@ -116,18 +120,31 @@ func resolveAssetReference(projectRoot string, slide deck.Slide, ref string) str
 		}
 	}
 
+	return ref
+}
+
+func resolveDeckAssetReference(projectRoot string, ref string) (string, bool) {
 	assetsRoot := filepath.Join(projectRoot, "assets")
-	assetCandidate := filepath.Clean(filepath.Join(slide.BundlePath, filepath.FromSlash(baseRef)))
-	if withinRoot(assetCandidate, assetsRoot) {
-		if _, err := os.Stat(assetCandidate); err == nil {
-			relPath, err := filepath.Rel(assetsRoot, assetCandidate)
+
+	candidateRefs := []string{ref}
+	if trimmed := strings.TrimPrefix(filepath.ToSlash(ref), "assets/"); trimmed != ref {
+		candidateRefs = append(candidateRefs, trimmed)
+	}
+
+	for _, candidateRef := range candidateRefs {
+		candidate := filepath.Clean(filepath.Join(assetsRoot, filepath.FromSlash(candidateRef)))
+		if !withinRoot(candidate, assetsRoot) {
+			continue
+		}
+		if _, err := os.Stat(candidate); err == nil {
+			relPath, err := filepath.Rel(assetsRoot, candidate)
 			if err == nil {
-				return filepath.ToSlash(filepath.Join("assets", relPath)) + suffix
+				return filepath.ToSlash(filepath.Join("assets", relPath)), true
 			}
 		}
 	}
 
-	return ref
+	return "", false
 }
 
 func splitURLSuffix(ref string) (string, string) {

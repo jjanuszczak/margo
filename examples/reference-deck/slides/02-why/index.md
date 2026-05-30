@@ -49,6 +49,8 @@ Theme-provided shortcodes make expressive slides possible without abandoning Mar
 
 ![Margo flow](diagram.svg)
 
+![Shared brand texture](assets/shared-grid.svg)
+
 ## Notes
 
 Remind the audience that editable PPTX remains a later goal.

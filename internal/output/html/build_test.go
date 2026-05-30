@@ -2,6 +2,8 @@ package html
 
 import (
 	"html/template"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"margo/internal/deck"
@@ -39,5 +41,26 @@ func TestRenderBodyColumnsFallsBackWhenNoMarker(t *testing.T) {
 	}
 	if columns[0] != body {
 		t.Fatalf("expected fallback body %q, got %q", body, columns[0])
+	}
+}
+
+func TestResolveAssetReferenceSupportsDeckAssets(t *testing.T) {
+	projectRoot := t.TempDir()
+	assetsDir := filepath.Join(projectRoot, "assets")
+	bundleDir := filepath.Join(projectRoot, "slides", "02-why")
+	if err := os.MkdirAll(assetsDir, 0o755); err != nil {
+		t.Fatalf("create assets dir: %v", err)
+	}
+	if err := os.MkdirAll(bundleDir, 0o755); err != nil {
+		t.Fatalf("create bundle dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(assetsDir, "shared-grid.svg"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("write deck asset: %v", err)
+	}
+
+	slide := deck.Slide{ID: "02-why", BundlePath: bundleDir}
+	got := resolveAssetReference(projectRoot, slide, "assets/shared-grid.svg")
+	if want := "assets/shared-grid.svg"; got != want {
+		t.Fatalf("resolveAssetReference() = %q, want %q", got, want)
 	}
 }

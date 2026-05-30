@@ -91,7 +91,7 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 	}
 	out := string(rendered)
 
-	for _, needle := range []string{"Margo Reference Deck", "Strategy", "Why Margo", "Export PDF", "MARGO", "Product Strategy", "Authoring and output model overview", "image-fit-contain", "#4db6ac", "color-scheme: dark", "\"Avenir Next\", \"Helvetica Neue\", sans-serif", "slides/02-why/diagram.svg", "slides/02-why/backdrop.svg", "class=\"callout", "class=\"shortcode-columns\"", "class=\"shortcode-stat\"", "A reasonably sized deck should still feel fast."} {
+	for _, needle := range []string{"Margo Reference Deck", "Strategy", "Why Margo", "Export PDF", "MARGO", "Product Strategy", "Authoring and output model overview", "image-fit-contain", "#4db6ac", "color-scheme: dark", "\"Avenir Next\", \"Helvetica Neue\", sans-serif", "slides/02-why/diagram.svg", "slides/02-why/backdrop.svg", "assets/shared-grid.svg", "class=\"callout", "class=\"shortcode-columns\"", "class=\"shortcode-stat\"", "A reasonably sized deck should still feel fast."} {
 		if !strings.Contains(out, needle) {
 			t.Fatalf("expected rendered output to contain %q", needle)
 		}
@@ -104,6 +104,9 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "slides", "02-why", "backdrop.svg")); err != nil {
 		t.Fatalf("expected staged background asset to exist: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "assets", "shared-grid.svg")); err != nil {
+		t.Fatalf("expected staged deck asset to exist: %v", err)
 	}
 
 	for _, forbidden := range []string{
@@ -226,6 +229,7 @@ func copyFixtureDeck(srcRoot string, dstRoot string) error {
 func shouldCopyFixturePath(relPath string, isDir bool) bool {
 	exact := map[string]bool{
 		"archetypes": true,
+		"assets":     true,
 		"slides":     true,
 		"themes":     true,
 		"margo.yaml": true,
@@ -245,6 +249,7 @@ func shouldCopyFixturePath(relPath string, isDir bool) bool {
 		"archetypes/section",
 		"archetypes/title",
 		"archetypes/two-column",
+		"assets/shared-grid.svg",
 		"slides/01-title",
 		"slides/02-why",
 		"slides/03-draft",
