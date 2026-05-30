@@ -467,8 +467,20 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			fmt.Fprintf(stdout, "%s: rendering %d slides after filtering\n", name, len(filteredSlides))
 			fmt.Fprintf(stdout, "%s: wrote %s\n", name, html.OutputFile)
 		}
+
+		generatePDF := func() error {
+			if !parsed.Config.Outputs.PDF {
+				return fmt.Errorf("pdf output is not enabled")
+			}
+			if err := rebuild(); err != nil {
+				return err
+			}
+			return pdf.Write(root.Dir)
+		}
 		return serve.Start(root.Dir, rebuild, serve.Options{
 			OpenBrowser: openBrowser,
+			PDFEnabled:  parsed.Config.Outputs.PDF,
+			GeneratePDF: generatePDF,
 		})
 	}
 
