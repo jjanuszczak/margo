@@ -44,6 +44,8 @@ func TestListSortsBuiltInArchetypesFirst(t *testing.T) {
 	writeArchetypeFixture(t, projectRoot, "agenda", "Agenda slide", "agenda", "agenda")
 	writeArchetypeFixture(t, projectRoot, "image", "Image slide", "image", "image")
 	writeArchetypeFixture(t, projectRoot, "two-column", "Two column slide", "two-column", "two-column")
+	writeArchetypeFixture(t, projectRoot, "media-right", "Media right slide", "media-right", "media-right")
+	writeArchetypeFixture(t, projectRoot, "media-left", "Media left slide", "media-left", "media-left")
 	writeArchetypeFixture(t, projectRoot, "metric", "Metric slide", "metric", "metric")
 	writeArchetypeFixture(t, projectRoot, "quote", "Quote slide", "quote", "quote")
 	writeArchetypeFixture(t, projectRoot, "closing", "Closing slide", "closing", "closing")
@@ -57,7 +59,7 @@ func TestListSortsBuiltInArchetypesFirst(t *testing.T) {
 	for _, meta := range list {
 		got = append(got, meta.Name)
 	}
-	want := []string{"default", "title", "section", "agenda", "image", "two-column", "metric", "quote", "closing", "custom"}
+	want := []string{"default", "title", "section", "agenda", "image", "two-column", "media-right", "media-left", "metric", "quote", "closing", "custom"}
 	for i := range want {
 		if got[i] != want[i] {
 			t.Fatalf("expected archetype order %v, got %v", want, got)

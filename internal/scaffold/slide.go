@@ -155,6 +155,48 @@ Right column content goes here.
 `, yamlString(title), order, yamlString(title))
 	}
 
+	if layout == "media-right" || slideType == "media-right" {
+		return fmt.Sprintf(`---
+title: %s
+order: %d
+layout: media-right
+type: media-right
+image_hints:
+  fit: cover
+  position: center
+---
+
+## %s
+
+![Describe the visual](image.png)
+
+- Primary point
+- Supporting point
+- Outcome or implication
+`, yamlString(title), order, yamlString(title))
+	}
+
+	if layout == "media-left" || slideType == "media-left" {
+		return fmt.Sprintf(`---
+title: %s
+order: %d
+layout: media-left
+type: media-left
+image_hints:
+  fit: cover
+  position: center
+---
+
+## %s
+
+![Describe the visual](image.png)
+
+- Primary point
+- Supporting point
+- Outcome or implication
+`, yamlString(title), order, yamlString(title))
+	}
+
 	if layout == "quote" || slideType == "quote" {
 		return fmt.Sprintf(`---
 title: %s

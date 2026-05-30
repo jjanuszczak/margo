@@ -223,3 +223,75 @@ func TestCreateSlideTwoColumnArchetype(t *testing.T) {
 		}
 	}
 }
+
+func TestCreateSlideMediaRightArchetype(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := CreateDeck(DeckOptions{
+		Name:      "test-deck",
+		TargetDir: projectRoot,
+	}); err != nil {
+		t.Fatalf("create deck: %v", err)
+	}
+
+	indexPath, err := CreateSlide(SlideOptions{
+		ProjectRoot: projectRoot,
+		Name:        "Customer Story",
+		Archetype:   "media-right",
+	})
+	if err != nil {
+		t.Fatalf("create media-right slide: %v", err)
+	}
+
+	raw, err := os.ReadFile(indexPath)
+	if err != nil {
+		t.Fatalf("read media-right slide: %v", err)
+	}
+	body := string(raw)
+
+	for _, needle := range []string{
+		"layout: media-right",
+		"type: media-right",
+		"![Describe the visual](image.png)",
+		"- Primary point",
+	} {
+		if !strings.Contains(body, needle) {
+			t.Fatalf("expected media-right slide to contain %q, got:\n%s", needle, body)
+		}
+	}
+}
+
+func TestCreateSlideMediaLeftArchetype(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := CreateDeck(DeckOptions{
+		Name:      "test-deck",
+		TargetDir: projectRoot,
+	}); err != nil {
+		t.Fatalf("create deck: %v", err)
+	}
+
+	indexPath, err := CreateSlide(SlideOptions{
+		ProjectRoot: projectRoot,
+		Name:        "Architecture",
+		Archetype:   "media-left",
+	})
+	if err != nil {
+		t.Fatalf("create media-left slide: %v", err)
+	}
+
+	raw, err := os.ReadFile(indexPath)
+	if err != nil {
+		t.Fatalf("read media-left slide: %v", err)
+	}
+	body := string(raw)
+
+	for _, needle := range []string{
+		"layout: media-left",
+		"type: media-left",
+		"![Describe the visual](image.png)",
+		"- Supporting point",
+	} {
+		if !strings.Contains(body, needle) {
+			t.Fatalf("expected media-left slide to contain %q, got:\n%s", needle, body)
+		}
+	}
+}

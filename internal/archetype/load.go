@@ -77,24 +77,28 @@ func List(projectRoot string) ([]Metadata, error) {
 func archetypeSortKey(name string) string {
 	switch name {
 	case "default":
-		return "0-default"
+		return "00-default"
 	case "title":
-		return "1-title"
+		return "01-title"
 	case "section":
-		return "2-section"
+		return "02-section"
 	case "agenda":
-		return "3-agenda"
+		return "03-agenda"
 	case "image":
-		return "4-image"
+		return "04-image"
 	case "two-column":
-		return "5-two-column"
+		return "05-two-column"
+	case "media-right":
+		return "06-media-right"
+	case "media-left":
+		return "07-media-left"
 	case "metric":
-		return "6-metric"
+		return "08-metric"
 	case "quote":
-		return "7-quote"
+		return "09-quote"
 	case "closing":
-		return "8-closing"
+		return "10-closing"
 	default:
-		return "9-" + name
+		return "99-" + name
 	}
 }

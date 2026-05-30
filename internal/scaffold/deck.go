@@ -28,18 +28,20 @@ func CreateDeck(opts DeckOptions) error {
 
 	files := map[string]string{
 		"margo.yaml": scaffoldConfig(opts.Name),
-		filepath.Join("slides", "01-title", "index.md"):             slideTitle(opts.Name),
-		filepath.Join("slides", "02-why", "index.md"):               slideWhy(),
-		filepath.Join("archetypes", "default", "archetype.yaml"):    defaultArchetypeMetadata(),
-		filepath.Join("archetypes", "title", "archetype.yaml"):      titleArchetypeMetadata(),
-		filepath.Join("archetypes", "section", "archetype.yaml"):    sectionArchetypeMetadata(),
-		filepath.Join("archetypes", "agenda", "archetype.yaml"):     agendaArchetypeMetadata(),
-		filepath.Join("archetypes", "image", "archetype.yaml"):      imageArchetypeMetadata(),
-		filepath.Join("archetypes", "two-column", "archetype.yaml"): twoColumnArchetypeMetadata(),
-		filepath.Join("archetypes", "quote", "archetype.yaml"):      quoteArchetypeMetadata(),
-		filepath.Join("archetypes", "metric", "archetype.yaml"):     metricArchetypeMetadata(),
-		filepath.Join("archetypes", "closing", "archetype.yaml"):    closingArchetypeMetadata(),
-		filepath.Join("shortcodes", "eyebrow.html"):                 defaultDeckEyebrowShortcode(),
+		filepath.Join("slides", "01-title", "index.md"):              slideTitle(opts.Name),
+		filepath.Join("slides", "02-why", "index.md"):                slideWhy(),
+		filepath.Join("archetypes", "default", "archetype.yaml"):     defaultArchetypeMetadata(),
+		filepath.Join("archetypes", "title", "archetype.yaml"):       titleArchetypeMetadata(),
+		filepath.Join("archetypes", "section", "archetype.yaml"):     sectionArchetypeMetadata(),
+		filepath.Join("archetypes", "agenda", "archetype.yaml"):      agendaArchetypeMetadata(),
+		filepath.Join("archetypes", "image", "archetype.yaml"):       imageArchetypeMetadata(),
+		filepath.Join("archetypes", "two-column", "archetype.yaml"):  twoColumnArchetypeMetadata(),
+		filepath.Join("archetypes", "media-right", "archetype.yaml"): mediaRightArchetypeMetadata(),
+		filepath.Join("archetypes", "media-left", "archetype.yaml"):  mediaLeftArchetypeMetadata(),
+		filepath.Join("archetypes", "quote", "archetype.yaml"):       quoteArchetypeMetadata(),
+		filepath.Join("archetypes", "metric", "archetype.yaml"):      metricArchetypeMetadata(),
+		filepath.Join("archetypes", "closing", "archetype.yaml"):     closingArchetypeMetadata(),
+		filepath.Join("shortcodes", "eyebrow.html"):                  defaultDeckEyebrowShortcode(),
 	}
 	for path, content := range ThemeFiles("default", true) {
 		files[path] = content
@@ -231,6 +233,22 @@ default_type: two-column
 `
 }
 
+func mediaRightArchetypeMetadata() string {
+	return `name: media-right
+description: Image on the right with supporting content on the left
+default_layout: media-right
+default_type: media-right
+`
+}
+
+func mediaLeftArchetypeMetadata() string {
+	return `name: media-left
+description: Image on the left with supporting content on the right
+default_layout: media-left
+default_type: media-left
+`
+}
+
 func metricArchetypeMetadata() string {
 	return `name: metric
 description: Single key metric or KPI slide
@@ -269,22 +287,24 @@ config_options:
 
 func ThemeFiles(themeName string, includeStyles bool) map[string]string {
 	files := map[string]string{
-		filepath.Join("themes", themeName, "theme.yaml"):                       defaultThemeMetadataWithName(themeName),
-		filepath.Join("themes", themeName, "layouts", "deck.html"):             defaultThemeDeckLayout(),
-		filepath.Join("themes", themeName, "layouts", "slide-agenda.html"):     defaultThemeAgendaLayout(),
-		filepath.Join("themes", themeName, "layouts", "slide-closing.html"):    defaultThemeClosingLayout(),
-		filepath.Join("themes", themeName, "layouts", "slide-default.html"):    defaultThemeSlideLayout(),
-		filepath.Join("themes", themeName, "layouts", "slide-image.html"):      defaultThemeImageLayout(),
-		filepath.Join("themes", themeName, "layouts", "slide-metric.html"):     defaultThemeMetricLayout(),
-		filepath.Join("themes", themeName, "layouts", "slide-quote.html"):      defaultThemeQuoteLayout(),
-		filepath.Join("themes", themeName, "layouts", "slide-section.html"):    defaultThemeSectionLayout(),
-		filepath.Join("themes", themeName, "layouts", "slide-title.html"):      defaultThemeTitleLayout(),
-		filepath.Join("themes", themeName, "layouts", "slide-two-column.html"): defaultThemeTwoColumnLayout(),
-		filepath.Join("themes", themeName, "shortcodes", "callout.html"):       defaultThemeCalloutShortcode(),
-		filepath.Join("themes", themeName, "shortcodes", "column.html"):        defaultThemeColumnShortcode(),
-		filepath.Join("themes", themeName, "shortcodes", "columns.html"):       defaultThemeColumnsShortcode(),
-		filepath.Join("themes", themeName, "shortcodes", "stat.html"):          defaultThemeStatShortcode(),
-		filepath.Join("themes", themeName, "shortcodes", "video.html"):         defaultThemeVideoShortcode(),
+		filepath.Join("themes", themeName, "theme.yaml"):                        defaultThemeMetadataWithName(themeName),
+		filepath.Join("themes", themeName, "layouts", "deck.html"):              defaultThemeDeckLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-agenda.html"):      defaultThemeAgendaLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-closing.html"):     defaultThemeClosingLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-default.html"):     defaultThemeSlideLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-image.html"):       defaultThemeImageLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-media-left.html"):  defaultThemeMediaLeftLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-media-right.html"): defaultThemeMediaRightLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-metric.html"):      defaultThemeMetricLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-quote.html"):       defaultThemeQuoteLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-section.html"):     defaultThemeSectionLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-title.html"):       defaultThemeTitleLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-two-column.html"):  defaultThemeTwoColumnLayout(),
+		filepath.Join("themes", themeName, "shortcodes", "callout.html"):        defaultThemeCalloutShortcode(),
+		filepath.Join("themes", themeName, "shortcodes", "column.html"):         defaultThemeColumnShortcode(),
+		filepath.Join("themes", themeName, "shortcodes", "columns.html"):        defaultThemeColumnsShortcode(),
+		filepath.Join("themes", themeName, "shortcodes", "stat.html"):           defaultThemeStatShortcode(),
+		filepath.Join("themes", themeName, "shortcodes", "video.html"):          defaultThemeVideoShortcode(),
 	}
 	if includeStyles {
 		files[filepath.Join("themes", themeName, "assets", "theme.css")] = defaultThemeStyles()
@@ -605,6 +625,40 @@ func defaultThemeDeckLayout() string {
     .two-column-slide .column > :first-child {
       margin-top: 0;
     }
+    .media-split-slide {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+      gap: 36px;
+      align-items: center;
+      height: 100%;
+    }
+    .media-split-slide.media-left {
+      grid-template-areas: "media content";
+    }
+    .media-split-slide.media-right {
+      grid-template-areas: "content media";
+    }
+    .media-pane {
+      grid-area: media;
+      min-width: 0;
+    }
+    .content-pane {
+      grid-area: content;
+      min-width: 0;
+    }
+    .media-pane p {
+      margin: 0;
+    }
+    .media-pane img {
+      width: 100%;
+      max-height: 58vh;
+      object-fit: cover;
+      border-radius: 26px;
+      box-shadow: 0 24px 56px var(--shadow);
+    }
+    .content-pane > :first-child {
+      margin-top: 0;
+    }
     .quote-slide {
       display: grid;
       gap: 28px;
@@ -840,6 +894,34 @@ func defaultThemeTwoColumnLayout() string {
   </div>
   <div class="column">
     {{ if gt (len .BodyColumns) 1 }}{{ index .BodyColumns 1 }}{{ end }}
+  </div>
+</div>
+`
+}
+
+func defaultThemeMediaRightLayout() string {
+	return `{{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
+<div class="slide-meta">{{ .Slide.Title }}</div>
+<div class="slide-body media-split-slide media-right">
+  <div class="content-pane">
+    {{ .LeadContent }}
+  </div>
+  <div class="media-pane">
+    {{ .LeadMedia }}
+  </div>
+</div>
+`
+}
+
+func defaultThemeMediaLeftLayout() string {
+	return `{{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
+<div class="slide-meta">{{ .Slide.Title }}</div>
+<div class="slide-body media-split-slide media-left">
+  <div class="media-pane">
+    {{ .LeadMedia }}
+  </div>
+  <div class="content-pane">
+    {{ .LeadContent }}
   </div>
 </div>
 `

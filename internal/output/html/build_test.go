@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"margo/internal/deck"
@@ -62,5 +63,24 @@ func TestResolveAssetReferenceSupportsDeckAssets(t *testing.T) {
 	got := resolveAssetReference(projectRoot, slide, "assets/shared-grid.svg")
 	if want := "assets/shared-grid.svg"; got != want {
 		t.Fatalf("resolveAssetReference() = %q, want %q", got, want)
+	}
+}
+
+func TestRenderLeadMediaAndContentForMediaLayouts(t *testing.T) {
+	slide := deck.Slide{
+		FrontMatter: deck.FrontMatter{
+			Layout: "media-right",
+		},
+	}
+	body := template.HTML("<h2>Why this exists</h2><p><img src=\"slides/02-why/diagram.svg\" alt=\"flow\"></p><ul><li>Point</li></ul>")
+
+	media := renderLeadMedia(slide, body)
+	content := renderLeadContent(slide, body)
+
+	if string(media) == "" || !strings.Contains(string(media), "<img") {
+		t.Fatalf("expected extracted media html, got %q", media)
+	}
+	if strings.Contains(string(content), "<img") || !strings.Contains(string(content), "<ul>") {
+		t.Fatalf("expected content without lead image and with remaining body, got %q", content)
 	}
 }

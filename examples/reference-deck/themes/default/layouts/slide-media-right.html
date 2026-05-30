@@ -1,0 +1,10 @@
+{{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
+<div class="slide-meta">{{ .Slide.Title }}</div>
+<div class="slide-body media-split-slide media-right">
+  <div class="content-pane">
+    {{ .LeadContent }}
+  </div>
+  <div class="media-pane">
+    {{ .LeadMedia }}
+  </div>
+</div>

@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/yuin/goldmark"
@@ -46,6 +47,8 @@ type renderedSlide struct {
 }
 
 const columnBreakMarker = "<!-- column-break -->"
+
+var leadImagePattern = regexp.MustCompile(`(?s)<p><img[^>]*></p>`)
 
 func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) error {
 	if err := os.MkdirAll(filepath.Join(projectRoot, OutputDir), 0o755); err != nil {
@@ -163,6 +166,8 @@ func executeSlideLayout(projectRoot string, layoutPath string, slide deck.Slide,
 		Slide        deck.Slide
 		Body         template.HTML
 		BodyColumns  []template.HTML
+		LeadMedia    template.HTML
+		LeadContent  template.HTML
 		SectionID    string
 		SectionTitle string
 	}{
@@ -170,6 +175,8 @@ func executeSlideLayout(projectRoot string, layoutPath string, slide deck.Slide,
 		Slide:        slide,
 		Body:         body,
 		BodyColumns:  renderBodyColumns(slide, body),
+		LeadMedia:    renderLeadMedia(slide, body),
+		LeadContent:  renderLeadContent(slide, body),
 		SectionID:    sectionID,
 		SectionTitle: sectionTitle,
 	}
@@ -255,6 +262,29 @@ func renderBodyColumns(slide deck.Slide, body template.HTML) []template.HTML {
 		columns = append(columns, markdownToHTML(trimmed))
 	}
 	return columns
+}
+
+func renderLeadMedia(slide deck.Slide, body template.HTML) template.HTML {
+	layout := resolveLayoutName(slide)
+	if layout != "media-left" && layout != "media-right" {
+		return ""
+	}
+
+	match := leadImagePattern.FindString(string(body))
+	return template.HTML(match)
+}
+
+func renderLeadContent(slide deck.Slide, body template.HTML) template.HTML {
+	layout := resolveLayoutName(slide)
+	if layout != "media-left" && layout != "media-right" {
+		return body
+	}
+
+	match := leadImagePattern.FindString(string(body))
+	if match == "" {
+		return body
+	}
+	return template.HTML(strings.TrimSpace(strings.Replace(string(body), match, "", 1)))
 }
 
 func resolveFooterText(slide deck.Slide, deckFooter string) string {
