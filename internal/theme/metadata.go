@@ -18,4 +18,5 @@ type ConfigOption struct {
 	Description string `yaml:"description"`
 	Required    bool   `yaml:"required"`
 	Default     any    `yaml:"default"`
+	Values      []string `yaml:"values"`
 }

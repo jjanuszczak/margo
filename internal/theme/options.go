@@ -2,6 +2,7 @@ package theme
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -28,7 +29,7 @@ func ResolveOptions(meta Metadata, selected map[string]any) (map[string]any, err
 		}
 		option, ok := declared[key]
 		if !ok {
-			return nil, fmt.Errorf("unknown theme option %q for theme %q", key, meta.Name)
+			return nil, fmt.Errorf("unknown theme option %q for theme %q (supported: %s)", key, meta.Name, strings.Join(sortedOptionNames(declared), ", "))
 		}
 		value, err := normalizeOptionValue(option, raw)
 		if err != nil {
@@ -60,6 +61,9 @@ func normalizeOptionValue(option ConfigOption, raw any) (any, error) {
 		if !ok {
 			return nil, fmt.Errorf("expected string, got %T", raw)
 		}
+		if len(option.Values) > 0 && !containsString(option.Values, value) {
+			return nil, fmt.Errorf("invalid value %q (allowed: %s)", value, strings.Join(option.Values, ", "))
+		}
 		return value, nil
 	case "bool":
 		value, ok := raw.(bool)
@@ -81,4 +85,22 @@ func normalizeOptionValue(option ConfigOption, raw any) (any, error) {
 	default:
 		return raw, nil
 	}
+}
+
+func sortedOptionNames(declared map[string]ConfigOption) []string {
+	names := make([]string, 0, len(declared))
+	for name := range declared {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }

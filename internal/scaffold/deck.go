@@ -274,10 +274,16 @@ config_options:
     type: string
     description: Light or dark presentation mode
     default: light
+    values:
+      - light
+      - dark
   - name: typography
     type: string
     description: Typography preset for deck tone
     default: editorial
+    values:
+      - editorial
+      - executive
   - name: accent_color
     type: string
     description: Accent color used for emphasis
@@ -321,10 +327,16 @@ config_options:
     type: string
     description: Light or dark presentation mode
     default: light
+    values:
+      - light
+      - dark
   - name: typography
     type: string
     description: Typography preset for deck tone
     default: editorial
+    values:
+      - editorial
+      - executive
   - name: accent_color
     type: string
     description: Accent color used for emphasis

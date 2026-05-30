@@ -266,6 +266,57 @@ order: 1
 	}
 }
 
+func TestRunBuildRejectsInvalidThemeOptionValue(t *testing.T) {
+	projectRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(projectRoot, "themes", "default", "layouts"), 0o755); err != nil {
+		t.Fatalf("create theme layouts dir: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(projectRoot, "slides", "01-title"), 0o755); err != nil {
+		t.Fatalf("create slides dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(projectRoot, "margo.yaml"), []byte(`version: 1
+
+deck:
+  title: Sample
+
+theme:
+  name: default
+  color_mode: sepia
+`), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(projectRoot, "themes", "default", "theme.yaml"), []byte(`name: default
+config_options:
+  - name: color_mode
+    type: string
+    default: light
+    values:
+      - light
+      - dark
+`), 0o644); err != nil {
+		t.Fatalf("write theme metadata: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(projectRoot, "themes", "default", "layouts", "default.html"), []byte("{{ .Deck.Title }}"), 0o644); err != nil {
+		t.Fatalf("write theme layout: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(projectRoot, "slides", "01-title", "index.md"), []byte("---\ntitle: Sample\norder: 1\n---\n"), 0o644); err != nil {
+		t.Fatalf("write slide: %v", err)
+	}
+
+	restoreWD := withWorkingDir(t, projectRoot)
+	defer restoreWD()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := Run([]string{"build"}, &stdout, &stderr)
+	if code == 0 {
+		t.Fatal("expected build to fail")
+	}
+	if !strings.Contains(stderr.String(), `invalid value "sepia"`) || !strings.Contains(stderr.String(), "allowed: light, dark") {
+		t.Fatalf("expected invalid theme option value in stderr, got %q", stderr.String())
+	}
+}
+
 func TestRunNewDeckThenBuildStarterDeck(t *testing.T) {
 	parentDir := t.TempDir()
 

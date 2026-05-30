@@ -97,6 +97,8 @@ The built-in `default` theme currently supports:
 - `typography`: theme preset, currently `editorial` or `executive`
 - `accent_color`: any CSS color string
 
+If you provide an unsupported value such as `color_mode: sepia`, `margo build` now fails with a theme option validation error that lists the allowed values.
+
 To switch the deck to dark mode:
 
 ```yaml

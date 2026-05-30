@@ -9,8 +9,8 @@ func TestResolveOptionsAppliesDefaultsAndOverrides(t *testing.T) {
 	meta := Metadata{
 		Name: "default",
 		ConfigOptions: []ConfigOption{
-			{Name: "color_mode", Type: "string", Default: "light"},
-			{Name: "typography", Type: "string", Default: "editorial"},
+			{Name: "color_mode", Type: "string", Default: "light", Values: []string{"light", "dark"}},
+			{Name: "typography", Type: "string", Default: "editorial", Values: []string{"editorial", "executive"}},
 			{Name: "accent_color", Type: "string", Default: "#8f6f33"},
 		},
 	}
@@ -48,7 +48,7 @@ func TestResolveOptionsRejectsUnknownOption(t *testing.T) {
 	if err == nil {
 		t.Fatal("ResolveOptions returned nil error, want unknown option error")
 	}
-	if !strings.Contains(err.Error(), `unknown theme option "surprise"`) {
+	if !strings.Contains(err.Error(), `unknown theme option "surprise"`) || !strings.Contains(err.Error(), "supported: color_mode") {
 		t.Fatalf("ResolveOptions error = %v, want unknown option message", err)
 	}
 }
@@ -69,5 +69,24 @@ func TestResolveOptionsRejectsWrongType(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "expected string") {
 		t.Fatalf("ResolveOptions error = %v, want expected string", err)
+	}
+}
+
+func TestResolveOptionsRejectsInvalidEnumeratedValue(t *testing.T) {
+	meta := Metadata{
+		Name: "default",
+		ConfigOptions: []ConfigOption{
+			{Name: "color_mode", Type: "string", Default: "light", Values: []string{"light", "dark"}},
+		},
+	}
+
+	_, err := ResolveOptions(meta, map[string]any{
+		"color_mode": "sepia",
+	})
+	if err == nil {
+		t.Fatal("ResolveOptions returned nil error, want invalid value error")
+	}
+	if !strings.Contains(err.Error(), `invalid value "sepia"`) || !strings.Contains(err.Error(), "allowed: light, dark") {
+		t.Fatalf("ResolveOptions error = %v, want allowed values message", err)
 	}
 }
