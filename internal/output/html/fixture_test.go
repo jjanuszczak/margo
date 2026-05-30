@@ -80,8 +80,12 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 		Sections: sections,
 		Slides:   shaped,
 	}
-	if err := Write(projectRoot, model, activeTheme); err != nil {
+	report, err := Write(projectRoot, model, activeTheme)
+	if err != nil {
 		t.Fatalf("write html: %v", err)
+	}
+	if len(report.Items) != 0 {
+		t.Fatalf("expected reference deck to build without warnings, got %#v", report.Items)
 	}
 
 	htmlPath := filepath.Join(projectRoot, OutputFile)

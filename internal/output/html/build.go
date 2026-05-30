@@ -12,6 +12,7 @@ import (
 	"github.com/yuin/goldmark"
 	rendererhtml "github.com/yuin/goldmark/renderer/html"
 	"margo/internal/deck"
+	"margo/internal/diagnostics"
 	"margo/internal/shortcode"
 	"margo/internal/theme"
 )
@@ -50,23 +51,23 @@ const columnBreakMarker = "<!-- column-break -->"
 
 var leadImagePattern = regexp.MustCompile(`(?s)<p><img[^>]*></p>`)
 
-func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) error {
+func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) (diagnostics.Report, error) {
 	if err := os.MkdirAll(filepath.Join(projectRoot, OutputDir), 0o755); err != nil {
-		return fmt.Errorf("create html output directory: %w", err)
+		return diagnostics.Report{}, fmt.Errorf("create html output directory: %w", err)
 	}
 	if err := stageAssets(projectRoot, model.Slides); err != nil {
-		return fmt.Errorf("stage html assets: %w", err)
+		return diagnostics.Report{}, fmt.Errorf("stage html assets: %w", err)
 	}
 
 	file, err := os.Create(filepath.Join(projectRoot, OutputFile))
 	if err != nil {
-		return fmt.Errorf("create html output file: %w", err)
+		return diagnostics.Report{}, fmt.Errorf("create html output file: %w", err)
 	}
 	defer file.Close()
 
-	slides, err := renderSlides(projectRoot, model.Config.Deck, model.Slides, model.Sections, activeTheme)
+	slides, report, err := renderSlides(projectRoot, model.Config.Deck, model.Slides, model.Sections, activeTheme)
 	if err != nil {
-		return err
+		return diagnostics.Report{}, err
 	}
 
 	data := pageData{
@@ -84,38 +85,40 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) err
 			"themeOption":    themeOption,
 		}).ParseFiles(activeTheme.DefaultLayout)
 		if err != nil {
-			return fmt.Errorf("parse html template: %w", err)
+			return diagnostics.Report{}, fmt.Errorf("parse html template: %w", err)
 		}
 		if err := tmpl.ExecuteTemplate(file, filepath.Base(activeTheme.DefaultLayout), data); err != nil {
-			return fmt.Errorf("render html output: %w", err)
+			return diagnostics.Report{}, fmt.Errorf("render html output: %w", err)
 		}
-		return nil
+		return report, nil
 	}
 
 	tmpl, err := template.New("deck").Funcs(template.FuncMap{
 		"themeOption": themeOption,
 	}).ParseFiles(activeTheme.DeckLayout)
 	if err != nil {
-		return fmt.Errorf("parse deck layout: %w", err)
+		return diagnostics.Report{}, fmt.Errorf("parse deck layout: %w", err)
 	}
 	if err := tmpl.ExecuteTemplate(file, filepath.Base(activeTheme.DeckLayout), data); err != nil {
-		return fmt.Errorf("render deck layout: %w", err)
+		return diagnostics.Report{}, fmt.Errorf("render deck layout: %w", err)
 	}
 
-	return nil
+	return report, nil
 }
 
-func renderSlides(projectRoot string, deckMeta deck.DeckMetadata, slides []deck.Slide, sections []deck.Section, activeTheme theme.Metadata) ([]renderedSlide, error) {
+func renderSlides(projectRoot string, deckMeta deck.DeckMetadata, slides []deck.Slide, sections []deck.Section, activeTheme theme.Metadata) ([]renderedSlide, diagnostics.Report, error) {
 	result := make([]renderedSlide, 0, len(slides))
+	var report diagnostics.Report
 	for i, slide := range slides {
-		bodySource := rewriteMarkdownAssetRefs(projectRoot, slide, slide.BodyMarkdown)
+		bodySource, bodyReport := rewriteMarkdownAssetRefs(projectRoot, slide, slide.BodyMarkdown)
+		report.Items = append(report.Items, bodyReport.Items...)
 		expanded, err := shortcode.Render(bodySource, shortcode.Context{
 			ProjectRoot: projectRoot,
 			Theme:       activeTheme,
 			Slide:       slide,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("expand shortcodes for slide %q: %w", slide.ID, err)
+			return nil, diagnostics.Report{}, fmt.Errorf("expand shortcodes for slide %q: %w", slide.ID, err)
 		}
 		body := markdownToHTML(expanded)
 		section, hasSection := deck.FindSection(sections, slide.Section)
@@ -136,7 +139,7 @@ func renderSlides(projectRoot string, deckMeta deck.DeckMetadata, slides []deck.
 				HideLogo:           slide.HideLogo,
 				HideFooter:         slide.HideFooter,
 				ResolvedFooterText: resolveFooterText(slide, deckMeta.Footer),
-				StyleAttr:          resolveSlideStyle(projectRoot, slide),
+				StyleAttr:          resolveSlideStyle(projectRoot, slide, &report),
 				ImageHintClass:     resolveImageHintClass(slide.ImageHints),
 				ImageCaption:       resolveImageCaption(slide.ImageHints),
 			})
@@ -144,16 +147,16 @@ func renderSlides(projectRoot string, deckMeta deck.DeckMetadata, slides []deck.
 		}
 
 		layoutPath := resolveLayoutPath(activeTheme, slide)
-		rendered, err := executeSlideLayout(projectRoot, layoutPath, slide, i, body, sectionID, sectionTitle, deckMeta.Footer)
+		rendered, err := executeSlideLayout(projectRoot, layoutPath, slide, i, body, sectionID, sectionTitle, deckMeta.Footer, &report)
 		if err != nil {
-			return nil, err
+			return nil, diagnostics.Report{}, err
 		}
 		result = append(result, rendered)
 	}
-	return result, nil
+	return result, report, nil
 }
 
-func executeSlideLayout(projectRoot string, layoutPath string, slide deck.Slide, index int, body template.HTML, sectionID string, sectionTitle string, deckFooter string) (renderedSlide, error) {
+func executeSlideLayout(projectRoot string, layoutPath string, slide deck.Slide, index int, body template.HTML, sectionID string, sectionTitle string, deckFooter string, report *diagnostics.Report) (renderedSlide, error) {
 	tmpl, err := template.New("slide").Funcs(template.FuncMap{
 		"markdownToHTML": markdownToHTML,
 	}).ParseFiles(layoutPath)
@@ -197,7 +200,7 @@ func executeSlideLayout(projectRoot string, layoutPath string, slide deck.Slide,
 		HideLogo:           slide.HideLogo,
 		HideFooter:         slide.HideFooter,
 		ResolvedFooterText: resolveFooterText(slide, deckFooter),
-		StyleAttr:          resolveSlideStyle(projectRoot, slide),
+		StyleAttr:          resolveSlideStyle(projectRoot, slide, report),
 		ImageHintClass:     resolveImageHintClass(slide.ImageHints),
 		ImageCaption:       resolveImageCaption(slide.ImageHints),
 	}, nil
@@ -294,7 +297,7 @@ func resolveFooterText(slide deck.Slide, deckFooter string) string {
 	return deckFooter
 }
 
-func resolveBackgroundStyle(projectRoot string, slide deck.Slide) string {
+func resolveBackgroundStyle(projectRoot string, slide deck.Slide, report *diagnostics.Report) string {
 	parts := make([]string, 0, 3)
 	if strings.TrimSpace(slide.Background.Color) != "" {
 		parts = append(parts, "background-color: "+slide.Background.Color)
@@ -302,7 +305,11 @@ func resolveBackgroundStyle(projectRoot string, slide deck.Slide) string {
 	if strings.TrimSpace(slide.Background.Image) != "" {
 		imageRef := slide.Background.Image
 		if projectRoot != "" {
-			imageRef = resolveAssetReference(projectRoot, slide, imageRef)
+			resolvedRef, warning := resolveAssetReference(projectRoot, slide, imageRef, "background image")
+			imageRef = resolvedRef
+			if warning != nil && report != nil {
+				report.Add(*warning)
+			}
 		}
 		parts = append(parts, "background-image: url('"+template.HTMLEscapeString(imageRef)+"')")
 		parts = append(parts, "background-size: cover")
@@ -317,9 +324,9 @@ func resolveBackgroundStyle(projectRoot string, slide deck.Slide) string {
 	return strings.Join(parts, "; ")
 }
 
-func resolveSlideStyle(projectRoot string, slide deck.Slide) template.CSS {
+func resolveSlideStyle(projectRoot string, slide deck.Slide, report *diagnostics.Report) template.CSS {
 	parts := make([]string, 0, 2)
-	if background := strings.TrimSpace(resolveBackgroundStyle(projectRoot, slide)); background != "" {
+	if background := strings.TrimSpace(resolveBackgroundStyle(projectRoot, slide, report)); background != "" {
 		parts = append(parts, background)
 	}
 	if imageHints := strings.TrimSpace(resolveImageHintStyle(slide.ImageHints)); imageHints != "" {

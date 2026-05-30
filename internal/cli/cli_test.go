@@ -218,6 +218,54 @@ theme:
 	}
 }
 
+func TestRunBuildWarnsOnMissingLocalAsset(t *testing.T) {
+	projectRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(projectRoot, "themes", "default", "layouts"), 0o755); err != nil {
+		t.Fatalf("create theme layouts dir: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(projectRoot, "slides", "01-title"), 0o755); err != nil {
+		t.Fatalf("create slides dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(projectRoot, "margo.yaml"), []byte(`version: 1
+
+deck:
+  title: Sample
+
+theme:
+  name: default
+`), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(projectRoot, "themes", "default", "theme.yaml"), []byte("name: default\n"), 0o644); err != nil {
+		t.Fatalf("write theme metadata: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(projectRoot, "themes", "default", "layouts", "default.html"), []byte("{{ .Deck.Title }} {{ range .Slides }}{{ .Body }}{{ end }}"), 0o644); err != nil {
+		t.Fatalf("write theme layout: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(projectRoot, "slides", "01-title", "index.md"), []byte(`---
+title: Sample
+order: 1
+---
+
+![Missing](missing.svg)
+`), 0o644); err != nil {
+		t.Fatalf("write slide: %v", err)
+	}
+
+	restoreWD := withWorkingDir(t, projectRoot)
+	defer restoreWD()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := Run([]string{"build"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected build to succeed with warning, stderr=%q", stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "[asset_missing] warning:") {
+		t.Fatalf("expected asset warning in stdout, got %q", stdout.String())
+	}
+}
+
 func writeArchetype(t *testing.T, projectRoot string, name string, description string) {
 	t.Helper()
 	dir := filepath.Join(projectRoot, "archetypes", name)

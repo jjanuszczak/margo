@@ -60,9 +60,29 @@ func TestResolveAssetReferenceSupportsDeckAssets(t *testing.T) {
 	}
 
 	slide := deck.Slide{ID: "02-why", BundlePath: bundleDir}
-	got := resolveAssetReference(projectRoot, slide, "assets/shared-grid.svg")
+	got, warning := resolveAssetReference(projectRoot, slide, "assets/shared-grid.svg", "slide markdown asset")
+	if warning != nil {
+		t.Fatalf("expected no warning, got %#v", warning)
+	}
 	if want := "assets/shared-grid.svg"; got != want {
 		t.Fatalf("resolveAssetReference() = %q, want %q", got, want)
+	}
+}
+
+func TestResolveAssetReferenceWarnsForMissingLocalAsset(t *testing.T) {
+	projectRoot := t.TempDir()
+	bundleDir := filepath.Join(projectRoot, "slides", "02-why")
+	if err := os.MkdirAll(bundleDir, 0o755); err != nil {
+		t.Fatalf("create bundle dir: %v", err)
+	}
+
+	slide := deck.Slide{ID: "02-why", BundlePath: bundleDir}
+	got, warning := resolveAssetReference(projectRoot, slide, "missing.svg", "slide markdown asset")
+	if got != "missing.svg" {
+		t.Fatalf("expected unresolved asset to remain unchanged, got %q", got)
+	}
+	if warning == nil || warning.Code != "asset_missing" {
+		t.Fatalf("expected asset_missing warning, got %#v", warning)
 	}
 }
 

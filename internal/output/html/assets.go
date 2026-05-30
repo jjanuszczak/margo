@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"margo/internal/deck"
+	"margo/internal/diagnostics"
 	"margo/internal/ignore"
 )
 
@@ -102,25 +103,30 @@ func copyFile(srcPath string, dstPath string) error {
 	return nil
 }
 
-func rewriteMarkdownAssetRefs(projectRoot string, slide deck.Slide, source string) string {
-	return markdownAssetRefPattern.ReplaceAllStringFunc(source, func(match string) string {
+func rewriteMarkdownAssetRefs(projectRoot string, slide deck.Slide, source string) (string, diagnostics.Report) {
+	var report diagnostics.Report
+	rewritten := markdownAssetRefPattern.ReplaceAllStringFunc(source, func(match string) string {
 		parts := markdownAssetRefPattern.FindStringSubmatch(match)
 		if len(parts) != 3 {
 			return match
 		}
-		rewritten := resolveAssetReference(projectRoot, slide, parts[1])
+		rewritten, warning := resolveAssetReference(projectRoot, slide, parts[1], "slide markdown asset")
+		if warning != nil {
+			report.Add(*warning)
+		}
 		return "](" + rewritten + parts[2] + ")"
 	})
+	return rewritten, report
 }
 
-func resolveAssetReference(projectRoot string, slide deck.Slide, ref string) string {
+func resolveAssetReference(projectRoot string, slide deck.Slide, ref string, context string) (string, *diagnostics.Diagnostic) {
 	if ref == "" || isExternalOrSpecialURL(ref) {
-		return ref
+		return ref, nil
 	}
 
 	baseRef, suffix := splitURLSuffix(ref)
 	if deckRef, ok := resolveDeckAssetReference(projectRoot, baseRef); ok {
-		return deckRef + suffix
+		return deckRef + suffix, nil
 	}
 
 	candidate := filepath.Clean(filepath.Join(slide.BundlePath, filepath.FromSlash(baseRef)))
@@ -128,12 +134,17 @@ func resolveAssetReference(projectRoot string, slide deck.Slide, ref string) str
 		if _, err := os.Stat(candidate); err == nil {
 			relPath, err := filepath.Rel(slide.BundlePath, candidate)
 			if err == nil {
-				return filepath.ToSlash(filepath.Join("slides", slide.ID, relPath)) + suffix
+				return filepath.ToSlash(filepath.Join("slides", slide.ID, relPath)) + suffix, nil
 			}
 		}
 	}
 
-	return ref
+	return ref, &diagnostics.Diagnostic{
+		Severity: diagnostics.SeverityWarning,
+		Code:     "asset_missing",
+		Message:  fmt.Sprintf("%s %q could not be resolved", context, ref),
+		Path:     filepath.Join(slide.BundlePath, "index.md"),
+	}
 }
 
 func resolveDeckAssetReference(projectRoot string, ref string) (string, bool) {

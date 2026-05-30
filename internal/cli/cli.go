@@ -459,8 +459,12 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 		}
 		renderPDF := name == "build" && parsed.Config.Outputs.PDF
 		if parsed.Config.Outputs.HTML || renderPDF {
-			if err := html.Write(root.Dir, model, activeTheme); err != nil {
+			report, err := html.Write(root.Dir, model, activeTheme)
+			if err != nil {
 				return err
+			}
+			if len(report.Items) > 0 {
+				diagnostics.WriteReport(stdout, report)
 			}
 		}
 		if renderPDF {
