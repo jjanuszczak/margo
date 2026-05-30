@@ -422,6 +422,23 @@ func defaultThemeDeckLayout() string {
       bottom: 18px;
       color: var(--muted);
       font: 14px/1.2 sans-serif;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .pdf-export {
+      border: 1px solid rgba(28, 26, 23, 0.18);
+      background: rgba(255, 253, 249, 0.92);
+      color: var(--fg);
+      padding: 8px 12px;
+      border-radius: 999px;
+      font: 12px/1 sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .pdf-export:hover {
+      background: #fffdf9;
     }
   </style>
 </head>
@@ -434,7 +451,10 @@ func defaultThemeDeckLayout() string {
         {{ $slide.Body }}
       </section>
       {{ end }}
-      <div class="controls">Use left/right arrow keys</div>
+      <div class="controls">
+        {{ if .PDFEnabled }}<button class="pdf-export" type="button" id="export-pdf">Export PDF</button>{{ end }}
+        <span>Use left/right arrow keys</span>
+      </div>
     </div>
   </main>
   <script>
@@ -449,6 +469,21 @@ func defaultThemeDeckLayout() string {
       if (event.key === 'ArrowRight' || event.key === 'PageDown') show(index + 1);
       if (event.key === 'ArrowLeft' || event.key === 'PageUp') show(index - 1);
     });
+    const exportButton = document.getElementById('export-pdf');
+    if (exportButton) {
+      exportButton.addEventListener('click', async () => {
+        try {
+          const response = await fetch('/__margo/export/pdf', { method: 'POST' });
+          const message = (await response.text()).trim();
+          if (!response.ok) {
+            throw new Error(message || 'PDF export failed');
+          }
+          window.alert(message || 'PDF export complete');
+        } catch (error) {
+          window.alert(error.message || 'PDF export failed');
+        }
+      });
+    }
     let currentRevision = null;
     const checkRevision = async () => {
       try {

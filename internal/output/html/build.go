@@ -19,10 +19,11 @@ const (
 )
 
 type pageData struct {
-	Deck     deck.DeckMetadata
-	Theme    theme.Metadata
-	Sections []deck.Section
-	Slides   []renderedSlide
+	Deck       deck.DeckMetadata
+	PDFEnabled bool
+	Theme      theme.Metadata
+	Sections   []deck.Section
+	Slides     []renderedSlide
 }
 
 type renderedSlide struct {
@@ -52,10 +53,11 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) err
 	}
 
 	data := pageData{
-		Deck:     model.Config.Deck,
-		Theme:    activeTheme,
-		Sections: model.Sections,
-		Slides:   slides,
+		Deck:       model.Config.Deck,
+		PDFEnabled: model.Config.Outputs.PDF,
+		Theme:      activeTheme,
+		Sections:   model.Sections,
+		Slides:     slides,
 	}
 
 	if activeTheme.DeckLayout == "" {
