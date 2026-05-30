@@ -255,7 +255,7 @@
   <main>
     <div class="deck">
       {{ range $i, $slide := .Slides }}
-      <section class="slide{{ if eq $i 0 }} active{{ end }}{{ if $slide.ImageHintClass }} {{ $slide.ImageHintClass }}{{ end }}"{{ if or $slide.BackgroundStyle $slide.ImageHintStyle }} style="{{ if $slide.BackgroundStyle }}{{ $slide.BackgroundStyle }}{{ end }}{{ if and $slide.BackgroundStyle $slide.ImageHintStyle }}; {{ end }}{{ if $slide.ImageHintStyle }}{{ $slide.ImageHintStyle }}{{ end }}"{{ end }}>
+      <section class="slide{{ if eq $i 0 }} active{{ end }}{{ if $slide.ImageHintClass }} {{ $slide.ImageHintClass }}{{ end }}"{{ if $slide.StyleAttr }} style="{{ $slide.StyleAttr }}"{{ end }}>
         {{ if $slide.IsDraft }}<div class="draft-badge">Draft</div>{{ end }}
         {{ if and $.Deck.Logo (not $slide.HideLogo) }}<div class="deck-logo">{{ $.Deck.Logo }}</div>{{ end }}
         {{ $slide.Body }}

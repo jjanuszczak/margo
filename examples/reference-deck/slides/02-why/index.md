@@ -6,6 +6,7 @@ section: Strategy
 footer_text: Product Strategy
 background:
   color: "#fbf6ec"
+  image: backdrop.svg
   overlay: "linear-gradient(180deg, rgba(255,255,255,0.24), rgba(255,255,255,0))"
   opacity: 1
 image_hints:

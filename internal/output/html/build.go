@@ -39,9 +39,8 @@ type renderedSlide struct {
 	HideLogo           bool
 	HideFooter         bool
 	ResolvedFooterText string
-	BackgroundStyle    string
+	StyleAttr          template.CSS
 	ImageHintClass     string
-	ImageHintStyle     string
 	ImageCaption       string
 }
 
@@ -131,9 +130,8 @@ func renderSlides(projectRoot string, deckMeta deck.DeckMetadata, slides []deck.
 				HideLogo:           slide.HideLogo,
 				HideFooter:         slide.HideFooter,
 				ResolvedFooterText: resolveFooterText(slide, deckMeta.Footer),
-				BackgroundStyle:    resolveBackgroundStyle(projectRoot, slide),
+				StyleAttr:          resolveSlideStyle(projectRoot, slide),
 				ImageHintClass:     resolveImageHintClass(slide.ImageHints),
-				ImageHintStyle:     resolveImageHintStyle(slide.ImageHints),
 				ImageCaption:       resolveImageCaption(slide.ImageHints),
 			})
 			continue
@@ -187,9 +185,8 @@ func executeSlideLayout(projectRoot string, layoutPath string, slide deck.Slide,
 		HideLogo:           slide.HideLogo,
 		HideFooter:         slide.HideFooter,
 		ResolvedFooterText: resolveFooterText(slide, deckFooter),
-		BackgroundStyle:    resolveBackgroundStyle(projectRoot, slide),
+		StyleAttr:          resolveSlideStyle(projectRoot, slide),
 		ImageHintClass:     resolveImageHintClass(slide.ImageHints),
-		ImageHintStyle:     resolveImageHintStyle(slide.ImageHints),
 		ImageCaption:       resolveImageCaption(slide.ImageHints),
 	}, nil
 }
@@ -256,6 +253,17 @@ func resolveBackgroundStyle(projectRoot string, slide deck.Slide) string {
 		parts = append(parts, fmt.Sprintf("--margo-background-opacity: %.2f", slide.Background.Opacity))
 	}
 	return strings.Join(parts, "; ")
+}
+
+func resolveSlideStyle(projectRoot string, slide deck.Slide) template.CSS {
+	parts := make([]string, 0, 2)
+	if background := strings.TrimSpace(resolveBackgroundStyle(projectRoot, slide)); background != "" {
+		parts = append(parts, background)
+	}
+	if imageHints := strings.TrimSpace(resolveImageHintStyle(slide.ImageHints)); imageHints != "" {
+		parts = append(parts, imageHints)
+	}
+	return template.CSS(strings.Join(parts, "; "))
 }
 
 func resolveImageHintClass(hints map[string]any) string {
