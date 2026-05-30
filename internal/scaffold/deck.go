@@ -33,6 +33,10 @@ func CreateDeck(opts DeckOptions) error {
 		filepath.Join("archetypes", "default", "archetype.yaml"): defaultArchetypeMetadata(),
 		filepath.Join("archetypes", "title", "archetype.yaml"):   titleArchetypeMetadata(),
 		filepath.Join("archetypes", "section", "archetype.yaml"): sectionArchetypeMetadata(),
+		filepath.Join("archetypes", "agenda", "archetype.yaml"):  agendaArchetypeMetadata(),
+		filepath.Join("archetypes", "quote", "archetype.yaml"):   quoteArchetypeMetadata(),
+		filepath.Join("archetypes", "metric", "archetype.yaml"):  metricArchetypeMetadata(),
+		filepath.Join("archetypes", "closing", "archetype.yaml"): closingArchetypeMetadata(),
 		filepath.Join("shortcodes", "eyebrow.html"):              defaultDeckEyebrowShortcode(),
 	}
 	for path, content := range ThemeFiles("default", true) {
@@ -165,6 +169,38 @@ default_type: title
 `
 }
 
+func agendaArchetypeMetadata() string {
+	return `name: agenda
+description: Agenda slide with ordered talking points
+default_layout: agenda
+default_type: agenda
+`
+}
+
+func quoteArchetypeMetadata() string {
+	return `name: quote
+description: Quote slide with attribution
+default_layout: quote
+default_type: quote
+`
+}
+
+func metricArchetypeMetadata() string {
+	return `name: metric
+description: Single key metric or KPI slide
+default_layout: metric
+default_type: metric
+`
+}
+
+func closingArchetypeMetadata() string {
+	return `name: closing
+description: Closing or thank-you slide
+default_layout: closing
+default_type: closing
+`
+}
+
 func defaultThemeMetadata() string {
 	return `name: default
 version: 0.1.0
@@ -176,7 +212,11 @@ func ThemeFiles(themeName string, includeStyles bool) map[string]string {
 	files := map[string]string{
 		filepath.Join("themes", themeName, "theme.yaml"):                    defaultThemeMetadataWithName(themeName),
 		filepath.Join("themes", themeName, "layouts", "deck.html"):          defaultThemeDeckLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-agenda.html"):  defaultThemeAgendaLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-closing.html"): defaultThemeClosingLayout(),
 		filepath.Join("themes", themeName, "layouts", "slide-default.html"): defaultThemeSlideLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-metric.html"):  defaultThemeMetricLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-quote.html"):   defaultThemeQuoteLayout(),
 		filepath.Join("themes", themeName, "layouts", "slide-section.html"): defaultThemeSectionLayout(),
 		filepath.Join("themes", themeName, "layouts", "slide-title.html"):   defaultThemeTitleLayout(),
 		filepath.Join("themes", themeName, "shortcodes", "callout.html"):    defaultThemeCalloutShortcode(),
@@ -361,6 +401,38 @@ func defaultThemeSectionLayout() string {
 	return `<div class="slide-meta">Section</div>
 <div class="slide-body">
   <h1>{{ .Slide.Title }}</h1>
+</div>
+`
+}
+
+func defaultThemeAgendaLayout() string {
+	return `<div class="slide-meta">Agenda</div>
+<div class="slide-body">
+  {{ .Body }}
+</div>
+`
+}
+
+func defaultThemeQuoteLayout() string {
+	return `<div class="slide-meta">Quote</div>
+<div class="slide-body quote-slide">
+  {{ .Body }}
+</div>
+`
+}
+
+func defaultThemeMetricLayout() string {
+	return `<div class="slide-meta">Metric</div>
+<div class="slide-body metric-slide">
+  {{ .Body }}
+</div>
+`
+}
+
+func defaultThemeClosingLayout() string {
+	return `<div class="slide-meta">Closing</div>
+<div class="slide-body closing-slide">
+  {{ .Body }}
 </div>
 `
 }

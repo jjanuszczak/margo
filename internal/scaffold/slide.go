@@ -101,6 +101,66 @@ Add a subtitle or opening statement.
 `, yamlString(title), order, yamlString(title))
 	}
 
+	if layout == "agenda" || slideType == "agenda" {
+		return fmt.Sprintf(`---
+title: %s
+order: %d
+layout: agenda
+type: agenda
+---
+
+## %s
+
+1. First topic
+2. Second topic
+3. Third topic
+`, yamlString(title), order, yamlString(title))
+	}
+
+	if layout == "quote" || slideType == "quote" {
+		return fmt.Sprintf(`---
+title: %s
+order: %d
+layout: quote
+type: quote
+---
+
+> Replace with a strong quote.
+
+Attribution
+`, yamlString(title), order)
+	}
+
+	if layout == "metric" || slideType == "metric" {
+		return fmt.Sprintf(`---
+title: %s
+order: %d
+layout: metric
+type: metric
+---
+
+# 42%%
+
+Primary metric label
+
+Supporting context goes here.
+`, yamlString(title), order)
+	}
+
+	if layout == "closing" || slideType == "closing" {
+		return fmt.Sprintf(`---
+title: %s
+order: %d
+layout: closing
+type: closing
+---
+
+# Thank you
+
+Closing thought, CTA, or contact information.
+`, yamlString(title), order)
+	}
+
 	return fmt.Sprintf(`---
 title: %s
 order: %d

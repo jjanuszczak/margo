@@ -1,0 +1,4 @@
+name: quote
+description: Quote slide with attribution
+default_layout: quote
+default_type: quote

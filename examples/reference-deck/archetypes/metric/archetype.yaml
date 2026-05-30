@@ -1,0 +1,4 @@
+name: metric
+description: Single key metric or KPI slide
+default_layout: metric
+default_type: metric

@@ -78,3 +78,75 @@ func TestCreateSlideTitleArchetype(t *testing.T) {
 		}
 	}
 }
+
+func TestCreateSlideAgendaArchetype(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := CreateDeck(DeckOptions{
+		Name:      "test-deck",
+		TargetDir: projectRoot,
+	}); err != nil {
+		t.Fatalf("create deck: %v", err)
+	}
+
+	indexPath, err := CreateSlide(SlideOptions{
+		ProjectRoot: projectRoot,
+		Name:        "Plan",
+		Archetype:   "agenda",
+	})
+	if err != nil {
+		t.Fatalf("create agenda slide: %v", err)
+	}
+
+	raw, err := os.ReadFile(indexPath)
+	if err != nil {
+		t.Fatalf("read agenda slide: %v", err)
+	}
+	body := string(raw)
+
+	for _, needle := range []string{
+		"layout: agenda",
+		"type: agenda",
+		"1. First topic",
+		"3. Third topic",
+	} {
+		if !strings.Contains(body, needle) {
+			t.Fatalf("expected agenda slide to contain %q, got:\n%s", needle, body)
+		}
+	}
+}
+
+func TestCreateSlideMetricArchetype(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := CreateDeck(DeckOptions{
+		Name:      "test-deck",
+		TargetDir: projectRoot,
+	}); err != nil {
+		t.Fatalf("create deck: %v", err)
+	}
+
+	indexPath, err := CreateSlide(SlideOptions{
+		ProjectRoot: projectRoot,
+		Name:        "North Star",
+		Archetype:   "metric",
+	})
+	if err != nil {
+		t.Fatalf("create metric slide: %v", err)
+	}
+
+	raw, err := os.ReadFile(indexPath)
+	if err != nil {
+		t.Fatalf("read metric slide: %v", err)
+	}
+	body := string(raw)
+
+	for _, needle := range []string{
+		"layout: metric",
+		"type: metric",
+		"# 42%",
+		"Primary metric label",
+	} {
+		if !strings.Contains(body, needle) {
+			t.Fatalf("expected metric slide to contain %q, got:\n%s", needle, body)
+		}
+	}
+}

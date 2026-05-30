@@ -1,0 +1,4 @@
+name: agenda
+description: Agenda slide with ordered talking points
+default_layout: agenda
+default_type: agenda
