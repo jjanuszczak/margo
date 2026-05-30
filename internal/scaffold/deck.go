@@ -444,10 +444,22 @@ func defaultThemeDeckLayout() string {
       position: absolute;
       top: 24px;
       right: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 28px;
       font: 12px/1 sans-serif;
       letter-spacing: 0.14em;
       text-transform: uppercase;
       color: var(--muted);
+    }
+    .deck-logo img {
+      display: block;
+      max-height: 28px;
+      max-width: 140px;
+      width: auto;
+      height: auto;
+      object-fit: contain;
     }
     .deck-footer {
       position: absolute;
@@ -933,7 +945,7 @@ func defaultThemeDeckLayout() string {
       {{ range $i, $slide := .Slides }}
       <section class="slide{{ if eq $i 0 }} active{{ end }}{{ if $slide.ImageHintClass }} {{ $slide.ImageHintClass }}{{ end }}"{{ if $slide.StyleAttr }} style="{{ $slide.StyleAttr }}"{{ end }}>
         {{ if $slide.IsDraft }}<div class="draft-badge">Draft</div>{{ end }}
-        {{ if and $.Deck.Logo (not $slide.HideLogo) }}<div class="deck-logo">{{ $.Deck.Logo }}</div>{{ end }}
+        {{ if and (or $.DeckLogo.Text $.DeckLogo.ImageSrc) (not $slide.HideLogo) }}<div class="deck-logo">{{ if $.DeckLogo.IsImage }}<img src="{{ $.DeckLogo.ImageSrc }}" alt="{{ $.Deck.Title }} logo">{{ else }}{{ $.DeckLogo.Text }}{{ end }}</div>{{ end }}
         {{ $slide.Body }}
         {{ if $slide.ImageCaption }}<div class="image-caption">{{ $slide.ImageCaption }}</div>{{ end }}
         {{ if and $slide.ResolvedFooterText (not $slide.HideFooter) }}<div class="deck-footer">{{ $slide.ResolvedFooterText }}</div>{{ end }}

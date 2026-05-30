@@ -24,11 +24,18 @@ const (
 
 type pageData struct {
 	Deck         deck.DeckMetadata
+	DeckLogo     renderedLogo
 	PDFEnabled   bool
 	Theme        theme.Metadata
 	ThemeOptions map[string]any
 	Sections     []deck.Section
 	Slides       []renderedSlide
+}
+
+type renderedLogo struct {
+	Text     string
+	ImageSrc string
+	IsImage  bool
 }
 
 type renderedSlide struct {
@@ -69,9 +76,12 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) (di
 	if err != nil {
 		return diagnostics.Report{}, err
 	}
+	logo, logoReport := resolveDeckLogo(projectRoot, model.Config.Deck.Logo)
+	report.Items = append(report.Items, logoReport.Items...)
 
 	data := pageData{
 		Deck:         model.Config.Deck,
+		DeckLogo:     logo,
 		PDFEnabled:   model.Config.Outputs.PDF,
 		Theme:        activeTheme,
 		ThemeOptions: model.Config.Theme.Options,
@@ -243,6 +253,64 @@ func markdownToHTML(source string) template.HTML {
 	}
 
 	return template.HTML(buf.String())
+}
+
+func resolveDeckLogo(projectRoot string, value string) (renderedLogo, diagnostics.Report) {
+	var report diagnostics.Report
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return renderedLogo{}, report
+	}
+
+	baseRef, suffix := splitURLSuffix(value)
+	if deckRef, ok := resolveDeckAssetReference(projectRoot, baseRef); ok {
+		return renderedLogo{
+			ImageSrc: deckRef + suffix,
+			IsImage:  true,
+		}, report
+	}
+
+	if looksLikeImageURL(value) {
+		if isExternalOrSpecialURL(value) {
+			return renderedLogo{
+				ImageSrc: value,
+				IsImage:  true,
+			}, report
+		}
+		report.Add(diagnostics.Diagnostic{
+			Severity: diagnostics.SeverityWarning,
+			Code:     "asset_missing",
+			Message:  fmt.Sprintf("deck logo asset %q could not be resolved", value),
+			Path:     filepath.Join(projectRoot, configFilenameForDiagnostics()),
+		})
+		return renderedLogo{
+			Text: value,
+		}, report
+	}
+
+	return renderedLogo{
+		Text: value,
+	}, report
+}
+
+func looksLikeImageURL(value string) bool {
+	lower := strings.ToLower(value)
+	if strings.HasPrefix(lower, "data:image/") {
+		return true
+	}
+	for _, ext := range []string{".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif"} {
+		if strings.Contains(strings.SplitN(lower, "?", 2)[0], ext) {
+			return true
+		}
+	}
+	if strings.HasPrefix(lower, "assets/") || strings.HasPrefix(lower, "/assets/") {
+		return true
+	}
+	return false
+}
+
+func configFilenameForDiagnostics() string {
+	return "margo.yaml"
 }
 
 func renderBodyColumns(slide deck.Slide, body template.HTML) []template.HTML {

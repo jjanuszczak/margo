@@ -5,6 +5,7 @@ Margo is a Go prototype for building slide decks from Markdown with a Hugo-like 
 The current repo contains:
 - the CLI implementation
 - the product docs in [PRD.md](/Users/johnjanuszczak/Projects/margo/PRD.md) and [IMPLEMENTATION_PLAN.md](/Users/johnjanuszczak/Projects/margo/IMPLEMENTATION_PLAN.md)
+- the user guide in [docs/AUTHORING_GUIDE.md](/Users/johnjanuszczak/Projects/margo/docs/AUTHORING_GUIDE.md)
 - a working local deck scaffold/build/serve flow
 - one committed reference fixture deck in [examples/reference-deck](/Users/johnjanuszczak/Projects/margo/examples/reference-deck)
 - one committed benchmark deck in [examples/benchmark-deck](/Users/johnjanuszczak/Projects/margo/examples/benchmark-deck)

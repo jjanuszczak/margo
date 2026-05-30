@@ -104,3 +104,56 @@ func TestRenderLeadMediaAndContentForMediaLayouts(t *testing.T) {
 		t.Fatalf("expected content without lead image and with remaining body, got %q", content)
 	}
 }
+
+func TestResolveDeckLogoKeepsPlainText(t *testing.T) {
+	logo, report := resolveDeckLogo(t.TempDir(), "MARGO")
+	if len(report.Items) != 0 {
+		t.Fatalf("expected no warnings, got %#v", report.Items)
+	}
+	if logo.IsImage {
+		t.Fatal("expected plain text logo, got image")
+	}
+	if logo.Text != "MARGO" {
+		t.Fatalf("expected text logo %q, got %q", "MARGO", logo.Text)
+	}
+}
+
+func TestResolveDeckLogoResolvesDeckAsset(t *testing.T) {
+	projectRoot := t.TempDir()
+	assetsDir := filepath.Join(projectRoot, "assets")
+	if err := os.MkdirAll(assetsDir, 0o755); err != nil {
+		t.Fatalf("create assets dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(assetsDir, "logo.svg"), []byte("<svg/>"), 0o644); err != nil {
+		t.Fatalf("write logo asset: %v", err)
+	}
+
+	logo, report := resolveDeckLogo(projectRoot, "assets/logo.svg")
+	if len(report.Items) != 0 {
+		t.Fatalf("expected no warnings, got %#v", report.Items)
+	}
+	if !logo.IsImage {
+		t.Fatal("expected image logo")
+	}
+	if logo.ImageSrc != "assets/logo.svg" {
+		t.Fatalf("expected image src %q, got %q", "assets/logo.svg", logo.ImageSrc)
+	}
+}
+
+func TestResolveDeckLogoWarnsOnMissingAsset(t *testing.T) {
+	projectRoot := t.TempDir()
+
+	logo, report := resolveDeckLogo(projectRoot, "assets/missing.svg")
+	if len(report.Items) != 1 {
+		t.Fatalf("expected one warning, got %#v", report.Items)
+	}
+	if report.Items[0].Code != "asset_missing" {
+		t.Fatalf("expected asset_missing warning, got %#v", report.Items[0])
+	}
+	if logo.IsImage {
+		t.Fatal("expected unresolved logo to fall back to text mode")
+	}
+	if logo.Text != "assets/missing.svg" {
+		t.Fatalf("expected fallback text %q, got %q", "assets/missing.svg", logo.Text)
+	}
+}
