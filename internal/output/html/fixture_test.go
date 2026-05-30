@@ -31,16 +31,16 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("discover slides: %v", err)
 	}
-	if got, want := len(slides), 4; got != want {
+	if got, want := len(slides), 6; got != want {
 		t.Fatalf("expected %d slide bundles, got %d", want, got)
 	}
 
 	filtered := deck.FilterSlides(slides, deck.FilterOptions{})
-	if got, want := len(filtered), 2; got != want {
+	if got, want := len(filtered), 4; got != want {
 		t.Fatalf("expected %d build-visible slides, got %d", want, got)
 	}
 	shaped := deck.ApplySectionDividers(filtered)
-	if got, want := len(shaped), 3; got != want {
+	if got, want := len(shaped), 5; got != want {
 		t.Fatalf("expected %d build-rendered slides, got %d", want, got)
 	}
 
@@ -91,7 +91,7 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 	}
 	out := string(rendered)
 
-	for _, needle := range []string{"Margo Reference Deck", "Strategy", "Why Margo", "Export PDF", "MARGO", "Product Strategy", "Authoring and output model overview", "image-fit-contain", "#4db6ac", "color-scheme: dark", "\"Avenir Next\", \"Helvetica Neue\", sans-serif", "slides/02-why/diagram.svg", "slides/02-why/backdrop.svg", "assets/shared-grid.svg", "assets/video-poster.svg", "https://example.com/demo.mp4", "class=\"callout", "class=\"shortcode-columns\"", "class=\"shortcode-stat\"", "class=\"shortcode-video\"", "A reasonably sized deck should still feel fast.", "Shortcodes can carry shared deck assets cleanly."} {
+	for _, needle := range []string{"Margo Reference Deck", "Strategy", "Why Margo", "Customer Story", "Architecture View", "Export PDF", "MARGO", "Product Strategy", "Customer Momentum", "Authoring and output model overview", "image-fit-contain", "#4db6ac", "color-scheme: dark", "\"Avenir Next\", \"Helvetica Neue\", sans-serif", "slides/02-why/diagram.svg", "slides/02-why/backdrop.svg", "slides/05-customer-story/spotlight.svg", "assets/shared-grid.svg", "assets/video-poster.svg", "https://example.com/demo.mp4", "class=\"callout", "class=\"shortcode-columns\"", "class=\"shortcode-stat\"", "class=\"shortcode-video\"", "media-split-slide media-right", "media-split-slide media-left", "A reasonably sized deck should still feel fast.", "Shortcodes can carry shared deck assets cleanly."} {
 		if !strings.Contains(out, needle) {
 			t.Fatalf("expected rendered output to contain %q", needle)
 		}
@@ -104,6 +104,9 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "slides", "02-why", "backdrop.svg")); err != nil {
 		t.Fatalf("expected staged background asset to exist: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "slides", "05-customer-story", "spotlight.svg")); err != nil {
+		t.Fatalf("expected staged media slide asset to exist: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "assets", "shared-grid.svg")); err != nil {
 		t.Fatalf("expected staged deck asset to exist: %v", err)
@@ -133,11 +136,11 @@ func TestReferenceDeckServeFilteringIncludesDrafts(t *testing.T) {
 	}
 
 	filtered := deck.FilterSlides(slides, deck.FilterOptions{IncludeDrafts: true})
-	if got, want := len(filtered), 3; got != want {
+	if got, want := len(filtered), 5; got != want {
 		t.Fatalf("expected %d serve-visible slides, got %d", want, got)
 	}
 	shaped := deck.ApplySectionDividers(filtered)
-	if got, want := len(shaped), 4; got != want {
+	if got, want := len(shaped), 6; got != want {
 		t.Fatalf("expected %d serve-rendered slides, got %d", want, got)
 	}
 
@@ -247,6 +250,8 @@ func shouldCopyFixturePath(relPath string, isDir bool) bool {
 		"archetypes/closing",
 		"archetypes/default",
 		"archetypes/image",
+		"archetypes/media-left",
+		"archetypes/media-right",
 		"archetypes/metric",
 		"archetypes/quote",
 		"archetypes/section",
@@ -258,6 +263,8 @@ func shouldCopyFixturePath(relPath string, isDir bool) bool {
 		"slides/02-why",
 		"slides/03-draft",
 		"slides/04-hidden",
+		"slides/05-customer-story",
+		"slides/06-architecture-view",
 		"themes/default",
 	}
 
