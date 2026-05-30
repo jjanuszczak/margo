@@ -326,6 +326,85 @@ func defaultThemeDeckLayout() string {
     .slide-body ul {
       padding-left: 24px;
     }
+    .agenda-slide ol {
+      margin: 32px 0 0;
+      padding-left: 28px;
+      font-size: 28px;
+      line-height: 1.45;
+    }
+    .agenda-slide li {
+      margin-bottom: 14px;
+      padding-left: 8px;
+    }
+    .quote-slide {
+      display: grid;
+      gap: 28px;
+      align-content: center;
+      height: 100%;
+    }
+    .quote-slide blockquote {
+      margin: 0;
+      padding-left: 28px;
+      border-left: 4px solid #b88a44;
+      font-size: 42px;
+      line-height: 1.2;
+      color: #2b251d;
+    }
+    .quote-slide p:last-child {
+      margin: 0;
+      font: 16px/1.3 sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .metric-slide {
+      display: grid;
+      gap: 18px;
+      align-content: center;
+      height: 100%;
+      text-align: center;
+    }
+    .metric-slide h1 {
+      margin: 0;
+      font-size: 132px;
+      line-height: 0.95;
+      color: #8f6f33;
+    }
+    .metric-slide p {
+      margin: 0;
+    }
+    .metric-slide p:first-of-type {
+      font-size: 28px;
+    }
+    .metric-slide p:last-of-type {
+      max-width: 560px;
+      margin-inline: auto;
+      color: var(--muted);
+    }
+    .closing-slide {
+      display: grid;
+      place-items: center;
+      height: 100%;
+      text-align: center;
+      background:
+        radial-gradient(circle at top, rgba(184, 138, 68, 0.18), transparent 45%),
+        linear-gradient(180deg, rgba(248, 244, 235, 0.9), rgba(255, 253, 249, 1));
+      border: 1px solid rgba(184, 138, 68, 0.18);
+      border-radius: 28px;
+      padding: 32px;
+      box-sizing: border-box;
+    }
+    .closing-slide h1 {
+      font-size: 72px;
+      margin-bottom: 18px;
+    }
+    .closing-slide p {
+      max-width: 540px;
+      margin-inline: auto;
+      color: var(--muted);
+      font-size: 22px;
+      line-height: 1.4;
+    }
     .controls {
       position: absolute;
       right: 24px;
@@ -407,7 +486,7 @@ func defaultThemeSectionLayout() string {
 
 func defaultThemeAgendaLayout() string {
 	return `<div class="slide-meta">Agenda</div>
-<div class="slide-body">
+<div class="slide-body agenda-slide">
   {{ .Body }}
 </div>
 `
