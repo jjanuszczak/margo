@@ -91,7 +91,7 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 	}
 	out := string(rendered)
 
-	for _, needle := range []string{"Margo Reference Deck", "Strategy", "Why Margo", "Export PDF", "MARGO", "Product Strategy", "Authoring and output model overview", "image-fit-contain", "#4db6ac", "color-scheme: dark", "\"Avenir Next\", \"Helvetica Neue\", sans-serif", "slides/02-why/diagram.svg", "slides/02-why/backdrop.svg"} {
+	for _, needle := range []string{"Margo Reference Deck", "Strategy", "Why Margo", "Export PDF", "MARGO", "Product Strategy", "Authoring and output model overview", "image-fit-contain", "#4db6ac", "color-scheme: dark", "\"Avenir Next\", \"Helvetica Neue\", sans-serif", "slides/02-why/diagram.svg", "slides/02-why/backdrop.svg", "class=\"callout", "class=\"shortcode-columns\"", "class=\"shortcode-stat\"", "A reasonably sized deck should still feel fast."} {
 		if !strings.Contains(out, needle) {
 			t.Fatalf("expected rendered output to contain %q", needle)
 		}

@@ -149,6 +149,29 @@ layout: content
 - Markdown-first authoring
 - Hugo-like project structure
 - HTML-first output with PDF next
+
+{{< callout tone="info" >}}
+Theme-provided shortcodes make expressive slides possible without abandoning Markdown.
+{{< /callout >}}
+
+{{< columns >}}
+{{< column >}}
+### Authoring
+
+- Markdown
+- Front matter
+- Archetypes
+{{< /column >}}
+{{< column >}}
+### Output
+
+- HTML first
+- PDF next
+- PPTX later
+{{< /column >}}
+{{< /columns >}}
+
+{{< stat value="20" label="Slides" detail="A reasonably sized deck should still feel fast." />}}
 `
 }
 
@@ -258,6 +281,10 @@ func ThemeFiles(themeName string, includeStyles bool) map[string]string {
 		filepath.Join("themes", themeName, "layouts", "slide-title.html"):      defaultThemeTitleLayout(),
 		filepath.Join("themes", themeName, "layouts", "slide-two-column.html"): defaultThemeTwoColumnLayout(),
 		filepath.Join("themes", themeName, "shortcodes", "callout.html"):       defaultThemeCalloutShortcode(),
+		filepath.Join("themes", themeName, "shortcodes", "column.html"):        defaultThemeColumnShortcode(),
+		filepath.Join("themes", themeName, "shortcodes", "columns.html"):       defaultThemeColumnsShortcode(),
+		filepath.Join("themes", themeName, "shortcodes", "stat.html"):          defaultThemeStatShortcode(),
+		filepath.Join("themes", themeName, "shortcodes", "video.html"):         defaultThemeVideoShortcode(),
 	}
 	if includeStyles {
 		files[filepath.Join("themes", themeName, "assets", "theme.css")] = defaultThemeStyles()
@@ -294,6 +321,39 @@ func defaultThemeCalloutShortcode() string {
 	return `<div class="callout callout-{{ index .Params "tone" }}">
   {{ .Inner }}
 </div>
+`
+}
+
+func defaultThemeColumnsShortcode() string {
+	return `<div class="shortcode-columns">
+  {{ .Inner }}
+</div>
+`
+}
+
+func defaultThemeColumnShortcode() string {
+	return `<div class="shortcode-column">
+  {{ .Inner }}
+</div>
+`
+}
+
+func defaultThemeStatShortcode() string {
+	return `<div class="shortcode-stat">
+  <div class="shortcode-stat-value">{{ index .Params "value" }}</div>
+  <div class="shortcode-stat-label">{{ index .Params "label" }}</div>
+  {{ with index .Params "detail" }}<div class="shortcode-stat-detail">{{ . }}</div>{{ end }}
+</div>
+`
+}
+
+func defaultThemeVideoShortcode() string {
+	return `<figure class="shortcode-video">
+  <video controls preload="metadata"{{ with index .Params "poster" }} poster="{{ . }}"{{ end }}>
+    <source src="{{ index .Params "src" }}">
+  </video>
+  {{ with index .Params "caption" }}<figcaption>{{ . }}</figcaption>{{ end }}
+</figure>
 `
 }
 
@@ -430,6 +490,73 @@ func defaultThemeDeckLayout() string {
     }
     .image-caption {
       margin-top: 14px;
+      font: 12px/1.3 sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .callout {
+      margin: 24px 0;
+      padding: 18px 20px;
+      border-radius: 18px;
+      background: color-mix(in srgb, var(--accent) 10%, var(--card));
+      border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+    }
+    .callout p:last-child {
+      margin-bottom: 0;
+    }
+    .shortcode-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin: 28px 0;
+    }
+    .shortcode-column {
+      padding: 18px 20px;
+      border-radius: 18px;
+      background: color-mix(in srgb, var(--card) 88%, var(--accent) 12%);
+      border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+    }
+    .shortcode-column > :first-child {
+      margin-top: 0;
+    }
+    .shortcode-stat {
+      margin: 28px 0 0;
+      padding: 22px 24px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--card) 92%, transparent));
+      border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+    }
+    .shortcode-stat-value {
+      font-size: 52px;
+      line-height: 0.95;
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .shortcode-stat-label {
+      margin-top: 10px;
+      font: 13px/1.2 sans-serif;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .shortcode-stat-detail {
+      margin-top: 10px;
+      color: var(--fg);
+    }
+    .shortcode-video {
+      margin: 28px 0;
+    }
+    .shortcode-video video {
+      width: 100%;
+      max-height: 48vh;
+      border-radius: 20px;
+      box-shadow: 0 20px 48px var(--shadow);
+      background: #000;
+    }
+    .shortcode-video figcaption {
+      margin-top: 12px;
       font: 12px/1.3 sans-serif;
       letter-spacing: 0.08em;
       text-transform: uppercase;

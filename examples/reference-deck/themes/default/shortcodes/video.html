@@ -1,0 +1,6 @@
+<figure class="shortcode-video">
+  <video controls preload="metadata"{{ with index .Params "poster" }} poster="{{ . }}"{{ end }}>
+    <source src="{{ index .Params "src" }}">
+  </video>
+  {{ with index .Params "caption" }}<figcaption>{{ . }}</figcaption>{{ end }}
+</figure>

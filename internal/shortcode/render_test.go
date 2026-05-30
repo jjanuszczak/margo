@@ -66,6 +66,39 @@ func TestRenderFallsBackToThemeShortcodes(t *testing.T) {
 	}
 }
 
+func TestRenderThemeShortcodeSetSupportsVideoAndNestedColumns(t *testing.T) {
+	projectRoot := t.TempDir()
+	themeRoot := filepath.Join(projectRoot, "themes", "default")
+	if err := os.MkdirAll(filepath.Join(themeRoot, "shortcodes"), 0o755); err != nil {
+		t.Fatalf("create theme shortcode dir: %v", err)
+	}
+
+	files := map[string]string{
+		"columns.html": `<div class="shortcode-columns">{{ .Inner }}</div>`,
+		"column.html":  `<div class="shortcode-column">{{ .Inner }}</div>`,
+		"video.html":   `<video controls><source src="{{ index .Params "src" }}"></video>`,
+	}
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(themeRoot, "shortcodes", name), []byte(body), 0o644); err != nil {
+			t.Fatalf("write theme shortcode %s: %v", name, err)
+		}
+	}
+
+	rendered, err := Render(`{{< columns >}}{{< column >}}Left{{< /column >}}{{< column >}}{{< video src="demo.mp4" />}}{{< /column >}}{{< /columns >}}`, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+	})
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+
+	for _, needle := range []string{"shortcode-columns", "shortcode-column", "<source src=\"demo.mp4\">"} {
+		if !strings.Contains(rendered, needle) {
+			t.Fatalf("expected rendered shortcode output to contain %q, got %q", needle, rendered)
+		}
+	}
+}
+
 func TestRenderRejectsUnknownOrMalformedShortcodes(t *testing.T) {
 	projectRoot := t.TempDir()
 

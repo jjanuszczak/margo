@@ -24,6 +24,29 @@ notes:
 - Hugo-like project structure
 - HTML-first output with PDF next
 
+{{< callout tone="info" >}}
+Theme-provided shortcodes make expressive slides possible without abandoning Markdown.
+{{< /callout >}}
+
+{{< columns >}}
+{{< column >}}
+### Authoring
+
+- Markdown
+- Front matter
+- Archetypes
+{{< /column >}}
+{{< column >}}
+### Output
+
+- HTML first
+- PDF next
+- PPTX later
+{{< /column >}}
+{{< /columns >}}
+
+{{< stat value="20" label="Slides" detail="A reasonably sized deck should still feel fast." />}}
+
 ![Margo flow](diagram.svg)
 
 ## Notes

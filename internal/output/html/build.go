@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/yuin/goldmark"
+	rendererhtml "github.com/yuin/goldmark/renderer/html"
 	"margo/internal/deck"
 	"margo/internal/shortcode"
 	"margo/internal/theme"
@@ -221,7 +222,12 @@ func markdownToHTML(source string) template.HTML {
 	}
 
 	var buf bytes.Buffer
-	if err := goldmark.Convert([]byte(source), &buf); err != nil {
+	md := goldmark.New(
+		goldmark.WithRendererOptions(
+			rendererhtml.WithUnsafe(),
+		),
+	)
+	if err := md.Convert([]byte(source), &buf); err != nil {
 		escaped := template.HTMLEscapeString(source)
 		return template.HTML("<pre>" + escaped + "</pre>")
 	}
