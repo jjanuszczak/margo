@@ -349,8 +349,8 @@ func defaultThemeStatShortcode() string {
 
 func defaultThemeVideoShortcode() string {
 	return `<figure class="shortcode-video">
-  <video controls preload="metadata"{{ with index .Params "poster" }} poster="{{ . }}"{{ end }}>
-    <source src="{{ index .Params "src" }}">
+  <video controls preload="metadata"{{ with index .Params "poster" }} poster="{{ assetRef . }}"{{ end }}>
+    <source src="{{ assetRef (index .Params "src") }}">
   </video>
   {{ with index .Params "caption" }}<figcaption>{{ . }}</figcaption>{{ end }}
 </figure>

@@ -153,7 +153,11 @@ func executeShortcode(name string, params map[string]string, inner string, ctx C
 		return "", err
 	}
 
-	tmpl, err := template.New(name).ParseFiles(path)
+	tmpl, err := template.New(name).Funcs(template.FuncMap{
+		"assetRef": func(ref string) string {
+			return resolveAssetReference(ctx, ref)
+		},
+	}).ParseFiles(path)
 	if err != nil {
 		return "", fmt.Errorf("parse shortcode template %q: %w", path, err)
 	}
@@ -189,4 +193,79 @@ func resolveTemplatePath(projectRoot string, activeTheme theme.Metadata, name st
 	}
 
 	return "", fmt.Errorf("unknown shortcode %q", name)
+}
+
+func resolveAssetReference(ctx Context, ref string) string {
+	if ref == "" || isExternalOrSpecialURL(ref) {
+		return ref
+	}
+
+	baseRef, suffix := splitURLSuffix(ref)
+	if deckRef, ok := resolveDeckAssetReference(ctx.ProjectRoot, baseRef); ok {
+		return deckRef + suffix
+	}
+
+	if ctx.Slide.BundlePath != "" {
+		candidate := filepath.Clean(filepath.Join(ctx.Slide.BundlePath, filepath.FromSlash(baseRef)))
+		if withinRoot(candidate, ctx.Slide.BundlePath) {
+			if _, err := os.Stat(candidate); err == nil {
+				relPath, err := filepath.Rel(ctx.Slide.BundlePath, candidate)
+				if err == nil {
+					return filepath.ToSlash(filepath.Join("slides", ctx.Slide.ID, relPath)) + suffix
+				}
+			}
+		}
+	}
+
+	return ref
+}
+
+func resolveDeckAssetReference(projectRoot string, ref string) (string, bool) {
+	assetsRoot := filepath.Join(projectRoot, "assets")
+
+	candidateRefs := []string{ref}
+	if trimmed := strings.TrimPrefix(filepath.ToSlash(ref), "assets/"); trimmed != ref {
+		candidateRefs = append(candidateRefs, trimmed)
+	}
+
+	for _, candidateRef := range candidateRefs {
+		candidate := filepath.Clean(filepath.Join(assetsRoot, filepath.FromSlash(candidateRef)))
+		if !withinRoot(candidate, assetsRoot) {
+			continue
+		}
+		if _, err := os.Stat(candidate); err == nil {
+			relPath, err := filepath.Rel(assetsRoot, candidate)
+			if err == nil {
+				return filepath.ToSlash(filepath.Join("assets", relPath)), true
+			}
+		}
+	}
+
+	return "", false
+}
+
+func splitURLSuffix(ref string) (string, string) {
+	index := strings.IndexAny(ref, "?#")
+	if index == -1 {
+		return ref, ""
+	}
+	return ref[:index], ref[index:]
+}
+
+func isExternalOrSpecialURL(ref string) bool {
+	lower := strings.ToLower(ref)
+	return strings.HasPrefix(lower, "http://") ||
+		strings.HasPrefix(lower, "https://") ||
+		strings.HasPrefix(lower, "data:") ||
+		strings.HasPrefix(lower, "mailto:") ||
+		strings.HasPrefix(lower, "#") ||
+		strings.HasPrefix(lower, "/")
+}
+
+func withinRoot(path string, root string) bool {
+	relPath, err := filepath.Rel(root, path)
+	if err != nil {
+		return false
+	}
+	return relPath != ".." && !strings.HasPrefix(relPath, ".."+string(filepath.Separator))
 }

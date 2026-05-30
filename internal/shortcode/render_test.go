@@ -73,10 +73,17 @@ func TestRenderThemeShortcodeSetSupportsVideoAndNestedColumns(t *testing.T) {
 		t.Fatalf("create theme shortcode dir: %v", err)
 	}
 
+	if err := os.MkdirAll(filepath.Join(projectRoot, "assets"), 0o755); err != nil {
+		t.Fatalf("create assets dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(projectRoot, "assets", "poster.svg"), []byte("<svg/>"), 0o644); err != nil {
+		t.Fatalf("write poster asset: %v", err)
+	}
+
 	files := map[string]string{
 		"columns.html": `<div class="shortcode-columns">{{ .Inner }}</div>`,
 		"column.html":  `<div class="shortcode-column">{{ .Inner }}</div>`,
-		"video.html":   `<video controls><source src="{{ index .Params "src" }}"></video>`,
+		"video.html":   `<video controls{{ with index .Params "poster" }} poster="{{ assetRef . }}"{{ end }}><source src="{{ assetRef (index .Params "src") }}"></video>`,
 	}
 	for name, body := range files {
 		if err := os.WriteFile(filepath.Join(themeRoot, "shortcodes", name), []byte(body), 0o644); err != nil {
@@ -84,7 +91,7 @@ func TestRenderThemeShortcodeSetSupportsVideoAndNestedColumns(t *testing.T) {
 		}
 	}
 
-	rendered, err := Render(`{{< columns >}}{{< column >}}Left{{< /column >}}{{< column >}}{{< video src="demo.mp4" />}}{{< /column >}}{{< /columns >}}`, Context{
+	rendered, err := Render(`{{< columns >}}{{< column >}}Left{{< /column >}}{{< column >}}{{< video src="https://example.com/demo.mp4" poster="assets/poster.svg" />}}{{< /column >}}{{< /columns >}}`, Context{
 		ProjectRoot: projectRoot,
 		Theme:       theme.Metadata{RootDir: themeRoot},
 	})
@@ -92,7 +99,7 @@ func TestRenderThemeShortcodeSetSupportsVideoAndNestedColumns(t *testing.T) {
 		t.Fatalf("Render returned error: %v", err)
 	}
 
-	for _, needle := range []string{"shortcode-columns", "shortcode-column", "<source src=\"demo.mp4\">"} {
+	for _, needle := range []string{"shortcode-columns", "shortcode-column", "<source src=\"https://example.com/demo.mp4\">", "poster=\"assets/poster.svg\""} {
 		if !strings.Contains(rendered, needle) {
 			t.Fatalf("expected rendered shortcode output to contain %q, got %q", needle, rendered)
 		}

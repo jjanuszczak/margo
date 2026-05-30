@@ -91,7 +91,7 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 	}
 	out := string(rendered)
 
-	for _, needle := range []string{"Margo Reference Deck", "Strategy", "Why Margo", "Export PDF", "MARGO", "Product Strategy", "Authoring and output model overview", "image-fit-contain", "#4db6ac", "color-scheme: dark", "\"Avenir Next\", \"Helvetica Neue\", sans-serif", "slides/02-why/diagram.svg", "slides/02-why/backdrop.svg", "assets/shared-grid.svg", "class=\"callout", "class=\"shortcode-columns\"", "class=\"shortcode-stat\"", "A reasonably sized deck should still feel fast."} {
+	for _, needle := range []string{"Margo Reference Deck", "Strategy", "Why Margo", "Export PDF", "MARGO", "Product Strategy", "Authoring and output model overview", "image-fit-contain", "#4db6ac", "color-scheme: dark", "\"Avenir Next\", \"Helvetica Neue\", sans-serif", "slides/02-why/diagram.svg", "slides/02-why/backdrop.svg", "assets/shared-grid.svg", "assets/video-poster.svg", "https://example.com/demo.mp4", "class=\"callout", "class=\"shortcode-columns\"", "class=\"shortcode-stat\"", "class=\"shortcode-video\"", "A reasonably sized deck should still feel fast.", "Shortcodes can carry shared deck assets cleanly."} {
 		if !strings.Contains(out, needle) {
 			t.Fatalf("expected rendered output to contain %q", needle)
 		}
@@ -107,6 +107,9 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "assets", "shared-grid.svg")); err != nil {
 		t.Fatalf("expected staged deck asset to exist: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "assets", "video-poster.svg")); err != nil {
+		t.Fatalf("expected staged video poster asset to exist: %v", err)
 	}
 
 	for _, forbidden := range []string{
@@ -250,6 +253,7 @@ func shouldCopyFixturePath(relPath string, isDir bool) bool {
 		"archetypes/title",
 		"archetypes/two-column",
 		"assets/shared-grid.svg",
+		"assets/video-poster.svg",
 		"slides/01-title",
 		"slides/02-why",
 		"slides/03-draft",
