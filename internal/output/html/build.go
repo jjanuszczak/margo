@@ -39,6 +39,9 @@ type renderedSlide struct {
 	HideFooter         bool
 	ResolvedFooterText string
 	BackgroundStyle    string
+	ImageHintClass     string
+	ImageHintStyle     string
+	ImageCaption       string
 }
 
 func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) error {
@@ -120,6 +123,9 @@ func renderSlides(projectRoot string, deckMeta deck.DeckMetadata, slides []deck.
 				HideFooter:         slide.HideFooter,
 				ResolvedFooterText: resolveFooterText(slide, deckMeta.Footer),
 				BackgroundStyle:    resolveBackgroundStyle(slide),
+				ImageHintClass:     resolveImageHintClass(slide.ImageHints),
+				ImageHintStyle:     resolveImageHintStyle(slide.ImageHints),
+				ImageCaption:       resolveImageCaption(slide.ImageHints),
 			})
 			continue
 		}
@@ -173,6 +179,9 @@ func executeSlideLayout(layoutPath string, slide deck.Slide, index int, body tem
 		HideFooter:         slide.HideFooter,
 		ResolvedFooterText: resolveFooterText(slide, deckFooter),
 		BackgroundStyle:    resolveBackgroundStyle(slide),
+		ImageHintClass:     resolveImageHintClass(slide.ImageHints),
+		ImageHintStyle:     resolveImageHintStyle(slide.ImageHints),
+		ImageCaption:       resolveImageCaption(slide.ImageHints),
 	}, nil
 }
 
@@ -234,4 +243,40 @@ func resolveBackgroundStyle(slide deck.Slide) string {
 		parts = append(parts, fmt.Sprintf("--margo-background-opacity: %.2f", slide.Background.Opacity))
 	}
 	return strings.Join(parts, "; ")
+}
+
+func resolveImageHintClass(hints map[string]any) string {
+	fit := strings.TrimSpace(imageHintString(hints, "fit"))
+	switch fit {
+	case "contain", "cover", "inline":
+		return "image-fit-" + fit
+	default:
+		return ""
+	}
+}
+
+func resolveImageHintStyle(hints map[string]any) string {
+	position := strings.TrimSpace(imageHintString(hints, "position"))
+	if position == "" {
+		return ""
+	}
+	return "--margo-image-position: " + position
+}
+
+func resolveImageCaption(hints map[string]any) string {
+	return strings.TrimSpace(imageHintString(hints, "caption"))
+}
+
+func imageHintString(hints map[string]any, key string) string {
+	if hints == nil {
+		return ""
+	}
+	raw, ok := hints[key]
+	if !ok {
+		return ""
+	}
+	if value, ok := raw.(string); ok {
+		return value
+	}
+	return ""
 }

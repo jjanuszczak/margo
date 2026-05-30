@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="420" viewBox="0 0 960 420" fill="none">
+  <rect width="960" height="420" rx="28" fill="#F8F3E8"/>
+  <rect x="70" y="122" width="210" height="156" rx="24" fill="#FFFDF9" stroke="#C7B082" stroke-width="2"/>
+  <rect x="375" y="122" width="210" height="156" rx="24" fill="#FFFDF9" stroke="#C7B082" stroke-width="2"/>
+  <rect x="680" y="122" width="210" height="156" rx="24" fill="#FFFDF9" stroke="#C7B082" stroke-width="2"/>
+  <path d="M280 200H375" stroke="#8F6F33" stroke-width="8" stroke-linecap="round"/>
+  <path d="M585 200H680" stroke="#8F6F33" stroke-width="8" stroke-linecap="round"/>
+  <path d="M347 182L375 200L347 218" stroke="#8F6F33" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M652 182L680 200L652 218" stroke="#8F6F33" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="175" y="176" text-anchor="middle" font-family="Georgia, serif" font-size="34" fill="#201B16">Markdown</text>
+  <text x="175" y="214" text-anchor="middle" font-family="Georgia, serif" font-size="34" fill="#201B16">Bundles</text>
+  <text x="480" y="176" text-anchor="middle" font-family="Georgia, serif" font-size="34" fill="#201B16">Theme</text>
+  <text x="480" y="214" text-anchor="middle" font-family="Georgia, serif" font-size="34" fill="#201B16">Layouts</text>
+  <text x="785" y="176" text-anchor="middle" font-family="Georgia, serif" font-size="34" fill="#201B16">HTML +</text>
+  <text x="785" y="214" text-anchor="middle" font-family="Georgia, serif" font-size="34" fill="#201B16">PDF</text>
+</svg>

@@ -8,6 +8,10 @@ background:
   color: "#fbf6ec"
   overlay: "linear-gradient(180deg, rgba(255,255,255,0.24), rgba(255,255,255,0))"
   opacity: 1
+image_hints:
+  fit: contain
+  position: center
+  caption: Authoring and output model overview
 notes:
   - Mention Hugo mental model
   - Emphasize HTML-first output
@@ -18,6 +22,8 @@ notes:
 - Markdown-first authoring
 - Hugo-like project structure
 - HTML-first output with PDF next
+
+![Margo flow](diagram.svg)
 
 ## Notes
 

@@ -111,6 +111,29 @@
     .slide-body ul {
       padding-left: 24px;
     }
+    .slide-body img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 18px;
+      object-position: var(--margo-image-position, center);
+    }
+    .slide.image-fit-contain .slide-body img {
+      width: 100%;
+      max-height: 48vh;
+      object-fit: contain;
+    }
+    .slide.image-fit-cover .slide-body img {
+      width: 100%;
+      max-height: 48vh;
+      object-fit: cover;
+    }
+    .image-caption {
+      margin-top: 14px;
+      font: 12px/1.3 sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
     .agenda-slide ol {
       margin: 32px 0 0;
       padding-left: 28px;
@@ -231,10 +254,11 @@
   <main>
     <div class="deck">
       {{ range $i, $slide := .Slides }}
-      <section class="slide{{ if eq $i 0 }} active{{ end }}"{{ if $slide.BackgroundStyle }} style="{{ $slide.BackgroundStyle }}"{{ end }}>
+      <section class="slide{{ if eq $i 0 }} active{{ end }}{{ if $slide.ImageHintClass }} {{ $slide.ImageHintClass }}{{ end }}"{{ if or $slide.BackgroundStyle $slide.ImageHintStyle }} style="{{ if $slide.BackgroundStyle }}{{ $slide.BackgroundStyle }}{{ end }}{{ if and $slide.BackgroundStyle $slide.ImageHintStyle }}; {{ end }}{{ if $slide.ImageHintStyle }}{{ $slide.ImageHintStyle }}{{ end }}"{{ end }}>
         {{ if $slide.IsDraft }}<div class="draft-badge">Draft</div>{{ end }}
         {{ if and $.Deck.Logo (not $slide.HideLogo) }}<div class="deck-logo">{{ $.Deck.Logo }}</div>{{ end }}
         {{ $slide.Body }}
+        {{ if $slide.ImageCaption }}<div class="image-caption">{{ $slide.ImageCaption }}</div>{{ end }}
         {{ if and $slide.ResolvedFooterText (not $slide.HideFooter) }}<div class="deck-footer">{{ $slide.ResolvedFooterText }}</div>{{ end }}
       </section>
       {{ end }}
