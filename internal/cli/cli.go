@@ -316,16 +316,20 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 
 	parsed, err := config.Parse(raw)
 	if err != nil {
+		message := err.Error()
 		line := 0
+		path := root.ConfigPath
 		if fieldErr, ok := config.AsFieldError(err); ok {
+			message = fieldErr.Message
 			line = fieldErr.Line
+			path = fieldErr.Path
 		}
 		report := diagnostics.Report{}
 		report.Add(diagnostics.Diagnostic{
 			Severity: diagnostics.SeverityError,
 			Code:     "config_parse_failed",
-			Message:  err.Error(),
-			Path:     root.ConfigPath,
+			Message:  message,
+			Path:     path,
 			Line:     line,
 		})
 		return commandError{
@@ -351,12 +355,21 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 
 	activeTheme, err := theme.Load(root.Dir, parsed.Config.Theme.Name)
 	if err != nil {
+		message := err.Error()
+		path := root.Dir
+		line := 0
+		if themeErr, ok := theme.AsError(err); ok {
+			message = themeErr.Message
+			path = themeErr.Path
+			line = themeErr.Line
+		}
 		report := diagnostics.Report{}
 		report.Add(diagnostics.Diagnostic{
 			Severity: diagnostics.SeverityError,
 			Code:     "theme_load_failed",
-			Message:  err.Error(),
-			Path:     root.Dir,
+			Message:  message,
+			Path:     path,
+			Line:     line,
 		})
 		return commandError{
 			message: fmt.Sprintf("%s could not load the active theme", name),

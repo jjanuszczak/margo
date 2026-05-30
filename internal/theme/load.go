@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	ThemesDirName       = "themes"
-	ThemeMetadataFile   = "theme.yaml"
+	ThemesDirName        = "themes"
+	ThemeMetadataFile    = "theme.yaml"
 	DefaultLayoutRelPath = "layouts/default.html"
 	DeckLayoutRelPath    = "layouts/deck.html"
 	SlideDefaultRelPath  = "layouts/slide-default.html"
@@ -19,7 +19,9 @@ const (
 
 func Load(projectRoot, themeName string) (Metadata, error) {
 	if themeName == "" {
-		return Metadata{}, fmt.Errorf("theme name is required")
+		return Metadata{}, &Error{
+			Message: "theme name is required",
+		}
 	}
 
 	rootDir := filepath.Join(projectRoot, ThemesDirName, themeName)
@@ -30,7 +32,10 @@ func Load(projectRoot, themeName string) (Metadata, error) {
 
 	raw, err := os.ReadFile(metadataPath)
 	if err != nil {
-		return Metadata{}, fmt.Errorf("read theme metadata %q: %w", metadataPath, err)
+		return Metadata{}, &Error{
+			Path:    metadataPath,
+			Message: fmt.Sprintf("read theme metadata: %v", err),
+		}
 	}
 	meta, err := parseMetadata(string(raw), metadataPath)
 	if err != nil {
@@ -49,14 +54,20 @@ func Load(projectRoot, themeName string) (Metadata, error) {
 	}
 	if meta.DeckLayout == "" || meta.DefaultLayout == "" {
 		if _, err := os.Stat(layoutPath); err != nil {
-			return Metadata{}, fmt.Errorf("missing theme layout; expected %q or the deck/slide layout pair: %w", layoutPath, err)
+			return Metadata{}, &Error{
+				Path:    filepath.Join(rootDir, "layouts"),
+				Message: fmt.Sprintf("missing theme layout; expected %q or the deck/slide layout pair", layoutPath),
+			}
 		}
 		meta.DefaultLayout = layoutPath
 		meta.RequiredLayout = append(meta.RequiredLayout, DefaultLayoutRelPath)
 	} else {
 		layoutEntries, err := os.ReadDir(filepath.Join(rootDir, "layouts"))
 		if err != nil {
-			return Metadata{}, fmt.Errorf("read theme layouts: %w", err)
+			return Metadata{}, &Error{
+				Path:    filepath.Join(rootDir, "layouts"),
+				Message: fmt.Sprintf("read theme layouts: %v", err),
+			}
 		}
 		for _, entry := range layoutEntries {
 			if entry.IsDir() {
@@ -81,7 +92,10 @@ func Load(projectRoot, themeName string) (Metadata, error) {
 func parseMetadata(source, path string) (Metadata, error) {
 	var meta Metadata
 	if err := yaml.Unmarshal([]byte(source), &meta); err != nil {
-		return Metadata{}, fmt.Errorf("parse theme metadata %q: %w", path, err)
+		return Metadata{}, &Error{
+			Path:    path,
+			Message: fmt.Sprintf("parse theme metadata: %v", err),
+		}
 	}
 
 	if meta.Version == "" {

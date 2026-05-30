@@ -184,6 +184,40 @@ theme:
 	}
 }
 
+func TestRunBuildReportsThemeLoadPathCleanly(t *testing.T) {
+	projectRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(projectRoot, "margo.yaml"), []byte(`version: 1
+
+deck:
+  title: Sample
+
+theme:
+  name: missing
+`), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	restoreWD := withWorkingDir(t, projectRoot)
+	defer restoreWD()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := Run([]string{"build"}, &stdout, &stderr)
+	if code == 0 {
+		t.Fatal("expected build to fail")
+	}
+	out := stderr.String()
+	if !strings.Contains(out, "[theme_load_failed] error:") {
+		t.Fatalf("expected theme load diagnostic, got %q", out)
+	}
+	if !strings.Contains(out, "read theme metadata") {
+		t.Fatalf("expected theme load message, got %q", out)
+	}
+	if !strings.Contains(out, filepath.Join("themes", "missing", "theme.yaml")) {
+		t.Fatalf("expected theme metadata path, got %q", out)
+	}
+}
+
 func writeArchetype(t *testing.T, projectRoot string, name string, description string) {
 	t.Helper()
 	dir := filepath.Join(projectRoot, "archetypes", name)
