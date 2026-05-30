@@ -18,6 +18,7 @@ import (
 	"margo/internal/diagnostics"
 	"margo/internal/manifest"
 	"margo/internal/output/html"
+	"margo/internal/output/pdf"
 	"margo/internal/project"
 	"margo/internal/scaffold"
 	"margo/internal/serve"
@@ -420,15 +421,23 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			Sections: deck.BuildSections(slides),
 			Slides:   slides,
 		}
-		if !parsed.Config.Outputs.HTML {
-			return nil
+		renderPDF := name == "build" && parsed.Config.Outputs.PDF
+		if parsed.Config.Outputs.HTML || renderPDF {
+			if err := html.Write(root.Dir, model, activeTheme); err != nil {
+				return err
+			}
 		}
-		return html.Write(root.Dir, model, activeTheme)
+		if renderPDF {
+			if err := pdf.Write(root.Dir); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 
-	if name == "build" && parsed.Config.Outputs.HTML {
+	if name == "build" && (parsed.Config.Outputs.HTML || parsed.Config.Outputs.PDF) {
 		if err := rebuild(); err != nil {
-			return fmt.Errorf("write html output: %w", err)
+			return fmt.Errorf("build outputs: %w", err)
 		}
 		filteredSlides, err := resolveSlides(includeDrafts)
 		if err != nil {
@@ -436,7 +445,12 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 		}
 		filteredSlides = deck.ApplySectionDividers(filteredSlides)
 		fmt.Fprintf(stdout, "%s: rendering %d slides after filtering\n", name, len(filteredSlides))
-		fmt.Fprintf(stdout, "%s: wrote %s\n", name, html.OutputFile)
+		if parsed.Config.Outputs.HTML || parsed.Config.Outputs.PDF {
+			fmt.Fprintf(stdout, "%s: wrote %s\n", name, html.OutputFile)
+		}
+		if parsed.Config.Outputs.PDF {
+			fmt.Fprintf(stdout, "%s: wrote %s\n", name, pdf.OutputFile)
+		}
 		return nil
 	}
 
