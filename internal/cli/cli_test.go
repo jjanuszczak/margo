@@ -358,10 +358,15 @@ func TestRunNewDeckThenBuildStarterDeck(t *testing.T) {
 	for _, needle := range []string{
 		"starter-deck",
 		"Why Margo",
+		"Product Story",
+		"Customer Story",
 		"Why this exists",
 		"class=\"callout",
 		"class=\"shortcode-columns\"",
 		"class=\"shortcode-stat\"",
+		"assets/company-logo.svg",
+		"assets/shared-grid.svg",
+		"media-split-slide media-right",
 	} {
 		if !strings.Contains(out, needle) {
 			t.Fatalf("expected starter deck output to contain %q", needle)
