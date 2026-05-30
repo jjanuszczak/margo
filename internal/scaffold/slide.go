@@ -117,6 +117,44 @@ type: agenda
 `, yamlString(title), order, yamlString(title))
 	}
 
+	if layout == "image" || slideType == "image" {
+		return fmt.Sprintf(`---
+title: %s
+order: %d
+layout: image
+type: image
+image_hints:
+  fit: cover
+  position: center
+  caption: Replace with a visual caption
+---
+
+## %s
+
+![Describe the visual](image.png)
+
+Short supporting statement for the image.
+`, yamlString(title), order, yamlString(title))
+	}
+
+	if layout == "two-column" || slideType == "two-column" {
+		return fmt.Sprintf(`---
+title: %s
+order: %d
+layout: two-column
+type: two-column
+---
+
+## %s
+
+Left column content goes here.
+
+<!-- column-break -->
+
+Right column content goes here.
+`, yamlString(title), order, yamlString(title))
+	}
+
 	if layout == "quote" || slideType == "quote" {
 		return fmt.Sprintf(`---
 title: %s

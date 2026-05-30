@@ -150,3 +150,76 @@ func TestCreateSlideMetricArchetype(t *testing.T) {
 		}
 	}
 }
+
+func TestCreateSlideImageArchetype(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := CreateDeck(DeckOptions{
+		Name:      "test-deck",
+		TargetDir: projectRoot,
+	}); err != nil {
+		t.Fatalf("create deck: %v", err)
+	}
+
+	indexPath, err := CreateSlide(SlideOptions{
+		ProjectRoot: projectRoot,
+		Name:        "Hero Visual",
+		Archetype:   "image",
+	})
+	if err != nil {
+		t.Fatalf("create image slide: %v", err)
+	}
+
+	raw, err := os.ReadFile(indexPath)
+	if err != nil {
+		t.Fatalf("read image slide: %v", err)
+	}
+	body := string(raw)
+
+	for _, needle := range []string{
+		"layout: image",
+		"type: image",
+		"fit: cover",
+		"![Describe the visual](image.png)",
+	} {
+		if !strings.Contains(body, needle) {
+			t.Fatalf("expected image slide to contain %q, got:\n%s", needle, body)
+		}
+	}
+}
+
+func TestCreateSlideTwoColumnArchetype(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := CreateDeck(DeckOptions{
+		Name:      "test-deck",
+		TargetDir: projectRoot,
+	}); err != nil {
+		t.Fatalf("create deck: %v", err)
+	}
+
+	indexPath, err := CreateSlide(SlideOptions{
+		ProjectRoot: projectRoot,
+		Name:        "Split View",
+		Archetype:   "two-column",
+	})
+	if err != nil {
+		t.Fatalf("create two-column slide: %v", err)
+	}
+
+	raw, err := os.ReadFile(indexPath)
+	if err != nil {
+		t.Fatalf("read two-column slide: %v", err)
+	}
+	body := string(raw)
+
+	for _, needle := range []string{
+		"layout: two-column",
+		"type: two-column",
+		"<!-- column-break -->",
+		"Left column content goes here.",
+		"Right column content goes here.",
+	} {
+		if !strings.Contains(body, needle) {
+			t.Fatalf("expected two-column slide to contain %q, got:\n%s", needle, body)
+		}
+	}
+}

@@ -28,16 +28,18 @@ func CreateDeck(opts DeckOptions) error {
 
 	files := map[string]string{
 		"margo.yaml": scaffoldConfig(opts.Name),
-		filepath.Join("slides", "01-title", "index.md"):          slideTitle(opts.Name),
-		filepath.Join("slides", "02-why", "index.md"):            slideWhy(),
-		filepath.Join("archetypes", "default", "archetype.yaml"): defaultArchetypeMetadata(),
-		filepath.Join("archetypes", "title", "archetype.yaml"):   titleArchetypeMetadata(),
-		filepath.Join("archetypes", "section", "archetype.yaml"): sectionArchetypeMetadata(),
-		filepath.Join("archetypes", "agenda", "archetype.yaml"):  agendaArchetypeMetadata(),
-		filepath.Join("archetypes", "quote", "archetype.yaml"):   quoteArchetypeMetadata(),
-		filepath.Join("archetypes", "metric", "archetype.yaml"):  metricArchetypeMetadata(),
-		filepath.Join("archetypes", "closing", "archetype.yaml"): closingArchetypeMetadata(),
-		filepath.Join("shortcodes", "eyebrow.html"):              defaultDeckEyebrowShortcode(),
+		filepath.Join("slides", "01-title", "index.md"):             slideTitle(opts.Name),
+		filepath.Join("slides", "02-why", "index.md"):               slideWhy(),
+		filepath.Join("archetypes", "default", "archetype.yaml"):    defaultArchetypeMetadata(),
+		filepath.Join("archetypes", "title", "archetype.yaml"):      titleArchetypeMetadata(),
+		filepath.Join("archetypes", "section", "archetype.yaml"):    sectionArchetypeMetadata(),
+		filepath.Join("archetypes", "agenda", "archetype.yaml"):     agendaArchetypeMetadata(),
+		filepath.Join("archetypes", "image", "archetype.yaml"):      imageArchetypeMetadata(),
+		filepath.Join("archetypes", "two-column", "archetype.yaml"): twoColumnArchetypeMetadata(),
+		filepath.Join("archetypes", "quote", "archetype.yaml"):      quoteArchetypeMetadata(),
+		filepath.Join("archetypes", "metric", "archetype.yaml"):     metricArchetypeMetadata(),
+		filepath.Join("archetypes", "closing", "archetype.yaml"):    closingArchetypeMetadata(),
+		filepath.Join("shortcodes", "eyebrow.html"):                 defaultDeckEyebrowShortcode(),
 	}
 	for path, content := range ThemeFiles("default", true) {
 		files[path] = content
@@ -190,6 +192,22 @@ default_type: quote
 `
 }
 
+func imageArchetypeMetadata() string {
+	return `name: image
+description: Visual-first slide with supporting copy
+default_layout: image
+default_type: image
+`
+}
+
+func twoColumnArchetypeMetadata() string {
+	return `name: two-column
+description: Split content into two columns
+default_layout: two-column
+default_type: two-column
+`
+}
+
 func metricArchetypeMetadata() string {
 	return `name: metric
 description: Single key metric or KPI slide
@@ -228,16 +246,18 @@ config_options:
 
 func ThemeFiles(themeName string, includeStyles bool) map[string]string {
 	files := map[string]string{
-		filepath.Join("themes", themeName, "theme.yaml"):                    defaultThemeMetadataWithName(themeName),
-		filepath.Join("themes", themeName, "layouts", "deck.html"):          defaultThemeDeckLayout(),
-		filepath.Join("themes", themeName, "layouts", "slide-agenda.html"):  defaultThemeAgendaLayout(),
-		filepath.Join("themes", themeName, "layouts", "slide-closing.html"): defaultThemeClosingLayout(),
-		filepath.Join("themes", themeName, "layouts", "slide-default.html"): defaultThemeSlideLayout(),
-		filepath.Join("themes", themeName, "layouts", "slide-metric.html"):  defaultThemeMetricLayout(),
-		filepath.Join("themes", themeName, "layouts", "slide-quote.html"):   defaultThemeQuoteLayout(),
-		filepath.Join("themes", themeName, "layouts", "slide-section.html"): defaultThemeSectionLayout(),
-		filepath.Join("themes", themeName, "layouts", "slide-title.html"):   defaultThemeTitleLayout(),
-		filepath.Join("themes", themeName, "shortcodes", "callout.html"):    defaultThemeCalloutShortcode(),
+		filepath.Join("themes", themeName, "theme.yaml"):                       defaultThemeMetadataWithName(themeName),
+		filepath.Join("themes", themeName, "layouts", "deck.html"):             defaultThemeDeckLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-agenda.html"):     defaultThemeAgendaLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-closing.html"):    defaultThemeClosingLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-default.html"):    defaultThemeSlideLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-image.html"):      defaultThemeImageLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-metric.html"):     defaultThemeMetricLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-quote.html"):      defaultThemeQuoteLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-section.html"):    defaultThemeSectionLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-title.html"):      defaultThemeTitleLayout(),
+		filepath.Join("themes", themeName, "layouts", "slide-two-column.html"): defaultThemeTwoColumnLayout(),
+		filepath.Join("themes", themeName, "shortcodes", "callout.html"):       defaultThemeCalloutShortcode(),
 	}
 	if includeStyles {
 		files[filepath.Join("themes", themeName, "assets", "theme.css")] = defaultThemeStyles()
@@ -424,6 +444,39 @@ func defaultThemeDeckLayout() string {
     .agenda-slide li {
       margin-bottom: 14px;
       padding-left: 8px;
+    }
+    .image-slide {
+      display: grid;
+      align-content: start;
+      height: 100%;
+    }
+    .image-shell {
+      display: grid;
+      gap: 20px;
+      align-content: start;
+    }
+    .image-slide p:has(img) {
+      margin: 0;
+    }
+    .image-slide img {
+      width: 100%;
+      max-height: 52vh;
+      object-fit: cover;
+      border-radius: 24px;
+      box-shadow: 0 20px 48px var(--shadow);
+    }
+    .two-column-slide {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      align-content: start;
+      height: 100%;
+    }
+    .two-column-slide .column {
+      min-width: 0;
+    }
+    .two-column-slide .column > :first-child {
+      margin-top: 0;
     }
     .quote-slide {
       display: grid;
@@ -635,6 +688,31 @@ func defaultThemeQuoteLayout() string {
 <div class="slide-body quote-slide">
   <div class="quote-shell">
     {{ .Body }}
+  </div>
+</div>
+`
+}
+
+func defaultThemeImageLayout() string {
+	return `{{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
+<div class="slide-meta">{{ .Slide.Title }}</div>
+<div class="slide-body image-slide">
+  <div class="image-shell">
+    {{ .Body }}
+  </div>
+</div>
+`
+}
+
+func defaultThemeTwoColumnLayout() string {
+	return `{{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
+<div class="slide-meta">{{ .Slide.Title }}</div>
+<div class="slide-body two-column-slide">
+  <div class="column">
+    {{ if .BodyColumns }}{{ index .BodyColumns 0 }}{{ else }}{{ .Body }}{{ end }}
+  </div>
+  <div class="column">
+    {{ if gt (len .BodyColumns) 1 }}{{ index .BodyColumns 1 }}{{ end }}
   </div>
 </div>
 `

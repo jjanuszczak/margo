@@ -84,12 +84,16 @@ func archetypeSortKey(name string) string {
 		return "2-section"
 	case "agenda":
 		return "3-agenda"
+	case "image":
+		return "4-image"
+	case "two-column":
+		return "5-two-column"
 	case "metric":
-		return "4-metric"
+		return "6-metric"
 	case "quote":
-		return "5-quote"
+		return "7-quote"
 	case "closing":
-		return "6-closing"
+		return "8-closing"
 	default:
 		return "9-" + name
 	}

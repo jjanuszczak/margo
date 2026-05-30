@@ -44,6 +44,8 @@ type renderedSlide struct {
 	ImageCaption       string
 }
 
+const columnBreakMarker = "<!-- column-break -->"
+
 func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) error {
 	if err := os.MkdirAll(filepath.Join(projectRoot, OutputDir), 0o755); err != nil {
 		return fmt.Errorf("create html output directory: %w", err)
@@ -159,12 +161,14 @@ func executeSlideLayout(projectRoot string, layoutPath string, slide deck.Slide,
 		Index        int
 		Slide        deck.Slide
 		Body         template.HTML
+		BodyColumns  []template.HTML
 		SectionID    string
 		SectionTitle string
 	}{
 		Index:        index,
 		Slide:        slide,
 		Body:         body,
+		BodyColumns:  renderBodyColumns(slide, body),
 		SectionID:    sectionID,
 		SectionTitle: sectionTitle,
 	}
@@ -223,6 +227,28 @@ func markdownToHTML(source string) template.HTML {
 	}
 
 	return template.HTML(buf.String())
+}
+
+func renderBodyColumns(slide deck.Slide, body template.HTML) []template.HTML {
+	if resolveLayoutName(slide) != "two-column" {
+		return nil
+	}
+
+	parts := strings.Split(slide.BodyMarkdown, columnBreakMarker)
+	if len(parts) < 2 {
+		return []template.HTML{body}
+	}
+
+	columns := make([]template.HTML, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed == "" {
+			columns = append(columns, "")
+			continue
+		}
+		columns = append(columns, markdownToHTML(trimmed))
+	}
+	return columns
 }
 
 func resolveFooterText(slide deck.Slide, deckFooter string) string {
