@@ -1,4 +1,8 @@
-<img width="1200" height="500" alt="margo-logo" src="https://github.com/user-attachments/assets/398419fa-c516-4401-901a-a35b9e34a95b" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".assets/margo-logo-dark-bg-flat.png">
+  <source media="(prefers-color-scheme: light)" srcset="Y.assets/margo-logo-light-bg-flat.png">
+  <img alt="Margo logo" src=".assets/margo-logo-glow.png">
+</picture>
 
 # Margo
 
