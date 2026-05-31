@@ -1,7 +1,7 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset=".assets/margo-logo-dark-bg-flat.png">
-  <source media="(prefers-color-scheme: light)" srcset="Y.assets/margo-logo-light-bg-flat.png">
-  <img alt="Margo logo" src=".assets/margo-logo-glow.png">
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/margo-logo-dark-bg-flat.png">
+  <source media="(prefers-color-scheme: light)" srcset="./assets/margo-logo-light-bg-flat.png">
+  <img alt="Margo logo" src="./assets/margo-logo-glow.png">
 </picture>
 
 # Margo
