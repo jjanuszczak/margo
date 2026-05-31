@@ -1,3 +1,5 @@
+<img width="1200" height="500" alt="margo-logo" src="https://github.com/user-attachments/assets/398419fa-c516-4401-901a-a35b9e34a95b" />
+
 # Margo
 
 Margo is a Go prototype for building slide decks from Markdown with a Hugo-like project model.
