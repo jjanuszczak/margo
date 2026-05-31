@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestBuildPrintArgs(t *testing.T) {
@@ -13,7 +14,9 @@ func TestBuildPrintArgs(t *testing.T) {
 	joined := strings.Join(args, " ")
 
 	for _, needle := range []string{
-		"--headless",
+		"--headless=new",
+		"--disable-software-rasterizer",
+		"--disable-dev-shm-usage",
 		"--run-all-compositor-stages-before-draw",
 		"--virtual-time-budget=10000",
 		"--print-to-pdf-no-header",
@@ -82,5 +85,48 @@ func TestFindBrowserInvalidOverride(t *testing.T) {
 	_, err := findBrowser()
 	if err == nil || !strings.Contains(err.Error(), browserEnvVar) {
 		t.Fatalf("expected override error mentioning %s, got %v", browserEnvVar, err)
+	}
+}
+
+func TestCreatePrintHTMLInjectsPrintClassAndStripsScripts(t *testing.T) {
+	sourceDir := t.TempDir()
+	sourcePath := filepath.Join(sourceDir, "index.html")
+	source := `<!doctype html><html lang="en"><head><script>console.log("x")</script></head><body><script>console.log("y")</script><main>ok</main></body></html>`
+	if err := os.WriteFile(sourcePath, []byte(source), 0o644); err != nil {
+		t.Fatalf("write source html: %v", err)
+	}
+
+	printPath, err := createPrintHTML(sourcePath)
+	if err != nil {
+		t.Fatalf("createPrintHTML returned error: %v", err)
+	}
+	defer os.Remove(printPath)
+
+	rendered, err := os.ReadFile(printPath)
+	if err != nil {
+		t.Fatalf("read print html: %v", err)
+	}
+	out := string(rendered)
+	if !strings.Contains(out, `<html class="margo-print" lang="en">`) {
+		t.Fatalf("expected print class injection, got %q", out)
+	}
+	if strings.Contains(out, "<script>") {
+		t.Fatalf("expected scripts to be stripped, got %q", out)
+	}
+}
+
+func TestPDFTimeoutDefaultsAndOverride(t *testing.T) {
+	if got := pdfTimeout(); got != 120*time.Second {
+		t.Fatalf("default timeout = %s, want %s", got, 120*time.Second)
+	}
+
+	t.Setenv(timeoutEnvVar, "75")
+	if got := pdfTimeout(); got != 75*time.Second {
+		t.Fatalf("override timeout = %s, want %s", got, 75*time.Second)
+	}
+
+	t.Setenv(timeoutEnvVar, "bad")
+	if got := pdfTimeout(); got != 120*time.Second {
+		t.Fatalf("invalid timeout fallback = %s, want %s", got, 120*time.Second)
 	}
 }

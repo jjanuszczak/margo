@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark"
 	rendererhtml "github.com/yuin/goldmark/renderer/html"
 	"margo/internal/deck"
@@ -164,7 +165,7 @@ func renderSlides(projectRoot string, deckMeta deck.DeckMetadata, slides []deck.
 		}
 
 		layoutPath := resolveLayoutPath(activeTheme, slide)
-		rendered, err := executeSlideLayout(projectRoot, layoutPath, slide, i, body, sectionID, sectionTitle, deckMeta.Footer, &report)
+		rendered, err := executeSlideLayout(projectRoot, layoutPath, slide, i, expanded, body, sectionID, sectionTitle, deckMeta.Footer, &report)
 		if err != nil {
 			return nil, diagnostics.Report{}, err
 		}
@@ -173,7 +174,7 @@ func renderSlides(projectRoot string, deckMeta deck.DeckMetadata, slides []deck.
 	return result, report, nil
 }
 
-func executeSlideLayout(projectRoot string, layoutPath string, slide deck.Slide, index int, body template.HTML, sectionID string, sectionTitle string, deckFooter string, report *diagnostics.Report) (renderedSlide, error) {
+func executeSlideLayout(projectRoot string, layoutPath string, slide deck.Slide, index int, expandedMarkdown string, body template.HTML, sectionID string, sectionTitle string, deckFooter string, report *diagnostics.Report) (renderedSlide, error) {
 	tmpl, err := template.New("slide").Funcs(template.FuncMap{
 		"markdownToHTML": markdownToHTML,
 	}).ParseFiles(layoutPath)
@@ -194,7 +195,7 @@ func executeSlideLayout(projectRoot string, layoutPath string, slide deck.Slide,
 		Index:        index,
 		Slide:        slide,
 		Body:         body,
-		BodyColumns:  renderBodyColumns(slide, body),
+		BodyColumns:  renderBodyColumns(slide, expandedMarkdown, body),
 		LeadMedia:    renderLeadMedia(slide, body),
 		LeadContent:  renderLeadContent(slide, body),
 		SectionID:    sectionID,
@@ -250,6 +251,9 @@ func markdownToHTML(source string) template.HTML {
 
 	var buf bytes.Buffer
 	md := goldmark.New(
+		goldmark.WithExtensions(
+			extension.Table,
+		),
 		goldmark.WithRendererOptions(
 			rendererhtml.WithUnsafe(),
 		),
@@ -327,12 +331,12 @@ func resolveSnippets(value deck.SnippetSettings) renderedSnippets {
 	}
 }
 
-func renderBodyColumns(slide deck.Slide, body template.HTML) []template.HTML {
+func renderBodyColumns(slide deck.Slide, expandedMarkdown string, body template.HTML) []template.HTML {
 	if resolveLayoutName(slide) != "two-column" {
 		return nil
 	}
 
-	parts := strings.Split(slide.BodyMarkdown, columnBreakMarker)
+	parts := strings.Split(expandedMarkdown, columnBreakMarker)
 	if len(parts) < 2 {
 		return []template.HTML{body}
 	}

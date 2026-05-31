@@ -26,3 +26,6 @@ semantics-deck/
 sections-deck/
 notes-deck/
 scratch-init/
+
+# Local dogfood decks not yet promoted to committed fixtures
+examples/arca-investor-memo/

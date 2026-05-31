@@ -523,6 +523,7 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 		return serve.Start(root.Dir, rebuild, serve.Options{
 			OpenBrowser: openBrowser,
 			PDFEnabled:  parsed.Config.Outputs.PDF,
+			PDFPath:     filepath.Join(root.Dir, pdf.OutputFile),
 			GeneratePDF: generatePDF,
 		})
 	}

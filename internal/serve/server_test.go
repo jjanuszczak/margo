@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -40,9 +41,20 @@ func TestPDFExportHandlerSuccess(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/__margo/export/pdf", nil)
 	rec := httptest.NewRecorder()
 	called := false
+	pdfFile, err := os.CreateTemp(t.TempDir(), "deck-*.pdf")
+	if err != nil {
+		t.Fatalf("create temp pdf: %v", err)
+	}
+	if _, err := pdfFile.WriteString("%PDF-1.7"); err != nil {
+		t.Fatalf("seed temp pdf: %v", err)
+	}
+	if err := pdfFile.Close(); err != nil {
+		t.Fatalf("close temp pdf: %v", err)
+	}
 
 	pdfExportHandler(Options{
 		PDFEnabled: true,
+		PDFPath:    pdfFile.Name(),
 		GeneratePDF: func() error {
 			called = true
 			return nil
@@ -55,8 +67,11 @@ func TestPDFExportHandlerSuccess(t *testing.T) {
 	if !called {
 		t.Fatal("expected GeneratePDF to be called")
 	}
-	if !strings.Contains(rec.Body.String(), "dist/pdf/deck.pdf") {
-		t.Fatalf("expected success body to mention output file, got %q", rec.Body.String())
+	if got := rec.Header().Get("Content-Type"); got != "application/pdf" {
+		t.Fatalf("expected application/pdf content type, got %q", got)
+	}
+	if !strings.Contains(rec.Body.String(), "%PDF-1.7") {
+		t.Fatalf("expected response to contain pdf bytes, got %q", rec.Body.String())
 	}
 }
 

@@ -9,7 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	pdfoutput "margo/internal/output/pdf"
 	"margo/internal/watch"
 )
 
@@ -18,6 +17,7 @@ const DefaultPort = "1313"
 type Options struct {
 	OpenBrowser bool
 	PDFEnabled  bool
+	PDFPath     string
 	GeneratePDF func() error
 }
 
@@ -98,7 +98,11 @@ func pdfExportHandler(opts Options) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		fmt.Fprintf(w, "wrote %s\n", filepath.ToSlash(pdfoutput.OutputFile))
+		if opts.PDFPath == "" {
+			http.Error(w, "pdf export completed but no output path is configured", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/pdf")
+		http.ServeFile(w, r, opts.PDFPath)
 	}
 }

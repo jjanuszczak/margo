@@ -18,7 +18,7 @@ func TestRenderBodyColumnsForTwoColumnLayout(t *testing.T) {
 		BodyMarkdown: "Left side\n\n<!-- column-break -->\n\nRight side",
 	}
 
-	columns := renderBodyColumns(slide, template.HTML("<p>ignored</p>"))
+	columns := renderBodyColumns(slide, slide.BodyMarkdown, template.HTML("<p>ignored</p>"))
 	if got, want := len(columns), 2; got != want {
 		t.Fatalf("expected %d columns, got %d", want, got)
 	}
@@ -36,12 +36,30 @@ func TestRenderBodyColumnsFallsBackWhenNoMarker(t *testing.T) {
 		BodyMarkdown: "Whole body",
 	}
 
-	columns := renderBodyColumns(slide, body)
+	columns := renderBodyColumns(slide, slide.BodyMarkdown, body)
 	if got, want := len(columns), 1; got != want {
 		t.Fatalf("expected %d fallback column, got %d", want, got)
 	}
 	if columns[0] != body {
 		t.Fatalf("expected fallback body %q, got %q", body, columns[0])
+	}
+}
+
+func TestRenderBodyColumnsUsesExpandedMarkdown(t *testing.T) {
+	slide := deck.Slide{
+		FrontMatter: deck.FrontMatter{
+			Layout: "two-column",
+		},
+		BodyMarkdown: "{{< stat value=\"$1\" label=\"Raw\" />}}\n\n<!-- column-break -->\n\nRight side",
+	}
+
+	expanded := "<div class=\"shortcode-stat\"><div class=\"shortcode-stat-value\">$1</div></div>\n\n<!-- column-break -->\n\nRight side"
+	columns := renderBodyColumns(slide, expanded, template.HTML("<p>ignored</p>"))
+	if got, want := len(columns), 2; got != want {
+		t.Fatalf("expected %d columns, got %d", want, got)
+	}
+	if !strings.Contains(string(columns[0]), "shortcode-stat") {
+		t.Fatalf("expected expanded shortcode html in first column, got %q", columns[0])
 	}
 }
 
@@ -155,5 +173,16 @@ func TestResolveDeckLogoWarnsOnMissingAsset(t *testing.T) {
 	}
 	if logo.Text != "assets/missing.svg" {
 		t.Fatalf("expected fallback text %q, got %q", "assets/missing.svg", logo.Text)
+	}
+}
+
+func TestMarkdownToHTMLRendersTables(t *testing.T) {
+	source := "| A | B |\n|---|---|\n| 1 | 2 |"
+	rendered := string(markdownToHTML(source))
+	if !strings.Contains(rendered, "<table>") {
+		t.Fatalf("expected markdown table to render as table, got %q", rendered)
+	}
+	if !strings.Contains(rendered, "<td>1</td>") {
+		t.Fatalf("expected markdown table cell content in rendered html, got %q", rendered)
 	}
 }
