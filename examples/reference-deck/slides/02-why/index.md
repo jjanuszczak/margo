@@ -41,6 +41,8 @@ Theme-provided shortcodes make expressive slides possible without abandoning Mar
 
 {{< video src="https://example.com/demo.mp4" poster="assets/video-poster.svg" caption="Shortcodes can carry shared deck assets cleanly." />}}
 
+{{< figure src="assets/shared-grid.svg" alt="Shared brand texture grid" caption="Deck-level asset rendered through the figure shortcode." credit="Source: shared deck assets" width="72%" fit="contain" position="center" />}}
+
 ![Margo flow](diagram.svg)
 
 ![Shared brand texture](assets/shared-grid.svg)

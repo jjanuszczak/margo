@@ -157,6 +157,73 @@ func executeShortcode(name string, params map[string]string, inner string, ctx C
 		"assetRef": func(ref string) string {
 			return resolveAssetReference(ctx, ref)
 		},
+		"assetRefStrict": func(ref string) (string, error) {
+			return resolveAssetReferenceStrict(ctx, ref)
+		},
+		"requiredParam": func(params map[string]string, key string) (string, error) {
+			value := strings.TrimSpace(params[key])
+			if value == "" {
+				return "", fmt.Errorf("shortcode %q requires parameter %q", name, key)
+			}
+			return value, nil
+		},
+		"optionalParam": func(params map[string]string, key string) string {
+			return strings.TrimSpace(params[key])
+		},
+		"optionalParamOneOf": func(params map[string]string, key string, allowed ...string) (string, error) {
+			value := strings.TrimSpace(params[key])
+			if value == "" {
+				return "", nil
+			}
+			for _, candidate := range allowed {
+				if value == candidate {
+					return value, nil
+				}
+			}
+			return "", fmt.Errorf("shortcode %q parameter %q must be one of %q", name, key, strings.Join(allowed, ", "))
+		},
+		"validateParams": func(shortcodeName string, params map[string]string, allowed ...string) (string, error) {
+			allowedSet := make(map[string]struct{}, len(allowed))
+			for _, key := range allowed {
+				allowedSet[key] = struct{}{}
+			}
+			for key := range params {
+				if _, ok := allowedSet[key]; !ok {
+					return "", fmt.Errorf("shortcode %q does not support parameter %q", shortcodeName, key)
+				}
+			}
+			return "", nil
+		},
+		"validateNoInner": func(shortcodeName, inner string) (string, error) {
+			if strings.TrimSpace(inner) != "" {
+				return "", fmt.Errorf("shortcode %q does not support inner content", shortcodeName)
+			}
+			return "", nil
+		},
+		"figureClassNames": func(params map[string]string, fit string) string {
+			classes := []string{"shortcode-figure"}
+			if fit != "" {
+				classes = append(classes, "shortcode-figure-fit-"+fit)
+			}
+			if extra := strings.TrimSpace(params["class"]); extra != "" {
+				classes = append(classes, extra)
+			}
+			return strings.Join(classes, " ")
+		},
+		"figureStyle": func(params map[string]string) string {
+			width := strings.TrimSpace(params["width"])
+			if width == "" {
+				return ""
+			}
+			return fmt.Sprintf("--shortcode-figure-width: %s;", width)
+		},
+		"figureImageStyle": func(params map[string]string) string {
+			position := strings.TrimSpace(params["position"])
+			if position == "" {
+				return ""
+			}
+			return fmt.Sprintf("object-position: %s;", position)
+		},
 	}).ParseFiles(path)
 	if err != nil {
 		return "", fmt.Errorf("parse shortcode template %q: %w", path, err)
@@ -196,13 +263,29 @@ func resolveTemplatePath(projectRoot string, activeTheme theme.Metadata, name st
 }
 
 func resolveAssetReference(ctx Context, ref string) string {
+	resolved, ok := resolveAssetReferenceWithStatus(ctx, ref)
+	if ok {
+		return resolved
+	}
+	return ref
+}
+
+func resolveAssetReferenceStrict(ctx Context, ref string) (string, error) {
+	resolved, ok := resolveAssetReferenceWithStatus(ctx, ref)
+	if ok {
+		return resolved, nil
+	}
+	return "", fmt.Errorf("asset %q not found in slide bundle or deck assets", ref)
+}
+
+func resolveAssetReferenceWithStatus(ctx Context, ref string) (string, bool) {
 	if ref == "" || isExternalOrSpecialURL(ref) {
-		return ref
+		return ref, true
 	}
 
 	baseRef, suffix := splitURLSuffix(ref)
 	if deckRef, ok := resolveDeckAssetReference(ctx.ProjectRoot, baseRef); ok {
-		return deckRef + suffix
+		return deckRef + suffix, true
 	}
 
 	if ctx.Slide.BundlePath != "" {
@@ -211,13 +294,13 @@ func resolveAssetReference(ctx Context, ref string) string {
 			if _, err := os.Stat(candidate); err == nil {
 				relPath, err := filepath.Rel(ctx.Slide.BundlePath, candidate)
 				if err == nil {
-					return filepath.ToSlash(filepath.Join("slides", ctx.Slide.ID, relPath)) + suffix
+					return filepath.ToSlash(filepath.Join("slides", ctx.Slide.ID, relPath)) + suffix, true
 				}
 			}
 		}
 	}
 
-	return ref
+	return ref, false
 }
 
 func resolveDeckAssetReference(projectRoot string, ref string) (string, bool) {

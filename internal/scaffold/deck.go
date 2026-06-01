@@ -372,6 +372,7 @@ func ThemeFiles(themeName string, includeStyles bool) map[string]string {
 		filepath.Join("themes", themeName, "shortcodes", "callout.html"):        defaultThemeCalloutShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "column.html"):         defaultThemeColumnShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "columns.html"):        defaultThemeColumnsShortcode(),
+		filepath.Join("themes", themeName, "shortcodes", "figure.html"):         defaultThemeFigureShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "stat.html"):           defaultThemeStatShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "video.html"):          defaultThemeVideoShortcode(),
 	}
@@ -473,6 +474,11 @@ func defaultThemeStatShortcode() string {
   <div class="shortcode-stat-label">{{ index .Params "label" }}</div>
   {{ with index .Params "detail" }}<div class="shortcode-stat-detail">{{ . }}</div>{{ end }}
 </div>
+`
+}
+
+func defaultThemeFigureShortcode() string {
+	return `{{ validateNoInner .Name .Inner }}{{ validateParams .Name .Params "src" "alt" "caption" "class" "width" "position" "fit" "link" "credit" }}{{ $src := assetRefStrict (requiredParam .Params "src") }}{{ $alt := requiredParam .Params "alt" }}{{ $fit := optionalParamOneOf .Params "fit" "contain" "cover" }}{{ $link := optionalParam .Params "link" }}<figure class="{{ figureClassNames .Params $fit }}"{{ with figureStyle .Params }} style="{{ . }}"{{ end }}>{{ if $link }}<a class="shortcode-figure-link" href="{{ $link }}">{{ end }}<img class="shortcode-figure-image" src="{{ $src }}" alt="{{ $alt }}"{{ with figureImageStyle .Params }} style="{{ . }}"{{ end }}>{{ if $link }}</a>{{ end }}{{ if or (optionalParam .Params "caption") (optionalParam .Params "credit") }}<figcaption class="shortcode-figure-caption">{{ with optionalParam .Params "caption" }}<span>{{ . }}</span>{{ end }}{{ with optionalParam .Params "credit" }}<span class="shortcode-figure-credit">{{ . }}</span>{{ end }}</figcaption>{{ end }}</figure>
 `
 }
 
@@ -780,6 +786,42 @@ func defaultThemeDeckLayout() string {
     .shortcode-stat-detail {
       margin-top: 10px;
       color: var(--fg);
+    }
+    .shortcode-figure {
+      margin: 28px 0;
+      max-width: min(100%, var(--shortcode-figure-width, 100%));
+    }
+    .shortcode-figure-link {
+      display: block;
+      color: inherit;
+      text-decoration: none;
+    }
+    .shortcode-figure-image {
+      display: block;
+      width: 100%;
+      max-height: 48vh;
+      object-fit: contain;
+      border-radius: 20px;
+      box-shadow: 0 20px 48px var(--shadow);
+      background: color-mix(in srgb, var(--card) 92%, transparent);
+    }
+    .shortcode-figure-fit-cover .shortcode-figure-image {
+      object-fit: cover;
+    }
+    .shortcode-figure-fit-contain .shortcode-figure-image {
+      object-fit: contain;
+    }
+    .shortcode-figure-caption {
+      margin-top: 12px;
+      display: grid;
+      gap: 6px;
+      font: 12px/1.3 sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .shortcode-figure-credit {
+      color: color-mix(in srgb, var(--muted) 88%, var(--fg));
     }
     .shortcode-video {
       margin: 28px 0;
@@ -1421,6 +1463,42 @@ func defaultThemePrintDeckLayout() string {
     .shortcode-stat-detail {
       margin-top: 10px;
       color: var(--fg);
+    }
+    .shortcode-figure {
+      margin: 28px 0;
+      max-width: min(100%, var(--shortcode-figure-width, 100%));
+    }
+    .shortcode-figure-link {
+      display: block;
+      color: inherit;
+      text-decoration: none;
+    }
+    .shortcode-figure-image {
+      display: block;
+      width: 100%;
+      max-height: 48vh;
+      object-fit: contain;
+      border-radius: 20px;
+      box-shadow: 0 20px 48px var(--shadow);
+      background: color-mix(in srgb, var(--card) 92%, transparent);
+    }
+    .shortcode-figure-fit-cover .shortcode-figure-image {
+      object-fit: cover;
+    }
+    .shortcode-figure-fit-contain .shortcode-figure-image {
+      object-fit: contain;
+    }
+    .shortcode-figure-caption {
+      margin-top: 12px;
+      display: grid;
+      gap: 6px;
+      font: 12px/1.3 sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .shortcode-figure-credit {
+      color: color-mix(in srgb, var(--muted) 88%, var(--fg));
     }
     .shortcode-video {
       margin: 28px 0;

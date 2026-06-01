@@ -106,6 +106,88 @@ func TestRenderThemeShortcodeSetSupportsVideoAndNestedColumns(t *testing.T) {
 	}
 }
 
+func TestRenderFigureShortcodeValidatesParamsAndResolvesLocalAssets(t *testing.T) {
+	projectRoot := t.TempDir()
+	themeRoot := filepath.Join(projectRoot, "themes", "default")
+	slideRoot := filepath.Join(projectRoot, "slides", "02-why")
+	if err := os.MkdirAll(filepath.Join(themeRoot, "shortcodes"), 0o755); err != nil {
+		t.Fatalf("create theme shortcode dir: %v", err)
+	}
+	if err := os.MkdirAll(slideRoot, 0o755); err != nil {
+		t.Fatalf("create slide dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(slideRoot, "chart.svg"), []byte("<svg/>"), 0o644); err != nil {
+		t.Fatalf("write slide asset: %v", err)
+	}
+
+	figure := `{{ validateNoInner .Name .Inner }}{{ validateParams .Name .Params "src" "alt" "caption" "class" "width" "position" "fit" "link" "credit" }}{{ $fit := optionalParamOneOf .Params "fit" "contain" "cover" }}<figure class="{{ figureClassNames .Params $fit }}"{{ with figureStyle .Params }} style="{{ . }}"{{ end }}>{{ $src := assetRefStrict (requiredParam .Params "src") }}{{ $alt := requiredParam .Params "alt" }}<img class="shortcode-figure-image" src="{{ $src }}" alt="{{ $alt }}"{{ with figureImageStyle .Params }} style="{{ . }}"{{ end }}>{{ if or (optionalParam .Params "caption") (optionalParam .Params "credit") }}<figcaption>{{ with optionalParam .Params "caption" }}{{ . }}{{ end }}{{ with optionalParam .Params "credit" }}<span class="shortcode-figure-credit">{{ . }}</span>{{ end }}</figcaption>{{ end }}</figure>`
+	if err := os.WriteFile(filepath.Join(themeRoot, "shortcodes", "figure.html"), []byte(figure), 0o644); err != nil {
+		t.Fatalf("write figure shortcode: %v", err)
+	}
+
+	rendered, err := Render(`{{< figure src="chart.svg" alt="Quarterly chart" caption="Quarterly growth" width="72%" fit="contain" position="top center" credit="Source: Finance" />}}`, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+		Slide: deck.Slide{
+			ID:         "02-why",
+			BundlePath: slideRoot,
+		},
+	})
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+
+	for _, needle := range []string{
+		`class="shortcode-figure shortcode-figure-fit-contain"`,
+		`style="--shortcode-figure-width: 72%;"`,
+		`src="slides/02-why/chart.svg"`,
+		`alt="Quarterly chart"`,
+		`style="object-position: top center;"`,
+		`Quarterly growth`,
+		`Source: Finance`,
+	} {
+		if !strings.Contains(rendered, needle) {
+			t.Fatalf("expected rendered figure to contain %q, got %q", needle, rendered)
+		}
+	}
+
+	_, err = Render(`{{< figure alt="Missing src" />}}`, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+		Slide:       deck.Slide{ID: "02-why", BundlePath: slideRoot},
+	})
+	if err == nil || !strings.Contains(err.Error(), `requires parameter "src"`) {
+		t.Fatalf("expected missing src error, got %v", err)
+	}
+
+	_, err = Render(`{{< figure src="chart.svg" alt="Bad fit" fit="stretch" />}}`, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+		Slide:       deck.Slide{ID: "02-why", BundlePath: slideRoot},
+	})
+	if err == nil || !strings.Contains(err.Error(), `parameter "fit" must be one of "contain, cover"`) {
+		t.Fatalf("expected invalid fit error, got %v", err)
+	}
+
+	_, err = Render(`{{< figure src="missing.svg" alt="Missing asset" />}}`, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+		Slide:       deck.Slide{ID: "02-why", BundlePath: slideRoot},
+	})
+	if err == nil || !strings.Contains(err.Error(), `asset "missing.svg" not found`) {
+		t.Fatalf("expected missing asset error, got %v", err)
+	}
+
+	_, err = Render(`{{< figure src="chart.svg" alt="Oops" tone="info" />}}`, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+		Slide:       deck.Slide{ID: "02-why", BundlePath: slideRoot},
+	})
+	if err == nil || !strings.Contains(err.Error(), `does not support parameter "tone"`) {
+		t.Fatalf("expected unsupported parameter error, got %v", err)
+	}
+}
+
 func TestRenderRejectsUnknownOrMalformedShortcodes(t *testing.T) {
 	projectRoot := t.TempDir()
 
