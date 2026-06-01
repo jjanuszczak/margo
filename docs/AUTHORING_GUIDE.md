@@ -465,6 +465,22 @@ Current `video` behavior:
 - `src` may be an external URL or local asset path
 - `poster` may be a slide-local or deck-level asset path
 
+### Figure
+
+```md
+{{< figure src="assets/chart.png" alt="Revenue growth chart" caption="Revenue grew 3x from 2022 to 2025." width="72%" fit="contain" />}}
+```
+
+Current `figure` behavior:
+- `src` must resolve to a slide-local or deck-level asset path
+- `alt` is required
+- `caption` is optional
+- `credit` is optional and renders as secondary attribution text
+- `width` sets a maximum rendered width for the figure block
+- `fit` supports `contain` or `cover`
+- `position` maps to CSS `object-position` for the image
+- `link` optionally wraps the image in an anchor
+
 ### Deck-local shortcodes
 
 The scaffold also creates a deck-local shortcode at:
