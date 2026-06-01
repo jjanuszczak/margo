@@ -200,30 +200,6 @@ func executeShortcode(name string, params map[string]string, inner string, ctx C
 			}
 			return "", nil
 		},
-		"figureClassNames": func(params map[string]string, fit string) string {
-			classes := []string{"shortcode-figure"}
-			if fit != "" {
-				classes = append(classes, "shortcode-figure-fit-"+fit)
-			}
-			if extra := strings.TrimSpace(params["class"]); extra != "" {
-				classes = append(classes, extra)
-			}
-			return strings.Join(classes, " ")
-		},
-		"figureStyle": func(params map[string]string) string {
-			width := strings.TrimSpace(params["width"])
-			if width == "" {
-				return ""
-			}
-			return fmt.Sprintf("--shortcode-figure-width: %s;", width)
-		},
-		"figureImageStyle": func(params map[string]string) string {
-			position := strings.TrimSpace(params["position"])
-			if position == "" {
-				return ""
-			}
-			return fmt.Sprintf("object-position: %s;", position)
-		},
 	}).ParseFiles(path)
 	if err != nil {
 		return "", fmt.Errorf("parse shortcode template %q: %w", path, err)

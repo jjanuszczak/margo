@@ -107,6 +107,55 @@ Recent additions that matter:
 - vendored theme installation via `theme add`
 - `serve --port` for non-default preview ports
 
+## Architectural Principles
+
+These are important project-level design choices, not incidental implementation details.
+
+### 1. Keep the Go engine generic
+
+Prefer Go code to provide:
+- parsing
+- validation
+- asset resolution
+- staging
+- model shaping
+- generic template helper primitives
+
+Avoid pushing presentation-specific HTML/CSS shape decisions into Go unless there is a strong cross-cutting reason.
+
+### 2. Keep rendering shape in templates
+
+Shortcodes, layouts, and future partials should own:
+- markup structure
+- class composition
+- inline style composition where needed
+- theme-facing presentational decisions
+
+Example:
+- generic helpers like required param checks and asset resolution belong in Go
+- figure-specific class/style assembly belongs in shortcode templates, not in Go helpers
+
+### 3. Prefer reusable primitives over named feature logic
+
+If a helper can validate or resolve something for many shortcodes or templates, it is a good candidate for Go.
+
+If a helper only exists to assemble one component's final markup shape, it probably belongs in template composition instead.
+
+### 4. Keep deck, theme, and shortcode concerns separate
+
+Margo should preserve a clear boundary:
+- engine mechanics in Go
+- theme and deck presentation in templates
+- author-facing content usage in Markdown/front matter
+
+Do not quietly collapse those layers together.
+
+### 5. Favor explicit override models
+
+When deck-level and theme-level customization both exist, prefer explicit local override behavior over magic lookup or deep inheritance.
+
+This already applies to shortcodes and should remain the bias for future features such as partials.
+
 ## Repo Layout
 
 Top-level directories:
@@ -345,6 +394,11 @@ will ripple into:
 - tests
 - real deck fidelity
 
+Also be careful about architectural drift:
+- do not move shortcode-specific presentational logic into Go unless it is genuinely reusable
+- prefer template composition over new feature-specific helper code
+- when adding helper functions, ask whether they are mechanism-level or component-specific
+
 ### 4. The print and interactive pipelines are related but not identical
 
 `internal/output/html` and `internal/output/printhtml` share render logic, but they are not the same shell.
@@ -359,11 +413,13 @@ Prefer:
 - explicit, constrained features
 - deck-local and theme-local customization
 - minimal extension points with clear ownership
+- generic engine primitives with presentational composition in templates
 
 Avoid:
 - broad DSLs
 - implicit magic behavior
 - arbitrary generalization unless the product needs it
+- growing a library of shortcode-specific Go helpers when template logic is sufficient
 
 ## How To Work Safely
 
@@ -389,6 +445,10 @@ When implementing a change:
 5. If the change touches theme rendering, check both:
    - the default/reference deck
    - the ArCa dogfood deck
+
+6. If you add template helpers in Go, explicitly check whether they are:
+   - generic mechanism helpers that could serve multiple shortcodes/layouts
+   - presentational helpers that should stay in templates instead
 
 ## Documentation Conventions
 
