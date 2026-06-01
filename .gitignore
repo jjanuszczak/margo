@@ -13,6 +13,9 @@ dist/
 # macOS noise
 .DS_Store
 
+# Gemini workspace directory (installed skills, local state)
+.gemini/
+
 # Editor and IDE files
 .idea/
 .vscode/
@@ -29,3 +32,6 @@ scratch-init/
 
 # Local dogfood decks not yet promoted to committed fixtures
 examples/arca-investor-memo/
+
+# Skill evaluation reports
+skills/*/evals/reports/

@@ -117,7 +117,22 @@ docs/
 examples/
 internal/
 scripts/
+skills/
 ```
+
+### Agent Skills
+
+Predefined agent skills are stored in the `skills/` directory. These skills provide specialized workflows and domain expertise for Gemini CLI when working on the `margo` project.
+
+- **[github-issue-manager](./skills/github-issue-manager)**: Manages the creation of GitHub issues and development branches. Use this to start work on a new feature or bug fix.
+- **[git-workflow-lifecycle](./skills/git-workflow-lifecycle)**: Automates the end-to-end lifecycle of a feature branch, from submission (commit, push, PR) to cleanup.
+
+To ensure these skills are active in your environment, they should be installed into the workspace scope:
+```bash
+gemini skills install skills/github-issue-manager.skill --scope workspace
+gemini skills install skills/git-workflow-lifecycle.skill --scope workspace
+```
+After installation, reload the skills in your interactive session using `/skills reload`.
 
 ### Important code areas
 

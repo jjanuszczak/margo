@@ -1,0 +1,15 @@
+pipeline:
+  target_version: "v1.1"
+  steps:
+    - name: "Naming & Linking Convention"
+      id: "convention"
+      script: "checks/convention_check.py"
+      halt_on_fail: true
+    - name: "Git Branch Verification"
+      id: "git"
+      script: "checks/git_check.py"
+      halt_on_fail: true
+    - name: "GitHub Issue Verification"
+      id: "github"
+      script: "checks/github_check.py"
+      halt_on_fail: false

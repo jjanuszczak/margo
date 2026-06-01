@@ -1,0 +1,13 @@
+tasks:
+  submit:
+    steps:
+      - name: "PR Existence & Linkage"
+        id: "pr_link"
+        script: "checks/pr_check.py"
+        halt_on_fail: true
+  cleanup:
+    steps:
+      - name: "Local Branch Cleanup"
+        id: "local_cleanup"
+        script: "checks/cleanup_check.py"
+        halt_on_fail: true
