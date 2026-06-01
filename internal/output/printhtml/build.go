@@ -20,9 +20,16 @@ const (
 type pageData struct {
 	Deck         deck.DeckMetadata
 	DeckLogo     render.RenderedLogo
+	Snippets     renderedSnippets
+	PDFEnabled   bool
 	Theme        theme.Metadata
 	ThemeOptions map[string]any
 	Slides       []render.RenderedSlide
+}
+
+type renderedSnippets struct {
+	Head    template.HTML
+	BodyEnd template.HTML
 }
 
 const defaultTemplate = `<!doctype html>
@@ -200,12 +207,36 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) (di
 	data := pageData{
 		Deck:         model.Config.Deck,
 		DeckLogo:     logo,
+		Snippets:     resolveSnippets(model.Config.Snippets),
+		PDFEnabled:   false,
 		Theme:        activeTheme,
 		ThemeOptions: model.Config.Theme.Options,
 		Slides:       slides,
 	}
 
-	tmpl, err := template.New("print").Funcs(template.FuncMap{
+	templateSource := defaultTemplate
+	templateName := "print"
+	if strings.TrimSpace(activeTheme.PrintDeckLayout) != "" {
+		tmpl, err := template.New("print").Funcs(template.FuncMap{
+			"themeOption":     themeOption,
+			"colorModeClass":  colorModeClass,
+			"typographyClass": typographyClass,
+			"bodyFont":        bodyFont,
+			"headingFont":     headingFont,
+			"pageBackground":  pageBackground,
+			"pageForeground":  pageForeground,
+			"pageMuted":       pageMuted,
+		}).ParseFiles(activeTheme.PrintDeckLayout)
+		if err != nil {
+			return diagnostics.Report{}, err
+		}
+		if err := tmpl.ExecuteTemplate(file, filepath.Base(activeTheme.PrintDeckLayout), data); err != nil {
+			return diagnostics.Report{}, err
+		}
+		return report, nil
+	}
+
+	tmpl, err := template.New(templateName).Funcs(template.FuncMap{
 		"themeOption":     themeOption,
 		"colorModeClass":  colorModeClass,
 		"typographyClass": typographyClass,
@@ -214,7 +245,7 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) (di
 		"pageBackground":  pageBackground,
 		"pageForeground":  pageForeground,
 		"pageMuted":       pageMuted,
-	}).Parse(defaultTemplate)
+	}).Parse(templateSource)
 	if err != nil {
 		return diagnostics.Report{}, err
 	}
@@ -222,6 +253,13 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) (di
 		return diagnostics.Report{}, err
 	}
 	return report, nil
+}
+
+func resolveSnippets(value deck.SnippetSettings) renderedSnippets {
+	return renderedSnippets{
+		Head:    template.HTML(strings.TrimSpace(value.Head)),
+		BodyEnd: template.HTML(strings.TrimSpace(value.BodyEnd)),
+	}
 }
 
 func themeOption(options map[string]any, key string, fallback string) string {

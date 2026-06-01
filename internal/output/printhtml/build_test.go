@@ -61,11 +61,11 @@ func TestReferenceDeckPrintBuildFlow(t *testing.T) {
 
 	for _, needle := range []string{
 		`class="margo-print color-mode-dark"`,
-		`class="print-slide print-slide-layout-title"`,
-		`class="print-slide print-slide-layout-section"`,
-		`class="print-slide print-slide-layout-content"`,
-		`class="print-slide print-slide-layout-media-right"`,
-		`class="print-slide print-slide-layout-media-left"`,
+		`class="slide-shell content-slide"`,
+		`class="slide-shell title-slide"`,
+		`class="slide-shell section-slide"`,
+		`class="slide-body media-split-slide media-right"`,
+		`class="slide-body media-split-slide media-left"`,
 		`Strategy`,
 		`Why Margo`,
 		`Customer Story`,
@@ -77,6 +77,7 @@ func TestReferenceDeckPrintBuildFlow(t *testing.T) {
 		`slides/05-customer-story/spotlight.svg`,
 		`size: 13.333in 7.5in`,
 		`page-break-after: always;`,
+		`window.__margoFixture`,
 	} {
 		if !strings.Contains(out, needle) {
 			t.Fatalf("expected print html to contain %q", needle)
@@ -85,10 +86,12 @@ func TestReferenceDeckPrintBuildFlow(t *testing.T) {
 
 	for _, forbidden := range []string{
 		"Export PDF",
-		"window.__margoFixture",
-		"<script",
 		"Draft Slide",
 		"Hidden Slide",
+		`class="print-slide`,
+		`/assets/margo.js`,
+		`window.location.search`,
+		`fetch('/__margo/export/pdf'`,
 	} {
 		if strings.Contains(out, forbidden) {
 			t.Fatalf("expected print html to exclude %q", forbidden)
@@ -100,5 +103,76 @@ func TestReferenceDeckPrintBuildFlow(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "slides", "02-why", "diagram.svg")); err != nil {
 		t.Fatalf("expected staged print slide asset to exist: %v", err)
+	}
+}
+
+func TestThemePrintDeckTemplateOverridesFallback(t *testing.T) {
+	projectRoot := fixtureProjectRoot(t, "arca-investor-memo")
+
+	raw, err := config.LoadRaw(filepath.Join(projectRoot, config.DefaultFilename))
+	if err != nil {
+		t.Fatalf("load raw config: %v", err)
+	}
+	parsed, err := config.Parse(raw)
+	if err != nil {
+		t.Fatalf("parse config: %v", err)
+	}
+
+	slides, err := content.DiscoverSlides(projectRoot)
+	if err != nil {
+		t.Fatalf("discover slides: %v", err)
+	}
+	filtered := deck.ApplySectionDividers(deck.FilterSlides(slides, deck.FilterOptions{}))
+	model := deck.Model{
+		Config:   parsed.Config,
+		Sections: deck.BuildSections(filtered),
+		Slides:   filtered,
+	}
+
+	activeTheme, err := theme.Load(projectRoot, parsed.Config.Theme.Name)
+	if err != nil {
+		t.Fatalf("load theme: %v", err)
+	}
+	parsed.Config.Theme.Options, err = theme.ResolveOptions(activeTheme, parsed.Config.Theme.Options)
+	if err != nil {
+		t.Fatalf("resolve theme options: %v", err)
+	}
+	model.Config.Theme.Options = parsed.Config.Theme.Options
+
+	if _, err := Write(projectRoot, model, activeTheme); err != nil {
+		t.Fatalf("write print html: %v", err)
+	}
+
+	rendered, err := os.ReadFile(filepath.Join(projectRoot, OutputFile))
+	if err != nil {
+		t.Fatalf("read print html: %v", err)
+	}
+	out := string(rendered)
+
+	for _, needle := range []string{
+		`class="margo-print"`,
+		`class="slide `,
+		`class="slide-frame"`,
+		`class="slide-shell fancy-title-slide"`,
+		`class="slide-shell content-layout"`,
+		`background: var(--margo-background-overlay, transparent);`,
+		`font-family: var(--body-font);`,
+		`class="brand-mark"`,
+		`Confidential - For Internal Use Only`,
+	} {
+		if !strings.Contains(out, needle) {
+			t.Fatalf("expected theme print html to contain %q", needle)
+		}
+	}
+
+	for _, forbidden := range []string{
+		`class="print-slide`,
+		`deck-control`,
+		`window.location.search`,
+		`fetch('/__margo/export/pdf'`,
+	} {
+		if strings.Contains(out, forbidden) {
+			t.Fatalf("expected theme print html to exclude %q", forbidden)
+		}
 	}
 }

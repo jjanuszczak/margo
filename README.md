@@ -25,6 +25,8 @@ Working today:
 - `margo init`
 - `margo build`
 - `margo serve`
+- `margo theme add <repo>`
+- `margo theme list`
 - `margo clean`
 - `margo new slide <name>`
 - `margo new theme <name>`
@@ -47,7 +49,6 @@ Not finished:
 - manifest-driven sequencing beyond the current loader path
 - presenter mode
 - browser-refresh injection outside the scaffolded default theme
-- polished CLI flags and non-interactive ergonomics
 
 ## Build
 
@@ -107,6 +108,13 @@ Create a theme:
 
 ```bash
 ../bin/margo new theme custom
+```
+
+Install a vendored theme from a Git repo:
+
+```bash
+../bin/margo theme add https://example.com/brand-theme.git --ref v0.1.0
+../bin/margo theme list
 ```
 
 ## Project Shape

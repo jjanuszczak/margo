@@ -10,11 +10,12 @@ import (
 )
 
 const (
-	ThemesDirName        = "themes"
-	ThemeMetadataFile    = "theme.yaml"
-	DefaultLayoutRelPath = "layouts/default.html"
-	DeckLayoutRelPath    = "layouts/deck.html"
-	SlideDefaultRelPath  = "layouts/slide-default.html"
+	ThemesDirName          = "themes"
+	ThemeMetadataFile      = "theme.yaml"
+	DefaultLayoutRelPath   = "layouts/default.html"
+	DeckLayoutRelPath      = "layouts/deck.html"
+	PrintDeckLayoutRelPath = "layouts/print-deck.html"
+	SlideDefaultRelPath    = "layouts/slide-default.html"
 )
 
 func Load(projectRoot, themeName string) (Metadata, error) {
@@ -25,9 +26,14 @@ func Load(projectRoot, themeName string) (Metadata, error) {
 	}
 
 	rootDir := filepath.Join(projectRoot, ThemesDirName, themeName)
+	return loadFromRootDir(rootDir, themeName)
+}
+
+func loadFromRootDir(rootDir, themeName string) (Metadata, error) {
 	metadataPath := filepath.Join(rootDir, ThemeMetadataFile)
 	layoutPath := filepath.Join(rootDir, DefaultLayoutRelPath)
 	deckLayoutPath := filepath.Join(rootDir, DeckLayoutRelPath)
+	printDeckLayoutPath := filepath.Join(rootDir, PrintDeckLayoutRelPath)
 	slideDefaultPath := filepath.Join(rootDir, SlideDefaultRelPath)
 
 	raw, err := os.ReadFile(metadataPath)
@@ -49,6 +55,9 @@ func Load(projectRoot, themeName string) (Metadata, error) {
 		deckLayoutExists = true
 		meta.DeckLayout = deckLayoutPath
 		meta.RequiredLayout = append(meta.RequiredLayout, DeckLayoutRelPath)
+	}
+	if _, err := os.Stat(printDeckLayoutPath); err == nil {
+		meta.PrintDeckLayout = printDeckLayoutPath
 	}
 	slideDefaultExists := false
 	if _, err := os.Stat(slideDefaultPath); err == nil {
