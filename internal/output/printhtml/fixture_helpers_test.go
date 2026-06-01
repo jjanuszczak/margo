@@ -91,6 +91,16 @@ func shouldCopyFixturePath(relPath string, allowed []string) bool {
 
 func allowedFixturePrefixes(deckName string) []string {
 	switch deckName {
+	case "arca-investor-memo":
+		return []string{
+			"margo.yaml",
+			"slides",
+			"themes",
+			"archetypes",
+			"assets",
+			"shortcodes",
+			"layouts",
+		}
 	case "reference-deck":
 		return []string{
 			"archetypes/agenda",

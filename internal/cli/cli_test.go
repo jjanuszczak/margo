@@ -2,7 +2,9 @@ package cli
 
 import (
 	"bytes"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -115,6 +117,16 @@ func TestParseNewThemeArgs(t *testing.T) {
 	}
 	if !blank {
 		t.Fatal("expected blank theme mode")
+	}
+}
+
+func TestParseThemeAddArgs(t *testing.T) {
+	repo, ref, name, err := parseThemeAddArgs([]string{"https://example.com/theme.git", "--ref", "v1.2.0", "--name", "brand"})
+	if err != nil {
+		t.Fatalf("parseThemeAddArgs returned error: %v", err)
+	}
+	if repo != "https://example.com/theme.git" || ref != "v1.2.0" || name != "brand" {
+		t.Fatalf("unexpected parsed values repo=%q ref=%q name=%q", repo, ref, name)
 	}
 }
 
@@ -390,6 +402,57 @@ func TestRunNewDeckThenBuildStarterDeck(t *testing.T) {
 	}
 }
 
+func TestRunThemeAddInstallsVendoredTheme(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := scaffold.CreateDeck(scaffold.DeckOptions{
+		Name:      "test-deck",
+		TargetDir: projectRoot,
+	}); err != nil {
+		t.Fatalf("create deck: %v", err)
+	}
+	repoRoot := createThemeGitRepo(t, "portable")
+
+	restoreWD := withWorkingDir(t, projectRoot)
+	defer restoreWD()
+
+	var out bytes.Buffer
+	if err := runThemeAdd([]string{repoRoot}, &out); err != nil {
+		t.Fatalf("runThemeAdd returned error: %v", err)
+	}
+	if !strings.Contains(out.String(), "installed theme portable") {
+		t.Fatalf("expected install output, got %q", out.String())
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, "themes", "portable", "theme.yaml")); err != nil {
+		t.Fatalf("expected installed vendored theme: %v", err)
+	}
+}
+
+func TestRunThemeListReportsVendoredSources(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := scaffold.CreateDeck(scaffold.DeckOptions{
+		Name:      "test-deck",
+		TargetDir: projectRoot,
+	}); err != nil {
+		t.Fatalf("create deck: %v", err)
+	}
+	repoRoot := createThemeGitRepo(t, "portable")
+
+	restoreWD := withWorkingDir(t, projectRoot)
+	defer restoreWD()
+
+	if err := runThemeAdd([]string{repoRoot}, io.Discard); err != nil {
+		t.Fatalf("runThemeAdd returned error: %v", err)
+	}
+
+	var out bytes.Buffer
+	if err := runThemeList(&out); err != nil {
+		t.Fatalf("runThemeList returned error: %v", err)
+	}
+	if !strings.Contains(out.String(), "portable - "+repoRoot+" @ ") {
+		t.Fatalf("expected listed source info, got %q", out.String())
+	}
+}
+
 func writeArchetype(t *testing.T, projectRoot string, name string, description string) {
 	t.Helper()
 	dir := filepath.Join(projectRoot, "archetypes", name)
@@ -402,6 +465,37 @@ func writeArchetype(t *testing.T, projectRoot string, name string, description s
 		"default_type: " + name + "\n"
 	if err := os.WriteFile(filepath.Join(dir, "archetype.yaml"), []byte(content), 0o644); err != nil {
 		t.Fatalf("write archetype metadata: %v", err)
+	}
+}
+
+func createThemeGitRepo(t *testing.T, name string) string {
+	t.Helper()
+	repoRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repoRoot, "layouts"), 0o755); err != nil {
+		t.Fatalf("mkdir layouts dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(repoRoot, "theme.yaml"), []byte("name: "+name+"\nversion: 0.1.0\n"), 0o644); err != nil {
+		t.Fatalf("write theme metadata: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(repoRoot, "layouts", "default.html"), []byte("{{ .Deck.Title }}"), 0o644); err != nil {
+		t.Fatalf("write theme layout: %v", err)
+	}
+
+	runGit(t, repoRoot, "init")
+	runGit(t, repoRoot, "config", "user.name", "Codex")
+	runGit(t, repoRoot, "config", "user.email", "codex@example.com")
+	runGit(t, repoRoot, "add", ".")
+	runGit(t, repoRoot, "commit", "-m", "add theme")
+	return repoRoot
+}
+
+func runGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %s failed: %v\n%s", strings.Join(args, " "), err, string(output))
 	}
 }
 

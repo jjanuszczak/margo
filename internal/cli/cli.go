@@ -76,6 +76,8 @@ func dispatch(args []string, stdout io.Writer, stderr io.Writer) error {
 		return runBuildLikeCommand("serve", args[1:], stdout)
 	case "new":
 		return runNestedNew(args[1:], stdout, stderr)
+	case "theme":
+		return runThemeCommand(args[1:], stdout)
 	case "init":
 		return runInit(stdout)
 	case "clean":
@@ -101,6 +103,20 @@ func runNestedNew(args []string, stdout io.Writer, stderr io.Writer) error {
 	default:
 		targetDir := args[0]
 		return runNewDeck(targetDir, stdout)
+	}
+}
+
+func runThemeCommand(args []string, stdout io.Writer) error {
+	if len(args) == 0 {
+		return fmt.Errorf("theme requires a subcommand")
+	}
+	switch args[0] {
+	case "add":
+		return runThemeAdd(args[1:], stdout)
+	case "list":
+		return runThemeList(stdout)
+	default:
+		return fmt.Errorf("unknown theme subcommand %q", args[0])
 	}
 }
 
@@ -241,6 +257,96 @@ func runNewTheme(args []string, stdout io.Writer) error {
 		fmt.Fprintln(stdout, "theme mode: blank")
 	} else {
 		fmt.Fprintln(stdout, "theme mode: default-inspired")
+	}
+	return nil
+}
+
+func runThemeAdd(args []string, stdout io.Writer) error {
+	repo, ref, name, err := parseThemeAddArgs(args)
+	if err != nil {
+		return err
+	}
+	if repo == "" {
+		return fmt.Errorf("theme add requires a git repo")
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working directory: %w", err)
+	}
+	root, err := project.Discover(wd)
+	if err != nil {
+		report := diagnostics.Report{}
+		report.Add(diagnostics.Diagnostic{
+			Severity: diagnostics.SeverityError,
+			Code:     "project_not_found",
+			Message:  err.Error(),
+			Path:     wd,
+		})
+		return commandError{
+			message: "theme add requires a Margo project root",
+			report:  report,
+		}
+	}
+
+	installed, err := theme.Install(theme.InstallOptions{
+		ProjectRoot: root.Dir,
+		Repo:        repo,
+		Ref:         ref,
+		Name:        name,
+	})
+	if err != nil {
+		return fmt.Errorf("install theme: %w", err)
+	}
+
+	fmt.Fprintf(stdout, "installed theme %s at %s\n", installed.Name, filepath.Join(root.Dir, "themes", installed.Name))
+	if installed.Source != nil {
+		fmt.Fprintf(stdout, "theme source: %s %s\n", installed.Source.Type, installed.Source.Repo)
+		if installed.Source.ResolvedRef != "" {
+			fmt.Fprintf(stdout, "theme revision: %s\n", installed.Source.ResolvedRef)
+		}
+	}
+	return nil
+}
+
+func runThemeList(stdout io.Writer) error {
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working directory: %w", err)
+	}
+	root, err := project.Discover(wd)
+	if err != nil {
+		report := diagnostics.Report{}
+		report.Add(diagnostics.Diagnostic{
+			Severity: diagnostics.SeverityError,
+			Code:     "project_not_found",
+			Message:  err.Error(),
+			Path:     wd,
+		})
+		return commandError{
+			message: "theme list requires a Margo project root",
+			report:  report,
+		}
+	}
+
+	themes, err := theme.List(root.Dir)
+	if err != nil {
+		return fmt.Errorf("list themes: %w", err)
+	}
+	if len(themes) == 0 {
+		fmt.Fprintln(stdout, "no themes found")
+		return nil
+	}
+	for _, installed := range themes {
+		if installed.Source != nil && strings.TrimSpace(installed.Source.Repo) != "" {
+			suffix := installed.Source.Repo
+			if strings.TrimSpace(installed.Source.ResolvedRef) != "" {
+				suffix += " @ " + installed.Source.ResolvedRef
+			}
+			fmt.Fprintf(stdout, "%s - %s\n", installed.Name, suffix)
+			continue
+		}
+		fmt.Fprintln(stdout, installed.Name)
 	}
 	return nil
 }
@@ -581,6 +687,7 @@ func writeHelp(w io.Writer) {
 	fmt.Fprintln(w, "Commands:")
 	fmt.Fprintln(w, "  build        Build all configured outputs for the current deck")
 	fmt.Fprintln(w, "  serve        Serve the current deck locally")
+	fmt.Fprintln(w, "  theme        Install or inspect vendored themes")
 	fmt.Fprintln(w, "  new          Create a deck, slide, or theme scaffold")
 	fmt.Fprintln(w, "  init         Initialize a deck in the current directory")
 	fmt.Fprintln(w, "  clean        Remove generated output and tool-managed build state")
@@ -589,6 +696,8 @@ func writeHelp(w io.Writer) {
 	fmt.Fprintln(w, "Common options:")
 	fmt.Fprintln(w, "  margo build --include-drafts")
 	fmt.Fprintln(w, "  margo serve [--include-drafts] [--no-open] [--port <port>]")
+	fmt.Fprintln(w, "  margo theme add <repo> [--ref <rev>] [--name <local-name>]")
+	fmt.Fprintln(w, "  margo theme list")
 	fmt.Fprintln(w, "  margo new slide <name> [--archetype <name>]")
 	fmt.Fprintln(w, "  margo new theme <name> [--blank]")
 }
@@ -740,6 +849,39 @@ func parseNewThemeArgs(args []string) (string, bool, error) {
 	}
 
 	return themeName, blank, nil
+}
+
+func parseThemeAddArgs(args []string) (string, string, string, error) {
+	var repo string
+	var ref string
+	var name string
+
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--ref":
+			if i+1 >= len(args) {
+				return "", "", "", fmt.Errorf("theme add requires a value for --ref")
+			}
+			ref = strings.TrimSpace(args[i+1])
+			i++
+		case "--name":
+			if i+1 >= len(args) {
+				return "", "", "", fmt.Errorf("theme add requires a value for --name")
+			}
+			name = strings.TrimSpace(args[i+1])
+			i++
+		default:
+			if strings.HasPrefix(args[i], "--") {
+				return "", "", "", fmt.Errorf("unknown theme add option %q", args[i])
+			}
+			if repo != "" {
+				return "", "", "", fmt.Errorf("theme add accepts exactly one repo")
+			}
+			repo = args[i]
+		}
+	}
+
+	return repo, ref, name, nil
 }
 
 func min(a, b int) int {

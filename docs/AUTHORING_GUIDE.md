@@ -553,6 +553,23 @@ themes/custom/
 ../bin/margo new theme minimalist --blank
 ```
 
+### Install a vendored theme from Git
+
+From inside a deck:
+
+```bash
+../bin/margo theme add https://example.com/brand-theme.git --ref v0.1.0
+```
+
+The first implementation installs the theme directly into the deck-local `themes/` directory and records the Git source in `theme.yaml`.
+
+Useful variants:
+
+```bash
+../bin/margo theme add https://example.com/brand-theme.git --name brand
+../bin/margo theme list
+```
+
 ### Switch themes
 
 Edit `margo.yaml`:
