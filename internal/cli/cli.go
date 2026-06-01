@@ -19,6 +19,7 @@ import (
 	"margo/internal/manifest"
 	"margo/internal/output/html"
 	"margo/internal/output/pdf"
+	"margo/internal/output/printhtml"
 	"margo/internal/project"
 	"margo/internal/scaffold"
 	"margo/internal/serve"
@@ -279,7 +280,7 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 		return fmt.Errorf("get working directory: %w", err)
 	}
 
-	includeDrafts, openBrowser, err := parseBuildLikeArgs(name, args)
+	includeDrafts, openBrowser, servePort, err := parseBuildLikeArgs(name, args)
 	if err != nil {
 		return err
 	}
@@ -458,8 +459,17 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			Slides:   slides,
 		}
 		renderPDF := name == "build" && parsed.Config.Outputs.PDF
-		if parsed.Config.Outputs.HTML || renderPDF {
+		if parsed.Config.Outputs.HTML {
 			report, err := html.Write(root.Dir, model, activeTheme)
+			if err != nil {
+				return err
+			}
+			if len(report.Items) > 0 {
+				diagnostics.WriteReport(stdout, report)
+			}
+		}
+		if renderPDF {
+			report, err := printhtml.Write(root.Dir, model, activeTheme)
 			if err != nil {
 				return err
 			}
@@ -485,10 +495,11 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 		}
 		filteredSlides = deck.ApplySectionDividers(filteredSlides)
 		fmt.Fprintf(stdout, "%s: rendering %d slides after filtering\n", name, len(filteredSlides))
-		if parsed.Config.Outputs.HTML || parsed.Config.Outputs.PDF {
+		if parsed.Config.Outputs.HTML {
 			fmt.Fprintf(stdout, "%s: wrote %s\n", name, html.OutputFile)
 		}
 		if parsed.Config.Outputs.PDF {
+			fmt.Fprintf(stdout, "%s: wrote %s\n", name, printhtml.OutputFile)
 			if browser, browserErr := pdf.DetectBrowser(); browserErr == nil {
 				fmt.Fprintf(stdout, "%s: pdf browser %s (%s)\n", name, browser.Path, browser.Source)
 			}
@@ -518,10 +529,36 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			if err := rebuild(); err != nil {
 				return err
 			}
+			modelSlides, err := resolveSlides(includeDrafts)
+			if err != nil {
+				return err
+			}
+			modelSlides = deck.ApplySectionDividers(modelSlides)
+			model := deck.Model{
+				Config:   parsed.Config,
+				Slides:   modelSlides,
+				Sections: deck.BuildSections(modelSlides),
+			}
+			activeTheme, err := theme.Load(root.Dir, parsed.Config.Theme.Name)
+			if err != nil {
+				return err
+			}
+			parsed.Config.Theme.Options, err = theme.ResolveOptions(activeTheme, parsed.Config.Theme.Options)
+			if err != nil {
+				return err
+			}
+			model.Config.Theme.Options = parsed.Config.Theme.Options
+			if _, err := printhtml.Write(root.Dir, model, activeTheme); err != nil {
+				return err
+			}
 			return pdf.Write(root.Dir)
 		}
 		return serve.Start(root.Dir, rebuild, serve.Options{
 			OpenBrowser: openBrowser,
+			Port:        servePort,
+			Input:       os.Stdin,
+			Output:      stdout,
+			Interactive: isInteractiveStdin(os.Stdin),
 			PDFEnabled:  parsed.Config.Outputs.PDF,
 			PDFPath:     filepath.Join(root.Dir, pdf.OutputFile),
 			GeneratePDF: generatePDF,
@@ -548,27 +585,52 @@ func writeHelp(w io.Writer) {
 	fmt.Fprintln(w, "  init         Initialize a deck in the current directory")
 	fmt.Fprintln(w, "  clean        Remove generated output and tool-managed build state")
 	fmt.Fprintln(w, "  version      Print version information")
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "Common options:")
+	fmt.Fprintln(w, "  margo build --include-drafts")
+	fmt.Fprintln(w, "  margo serve [--include-drafts] [--no-open] [--port <port>]")
+	fmt.Fprintln(w, "  margo new slide <name> [--archetype <name>]")
+	fmt.Fprintln(w, "  margo new theme <name> [--blank]")
 }
 
-func parseBuildLikeArgs(command string, args []string) (bool, bool, error) {
+func parseBuildLikeArgs(command string, args []string) (bool, bool, string, error) {
 	includeDrafts := command == "serve"
 	openBrowser := command == "serve"
+	servePort := ""
 
-	for _, arg := range args {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
 		switch arg {
 		case "--include-drafts":
 			includeDrafts = true
 		case "--no-open":
 			if command != "serve" {
-				return false, false, fmt.Errorf("%s does not support %s", command, arg)
+				return false, false, "", fmt.Errorf("%s does not support %s", command, arg)
 			}
 			openBrowser = false
+		case "--port":
+			if command != "serve" {
+				return false, false, "", fmt.Errorf("%s does not support %s", command, arg)
+			}
+			if i+1 >= len(args) {
+				return false, false, "", fmt.Errorf("serve requires a value for --port")
+			}
+			servePort = strings.TrimSpace(args[i+1])
+			if !isValidServePort(servePort) {
+				return false, false, "", fmt.Errorf("serve port %q is invalid; use a value between 1 and 65535", servePort)
+			}
+			i++
 		default:
-			return false, false, fmt.Errorf("unknown %s option %q", command, arg)
+			return false, false, "", fmt.Errorf("unknown %s option %q", command, arg)
 		}
 	}
 
-	return includeDrafts, openBrowser, nil
+	return includeDrafts, openBrowser, servePort, nil
+}
+
+func isValidServePort(value string) bool {
+	port, err := strconv.Atoi(value)
+	return err == nil && port >= 1 && port <= 65535
 }
 
 func parseNewSlideArgs(args []string) (string, string, error) {

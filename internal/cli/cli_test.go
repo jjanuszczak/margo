@@ -12,7 +12,7 @@ import (
 )
 
 func TestParseBuildLikeArgs(t *testing.T) {
-	includeDrafts, openBrowser, err := parseBuildLikeArgs("serve", []string{"--include-drafts", "--no-open"})
+	includeDrafts, openBrowser, port, err := parseBuildLikeArgs("serve", []string{"--include-drafts", "--no-open", "--port", "1414"})
 	if err != nil {
 		t.Fatalf("parseBuildLikeArgs returned error: %v", err)
 	}
@@ -22,8 +22,11 @@ func TestParseBuildLikeArgs(t *testing.T) {
 	if openBrowser {
 		t.Fatal("expected openBrowser to be false")
 	}
+	if port != "1414" {
+		t.Fatalf("expected serve port %q, got %q", "1414", port)
+	}
 
-	includeDrafts, openBrowser, err = parseBuildLikeArgs("build", []string{"--include-drafts"})
+	includeDrafts, openBrowser, port, err = parseBuildLikeArgs("build", []string{"--include-drafts"})
 	if err != nil {
 		t.Fatalf("parseBuildLikeArgs returned error: %v", err)
 	}
@@ -32,6 +35,16 @@ func TestParseBuildLikeArgs(t *testing.T) {
 	}
 	if openBrowser {
 		t.Fatal("expected build openBrowser to be false")
+	}
+	if port != "" {
+		t.Fatalf("expected empty build port, got %q", port)
+	}
+}
+
+func TestParseBuildLikeArgsRejectsInvalidServePort(t *testing.T) {
+	_, _, _, err := parseBuildLikeArgs("serve", []string{"--port", "70000"})
+	if err == nil || !strings.Contains(err.Error(), "invalid") {
+		t.Fatalf("expected invalid port error, got %v", err)
 	}
 }
 

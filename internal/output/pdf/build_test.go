@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"margo/internal/output/printhtml"
 )
 
 func TestBuildPrintArgs(t *testing.T) {
@@ -88,30 +90,14 @@ func TestFindBrowserInvalidOverride(t *testing.T) {
 	}
 }
 
-func TestCreatePrintHTMLInjectsPrintClassAndStripsScripts(t *testing.T) {
-	sourceDir := t.TempDir()
-	sourcePath := filepath.Join(sourceDir, "index.html")
-	source := `<!doctype html><html lang="en"><head><script>console.log("x")</script></head><body><script>console.log("y")</script><main>ok</main></body></html>`
-	if err := os.WriteFile(sourcePath, []byte(source), 0o644); err != nil {
-		t.Fatalf("write source html: %v", err)
+func TestWriteRequiresPrintHTMLArtifact(t *testing.T) {
+	projectRoot := t.TempDir()
+	err := Write(projectRoot)
+	if err == nil {
+		t.Fatal("expected missing print html to fail")
 	}
-
-	printPath, err := createPrintHTML(sourcePath)
-	if err != nil {
-		t.Fatalf("createPrintHTML returned error: %v", err)
-	}
-	defer os.Remove(printPath)
-
-	rendered, err := os.ReadFile(printPath)
-	if err != nil {
-		t.Fatalf("read print html: %v", err)
-	}
-	out := string(rendered)
-	if !strings.Contains(out, `<html class="margo-print" lang="en">`) {
-		t.Fatalf("expected print class injection, got %q", out)
-	}
-	if strings.Contains(out, "<script>") {
-		t.Fatalf("expected scripts to be stripped, got %q", out)
+	if !strings.Contains(err.Error(), printhtml.OutputFile) {
+		t.Fatalf("expected error to mention %q, got %v", printhtml.OutputFile, err)
 	}
 }
 

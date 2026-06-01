@@ -163,11 +163,16 @@ Preview locally:
 ../bin/margo serve
 ```
 
+`margo serve` uses `127.0.0.1:1313` by default. If that port is already in use:
+- interactive runs prompt for another port
+- non-interactive runs should pass `--port <port>`
+
 Useful variants:
 
 ```bash
 ../bin/margo build --include-drafts
 ../bin/margo serve --no-open
+../bin/margo serve --port 1414
 ../bin/margo clean
 ```
 

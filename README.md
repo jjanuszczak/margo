@@ -91,6 +91,12 @@ Serve the deck locally:
 ../bin/margo serve
 ```
 
+If the default preview port is unavailable, choose another port interactively or pass one explicitly:
+
+```bash
+../bin/margo serve --port 1414
+```
+
 Create a slide:
 
 ```bash
@@ -132,7 +138,8 @@ my-deck/
 - Generated test decks and local caches are ignored by `.gitignore`.
 - `examples/reference-deck` is the committed fixture deck for manual checks and regression work.
 - `examples/benchmark-deck` is the committed 20-slide deck for manual performance and density checks.
-- Some local preview verification required running outside the sandbox because binding `127.0.0.1:1313` is restricted in this environment.
+- `margo serve` uses `127.0.0.1:1313` by default. If that port is unavailable, interactive runs now prompt for another port and non-interactive runs should use `--port <port>`.
+- Some local preview verification required running outside the sandbox because binding local ports may be restricted in this environment.
 
 Benchmark the committed 20-slide deck build path with:
 

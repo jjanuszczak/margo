@@ -6,12 +6,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 	"time"
 
-	"margo/internal/output/html"
+	"margo/internal/output/printhtml"
 )
 
 const (
@@ -27,9 +26,9 @@ func DetectBrowser() (BrowserInfo, error) {
 }
 
 func Write(projectRoot string) error {
-	htmlPath := filepath.Join(projectRoot, html.OutputFile)
+	htmlPath := filepath.Join(projectRoot, printhtml.OutputFile)
 	if _, err := os.Stat(htmlPath); err != nil {
-		return fmt.Errorf("stat html output %q: %w", htmlPath, err)
+		return fmt.Errorf("stat print html output %q: %w", htmlPath, err)
 	}
 	if err := os.MkdirAll(filepath.Join(projectRoot, OutputDir), 0o755); err != nil {
 		return fmt.Errorf("create pdf output directory: %w", err)
@@ -44,11 +43,6 @@ func Write(projectRoot string) error {
 	if err != nil {
 		return fmt.Errorf("resolve html path: %w", err)
 	}
-	printHTML, err := createPrintHTML(absHTML)
-	if err != nil {
-		return fmt.Errorf("prepare print html: %w", err)
-	}
-	defer os.Remove(printHTML)
 	absPDF, err := filepath.Abs(filepath.Join(projectRoot, OutputFile))
 	if err != nil {
 		return fmt.Errorf("resolve pdf path: %w", err)
@@ -63,7 +57,7 @@ func Write(projectRoot string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, browser.Path, buildPrintArgs(printHTML, absPDF, userDataDir)...)
+	cmd := exec.CommandContext(ctx, browser.Path, buildPrintArgs(absHTML, absPDF, userDataDir)...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
@@ -176,36 +170,6 @@ func browserCandidates() []browserCandidate {
 
 func fileURL(path string) string {
 	return "file://" + filepath.ToSlash(path)
-}
-
-var scriptTagPattern = regexp.MustCompile(`(?is)<script\b[^>]*>.*?</script>`)
-
-func createPrintHTML(sourcePath string) (string, error) {
-	raw, err := os.ReadFile(sourcePath)
-	if err != nil {
-		return "", fmt.Errorf("read source html: %w", err)
-	}
-	printHTML := scriptTagPattern.ReplaceAllString(string(raw), "")
-	switch {
-	case strings.Contains(printHTML, "<html class=\"margo-print\""):
-		// already marked
-	case strings.Contains(printHTML, "<html "):
-		printHTML = strings.Replace(printHTML, "<html ", "<html class=\"margo-print\" ", 1)
-	case strings.Contains(printHTML, "<html>"):
-		printHTML = strings.Replace(printHTML, "<html>", "<html class=\"margo-print\">", 1)
-	default:
-		return "", fmt.Errorf("could not locate <html> tag in rendered output")
-	}
-
-	tmp, err := os.CreateTemp(filepath.Dir(sourcePath), "margo-print-*.html")
-	if err != nil {
-		return "", fmt.Errorf("create temporary print html: %w", err)
-	}
-	defer tmp.Close()
-	if _, err := tmp.WriteString(printHTML); err != nil {
-		return "", fmt.Errorf("write temporary print html: %w", err)
-	}
-	return tmp.Name(), nil
 }
 
 func pdfTimeout() time.Duration {

@@ -241,6 +241,26 @@ Treat the default theme as both:
 
 The default theme should be built in parallel with the renderer, not after it. It will force the contract to become real.
 
+### Post-v1 theme distribution direction
+Once the core local authoring flow is stable, the first reusable theme distribution workflow should be intentionally simple:
+- install themes into the deck-local `themes/` directory, where themes already live today
+- treat Git repositories as the initial transport mechanism rather than introducing a registry or global cache
+- support a pinned ref at install time so decks can choose an exact tag, branch, or commit
+- record installation provenance directly in `theme.yaml` so the installed theme remains self-describing
+- keep builds and serve fully offline after installation
+
+The first phase should prioritize:
+- `margo theme add <repo> [--ref <rev>] [--name <local-name>]`
+- install-time validation against the existing theme contract
+- explicit deck-local vendoring rather than shared machine-level theme state
+
+The first phase should explicitly defer:
+- central or global theme caches
+- automatic update workflows
+- registry or marketplace discovery
+- theme inheritance or composition
+- stronger trust or sandbox guarantees for third-party themes
+
 ## 9. HTML Runtime Plan
 
 ### Scope
