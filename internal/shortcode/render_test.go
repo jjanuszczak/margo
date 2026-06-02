@@ -188,6 +188,102 @@ func TestRenderFigureShortcodeValidatesParamsAndResolvesLocalAssets(t *testing.T
 	}
 }
 
+func TestRenderMermaidShortcodeSupportsInnerContentAndValidatesAlign(t *testing.T) {
+	projectRoot := t.TempDir()
+	themeRoot := filepath.Join(projectRoot, "themes", "default")
+	if err := os.MkdirAll(filepath.Join(themeRoot, "shortcodes"), 0o755); err != nil {
+		t.Fatalf("create theme shortcode dir: %v", err)
+	}
+
+	mermaid := `{{ requiredInner .Name .Inner }}{{ validateParams .Name .Params "caption" "align" "class" }}{{ $align := optionalParamOneOf .Params "align" "left" "center" "right" }}{{ $caption := optionalParam .Params "caption" }}{{ $extraClass := optionalParam .Params "class" }}<figure class="shortcode-mermaid{{ if $align }} shortcode-mermaid-align-{{ $align }}{{ else }} shortcode-mermaid-align-center{{ end }}{{ if $extraClass }} {{ $extraClass }}{{ end }}"><div class="shortcode-mermaid-render" aria-hidden="true"></div><pre class="shortcode-mermaid-definition">{{ .Inner }}</pre>{{ if $caption }}<figcaption class="shortcode-mermaid-caption">{{ $caption }}</figcaption>{{ end }}</figure>`
+	if err := os.WriteFile(filepath.Join(themeRoot, "shortcodes", "mermaid.html"), []byte(mermaid), 0o644); err != nil {
+		t.Fatalf("write mermaid shortcode: %v", err)
+	}
+
+	rendered, err := Render(`{{< mermaid caption="Authoring flow" align="left" >}}
+flowchart LR
+  A[Markdown] --> B[Build]
+{{< /mermaid >}}`, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+	})
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+
+	for _, needle := range []string{
+		`class="shortcode-mermaid shortcode-mermaid-align-left"`,
+		`class="shortcode-mermaid-definition"`,
+		`flowchart LR`,
+		`A[Markdown] --> B[Build]`,
+		`Authoring flow`,
+	} {
+		if !strings.Contains(rendered, needle) {
+			t.Fatalf("expected rendered mermaid to contain %q, got %q", needle, rendered)
+		}
+	}
+
+	_, err = Render(`{{< mermaid />}}`, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+	})
+	if err == nil || !strings.Contains(err.Error(), `requires inner content`) {
+		t.Fatalf("expected missing inner content error, got %v", err)
+	}
+
+	_, err = Render(`{{< mermaid align="wide" >}}flowchart LR
+A --> B
+{{< /mermaid >}}`, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+	})
+	if err == nil || !strings.Contains(err.Error(), `parameter "align" must be one of "left, center, right"`) {
+		t.Fatalf("expected invalid align error, got %v", err)
+	}
+}
+
+func TestRenderGitHubRepoShortcodeValidatesRepoAndRendersCard(t *testing.T) {
+	projectRoot := t.TempDir()
+	themeRoot := filepath.Join(projectRoot, "themes", "default")
+	if err := os.MkdirAll(filepath.Join(themeRoot, "shortcodes"), 0o755); err != nil {
+		t.Fatalf("create theme shortcode dir: %v", err)
+	}
+
+	repoCard := `{{ validateNoInner .Name .Inner }}{{ validateParams .Name .Params "repo" "caption" "class" }}{{ $repo := mustMatch .Name (requiredParam .Params "repo") "repo" "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" }}{{ $caption := optionalParam .Params "caption" }}{{ $extraClass := optionalParam .Params "class" }}{{ $url := printf "https://github.com/%s" $repo }}<figure class="shortcode-github-repo{{ if $extraClass }} {{ $extraClass }}{{ end }}"><a class="shortcode-github-repo-card" href="{{ $url }}"><div class="shortcode-github-repo-label">GitHub Repo</div><div class="shortcode-github-repo-name">{{ $repo }}</div><div class="shortcode-github-repo-url">{{ $url }}</div></a>{{ if $caption }}<figcaption class="shortcode-github-repo-caption">{{ $caption }}</figcaption>{{ end }}</figure>`
+	if err := os.WriteFile(filepath.Join(themeRoot, "shortcodes", "github-repo.html"), []byte(repoCard), 0o644); err != nil {
+		t.Fatalf("write github repo shortcode: %v", err)
+	}
+
+	rendered, err := Render(`{{< github-repo repo="jjanuszczak/margo" caption="Markdown-first deck authoring" />}}`, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+	})
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+
+	for _, needle := range []string{
+		`class="shortcode-github-repo"`,
+		`class="shortcode-github-repo-card"`,
+		`href="https://github.com/jjanuszczak/margo"`,
+		`GitHub Repo`,
+		`jjanuszczak/margo`,
+		`Markdown-first deck authoring`,
+	} {
+		if !strings.Contains(rendered, needle) {
+			t.Fatalf("expected rendered github repo card to contain %q, got %q", needle, rendered)
+		}
+	}
+
+	_, err = Render(`{{< github-repo repo="bad repo" />}}`, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+	})
+	if err == nil || !strings.Contains(err.Error(), `repo must match`) {
+		t.Fatalf("expected invalid repo error, got %v", err)
+	}
+}
+
 func TestRenderRejectsUnknownOrMalformedShortcodes(t *testing.T) {
 	projectRoot := t.TempDir()
 
