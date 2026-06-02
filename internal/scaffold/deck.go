@@ -369,6 +369,8 @@ func ThemeFiles(themeName string, includeStyles bool) map[string]string {
 		filepath.Join("themes", themeName, "layouts", "slide-section.html"):     defaultThemeSectionLayout(),
 		filepath.Join("themes", themeName, "layouts", "slide-title.html"):       defaultThemeTitleLayout(),
 		filepath.Join("themes", themeName, "layouts", "slide-two-column.html"):  defaultThemeTwoColumnLayout(),
+		filepath.Join("themes", themeName, "partials", "deck-footer.html"):      defaultThemeDeckFooterPartial(),
+		filepath.Join("themes", themeName, "partials", "deck-logo.html"):        defaultThemeDeckLogoPartial(),
 		filepath.Join("themes", themeName, "shortcodes", "callout.html"):        defaultThemeCalloutShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "column.html"):         defaultThemeColumnShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "columns.html"):        defaultThemeColumnsShortcode(),
@@ -489,6 +491,16 @@ func defaultThemeVideoShortcode() string {
   </video>
   {{ with index .Params "caption" }}<figcaption>{{ . }}</figcaption>{{ end }}
 </figure>
+`
+}
+
+func defaultThemeDeckLogoPartial() string {
+	return `{{ $root := .Root }}{{ $slide := .Slide }}{{ if and (or $root.DeckLogo.Text $root.DeckLogo.ImageSrc) (not $slide.HideLogo) }}<div class="deck-logo">{{ if $root.DeckLogo.IsImage }}<img src="{{ $root.DeckLogo.ImageSrc }}" alt="{{ $root.Deck.Title }} logo">{{ else }}{{ $root.DeckLogo.Text }}{{ end }}</div>{{ end }}
+`
+}
+
+func defaultThemeDeckFooterPartial() string {
+	return `{{ $slide := .Slide }}{{ if and $slide.ResolvedFooterText (not $slide.HideFooter) }}<div class="deck-footer">{{ $slide.ResolvedFooterText }}</div>{{ end }}
 `
 }
 
@@ -1094,13 +1106,14 @@ func defaultThemeDeckLayout() string {
 <body>
   <main>
     <div class="deck">
+      {{ $root := . }}
       {{ range $i, $slide := .Slides }}
       <section class="slide{{ if eq $i 0 }} active{{ end }}{{ if $slide.ImageHintClass }} {{ $slide.ImageHintClass }}{{ end }}"{{ if $slide.StyleAttr }} style="{{ $slide.StyleAttr }}"{{ end }}>
         {{ if $slide.IsDraft }}<div class="draft-badge">Draft</div>{{ end }}
-        {{ if and (or $.DeckLogo.Text $.DeckLogo.ImageSrc) (not $slide.HideLogo) }}<div class="deck-logo">{{ if $.DeckLogo.IsImage }}<img src="{{ $.DeckLogo.ImageSrc }}" alt="{{ $.Deck.Title }} logo">{{ else }}{{ $.DeckLogo.Text }}{{ end }}</div>{{ end }}
+        {{ template "deck-logo" (dict "Root" $root "Slide" $slide) }}
         {{ $slide.Body }}
         {{ if $slide.ImageCaption }}<div class="image-caption">{{ $slide.ImageCaption }}</div>{{ end }}
-        {{ if and $slide.ResolvedFooterText (not $slide.HideFooter) }}<div class="deck-footer">{{ $slide.ResolvedFooterText }}</div>{{ end }}
+        {{ template "deck-footer" (dict "Root" $root "Slide" $slide) }}
       </section>
       {{ end }}
       <div class="controls">
@@ -1693,13 +1706,14 @@ func defaultThemePrintDeckLayout() string {
 <body>
   <main>
     <div class="deck">
+      {{ $root := . }}
       {{ range $slide := .Slides }}
       <section class="slide{{ if $slide.ImageHintClass }} {{ $slide.ImageHintClass }}{{ end }}"{{ if $slide.StyleAttr }} style="{{ $slide.StyleAttr }}"{{ end }}>
         {{ if $slide.IsDraft }}<div class="draft-badge">Draft</div>{{ end }}
-        {{ if and (or $.DeckLogo.Text $.DeckLogo.ImageSrc) (not $slide.HideLogo) }}<div class="deck-logo">{{ if $.DeckLogo.IsImage }}<img src="{{ $.DeckLogo.ImageSrc }}" alt="{{ $.Deck.Title }} logo">{{ else }}{{ $.DeckLogo.Text }}{{ end }}</div>{{ end }}
+        {{ template "deck-logo" (dict "Root" $root "Slide" $slide) }}
         {{ $slide.Body }}
         {{ if $slide.ImageCaption }}<div class="image-caption">{{ $slide.ImageCaption }}</div>{{ end }}
-        {{ if and $slide.ResolvedFooterText (not $slide.HideFooter) }}<div class="deck-footer">{{ $slide.ResolvedFooterText }}</div>{{ end }}
+        {{ template "deck-footer" (dict "Root" $root "Slide" $slide) }}
       </section>
       {{ end }}
     </div>

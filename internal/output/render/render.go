@@ -81,7 +81,7 @@ func RenderSlides(projectRoot string, deckMeta deck.DeckMetadata, slides []deck.
 		}
 
 		layoutPath := ResolveLayoutPath(activeTheme, slide)
-		rendered, err := executeSlideLayout(projectRoot, layoutPath, slide, i, expanded, body, sectionID, sectionTitle, deckMeta.Footer, &report)
+		rendered, err := executeSlideLayout(projectRoot, activeTheme, layoutPath, slide, i, expanded, body, sectionID, sectionTitle, deckMeta.Footer, &report)
 		if err != nil {
 			return nil, diagnostics.Report{}, err
 		}
@@ -90,10 +90,10 @@ func RenderSlides(projectRoot string, deckMeta deck.DeckMetadata, slides []deck.
 	return result, report, nil
 }
 
-func executeSlideLayout(projectRoot string, layoutPath string, slide deck.Slide, index int, expandedMarkdown string, body template.HTML, sectionID string, sectionTitle string, deckFooter string, report *diagnostics.Report) (RenderedSlide, error) {
-	tmpl, err := template.New("slide").Funcs(template.FuncMap{
+func executeSlideLayout(projectRoot string, activeTheme theme.Metadata, layoutPath string, slide deck.Slide, index int, expandedMarkdown string, body template.HTML, sectionID string, sectionTitle string, deckFooter string, report *diagnostics.Report) (RenderedSlide, error) {
+	tmpl, err := theme.ParseTemplateWithPartials(projectRoot, activeTheme, layoutPath, template.FuncMap{
 		"markdownToHTML": MarkdownToHTML,
-	}).ParseFiles(layoutPath)
+	})
 	if err != nil {
 		return RenderedSlide{}, fmt.Errorf("parse slide layout %q: %w", layoutPath, err)
 	}

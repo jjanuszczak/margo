@@ -1,0 +1,1 @@
+{{ $root := .Root }}{{ $slide := .Slide }}{{ if and (or $root.DeckLogo.Text $root.DeckLogo.ImageSrc) (not $slide.HideLogo) }}<div class="deck-logo">{{ if $root.DeckLogo.IsImage }}<img src="{{ $root.DeckLogo.ImageSrc }}" alt="{{ $root.Deck.Title }} logo">{{ else }}{{ $root.DeckLogo.Text }}{{ end }}</div>{{ end }}

@@ -531,13 +531,14 @@
 <body>
   <main>
     <div class="deck">
+      {{ $root := . }}
       {{ range $slide := .Slides }}
       <section class="slide{{ if $slide.ImageHintClass }} {{ $slide.ImageHintClass }}{{ end }}"{{ if $slide.StyleAttr }} style="{{ $slide.StyleAttr }}"{{ end }}>
         {{ if $slide.IsDraft }}<div class="draft-badge">Draft</div>{{ end }}
-        {{ if and (or $.DeckLogo.Text $.DeckLogo.ImageSrc) (not $slide.HideLogo) }}<div class="deck-logo">{{ if $.DeckLogo.IsImage }}<img src="{{ $.DeckLogo.ImageSrc }}" alt="{{ $.Deck.Title }} logo">{{ else }}{{ $.DeckLogo.Text }}{{ end }}</div>{{ end }}
+        {{ template "deck-logo" (dict "Root" $root "Slide" $slide) }}
         {{ $slide.Body }}
         {{ if $slide.ImageCaption }}<div class="image-caption">{{ $slide.ImageCaption }}</div>{{ end }}
-        {{ if and $slide.ResolvedFooterText (not $slide.HideFooter) }}<div class="deck-footer">{{ $slide.ResolvedFooterText }}</div>{{ end }}
+        {{ template "deck-footer" (dict "Root" $root "Slide" $slide) }}
       </section>
       {{ end }}
     </div>

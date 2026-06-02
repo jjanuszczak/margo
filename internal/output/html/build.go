@@ -67,10 +67,10 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) (di
 	}
 
 	if activeTheme.DeckLayout == "" {
-		tmpl, err := template.New("deck").Funcs(template.FuncMap{
+		tmpl, err := theme.ParseTemplateWithPartials(projectRoot, activeTheme, activeTheme.DefaultLayout, template.FuncMap{
 			"markdownToHTML": render.MarkdownToHTML,
 			"themeOption":    themeOption,
-		}).ParseFiles(activeTheme.DefaultLayout)
+		})
 		if err != nil {
 			return diagnostics.Report{}, fmt.Errorf("parse html template: %w", err)
 		}
@@ -80,9 +80,9 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) (di
 		return report, nil
 	}
 
-	tmpl, err := template.New("deck").Funcs(template.FuncMap{
+	tmpl, err := theme.ParseTemplateWithPartials(projectRoot, activeTheme, activeTheme.DeckLayout, template.FuncMap{
 		"themeOption": themeOption,
-	}).ParseFiles(activeTheme.DeckLayout)
+	})
 	if err != nil {
 		return diagnostics.Report{}, fmt.Errorf("parse deck layout: %w", err)
 	}
