@@ -1,0 +1,1 @@
+{{ $slide := .Slide }}{{ if and $slide.ResolvedFooterText (not $slide.HideFooter) }}<div class="deck-footer">{{ $slide.ResolvedFooterText }}</div>{{ end }}

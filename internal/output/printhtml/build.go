@@ -217,7 +217,7 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) (di
 	templateSource := defaultTemplate
 	templateName := "print"
 	if strings.TrimSpace(activeTheme.PrintDeckLayout) != "" {
-		tmpl, err := template.New("print").Funcs(template.FuncMap{
+		tmpl, err := theme.ParseTemplateWithPartials(projectRoot, activeTheme, activeTheme.PrintDeckLayout, template.FuncMap{
 			"themeOption":     themeOption,
 			"colorModeClass":  colorModeClass,
 			"typographyClass": typographyClass,
@@ -226,7 +226,7 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) (di
 			"pageBackground":  pageBackground,
 			"pageForeground":  pageForeground,
 			"pageMuted":       pageMuted,
-		}).ParseFiles(activeTheme.PrintDeckLayout)
+		})
 		if err != nil {
 			return diagnostics.Report{}, err
 		}

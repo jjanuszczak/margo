@@ -49,6 +49,7 @@ func loadFromRootDir(rootDir, themeName string) (Metadata, error) {
 	}
 	meta.RootDir = rootDir
 	meta.SlideLayouts = map[string]string{}
+	meta.Partials = map[string]string{}
 
 	deckLayoutExists := false
 	if _, err := os.Stat(deckLayoutPath); err == nil {
@@ -110,8 +111,39 @@ func loadFromRootDir(rootDir, themeName string) (Metadata, error) {
 	if meta.Name == "" {
 		meta.Name = themeName
 	}
+	meta.Partials, err = discoverPartials(filepath.Join(rootDir, "partials"))
+	if err != nil {
+		return Metadata{}, &Error{
+			Path:    filepath.Join(rootDir, "partials"),
+			Message: fmt.Sprintf("read theme partials: %v", err),
+		}
+	}
 
 	return meta, nil
+}
+
+func discoverPartials(root string) (map[string]string, error) {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return map[string]string{}, nil
+		}
+		return nil, err
+	}
+
+	partials := map[string]string{}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if filepath.Ext(name) != ".html" {
+			continue
+		}
+		partialName := strings.TrimSuffix(name, ".html")
+		partials[partialName] = filepath.Join(root, name)
+	}
+	return partials, nil
 }
 
 func parseMetadata(source, path string) (Metadata, error) {

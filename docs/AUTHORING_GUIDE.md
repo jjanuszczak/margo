@@ -615,15 +615,62 @@ themes/default/layouts/slide-media-right.html
 themes/default/layouts/slide-quote.html
 themes/default/layouts/slide-metric.html
 themes/default/layouts/slide-closing.html
+themes/default/partials/*.html
 themes/default/shortcodes/*.html
 ```
 
 The easiest way to customize appearance today is:
 1. create a new theme scaffold
 2. point `margo.yaml` at it
-3. edit the theme's `layouts/` and `shortcodes/`
+3. edit the theme's `layouts/`, `partials/`, and `shortcodes/`
 
-## 14. Common Authoring Patterns
+Current partial rules:
+- deck-local partials may be added under `partials/*.html`
+- theme partials may be added under `themes/<name>/partials/*.html`
+- deck-local partials override theme partials by name
+- templates can render them with standard Go template calls such as `{{ template "deck-logo" . }}`
+
+## 14. How Archetypes, Shortcodes, Layouts, And Partials Fit Together
+
+These parts operate at different stages:
+
+- **Archetypes** are authoring-time scaffolds used by `margo new slide`
+- **Shortcodes** are content components expanded inside slide Markdown
+- **Layouts** are render-time templates for slides and deck shells
+- **Partials** are reusable template fragments used by layouts
+
+Simple render pipeline:
+
+```mermaid
+flowchart TD
+  A["Archetype\n(create slide files)"] --> B["Slide Markdown + front matter"]
+  B --> C["Shortcode expansion"]
+  C --> D["Markdown to HTML"]
+  D --> E["Slide layout render"]
+  E --> F["Deck / print layout render"]
+  P["Partials\n(deck-level overrides theme-level)"] --> E
+  P --> F
+```
+
+Current interplay:
+
+- archetypes help create `slides/<id>/index.md`, then they are no longer part of rendering
+- shortcodes run before Markdown is turned into HTML
+- slide layouts wrap rendered slide body content
+- deck and print layouts wrap the full slide collection
+- partials can be called from slide, deck, or print templates using standard Go template calls such as `{{ template "deck-logo" . }}`
+
+Current override model:
+
+- deck-local shortcodes override theme shortcodes
+- deck-local partials override theme partials
+
+Current design principle:
+
+- keep parsing, validation, asset resolution, and model shaping in Go
+- keep markup shape, class composition, and template structure in layouts, partials, and shortcodes
+
+## 15. Common Authoring Patterns
 
 ### Standard content slide
 
@@ -672,7 +719,7 @@ For `media-left` or `media-right`, place the first image in the body before the 
 - Shared brand assets
 ```
 
-## 15. Known Current Limitations
+## 16. Known Current Limitations
 
 This guide reflects the current prototype. Important limitations:
 
@@ -682,7 +729,7 @@ This guide reflects the current prototype. Important limitations:
 - theme APIs and project conventions may still evolve
 - browser auto-refresh is currently wired through the scaffolded default theme
 
-## 16. Good Files to Study
+## 17. Good Files to Study
 
 If you want real working examples, start with:
 

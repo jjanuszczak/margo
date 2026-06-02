@@ -12,6 +12,7 @@ type Metadata struct {
 	DeckLayout      string
 	PrintDeckLayout string
 	SlideLayouts    map[string]string
+	Partials        map[string]string
 }
 
 type Source struct {
