@@ -376,12 +376,14 @@ func ThemeFiles(themeName string, includeStyles bool) map[string]string {
 		filepath.Join("themes", themeName, "shortcodes", "columns.html"):        defaultThemeColumnsShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "figure.html"):         defaultThemeFigureShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "github-repo.html"):    defaultThemeGitHubRepoShortcode(),
+		filepath.Join("themes", themeName, "shortcodes", "chart.html"):          defaultThemeChartShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "mermaid.html"):        defaultThemeMermaidShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "stat.html"):           defaultThemeStatShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "video.html"):          defaultThemeVideoShortcode(),
 	}
 	if includeStyles {
 		files[filepath.Join("themes", themeName, "assets", "theme.css")] = defaultThemeStyles()
+		files[filepath.Join("themes", themeName, "assets", "chart.umd.min.js")] = defaultThemeChartJSAsset
 	}
 	return files
 }
@@ -493,6 +495,11 @@ func defaultThemeGitHubRepoShortcode() string {
 
 func defaultThemeMermaidShortcode() string {
 	return `{{ requiredInner .Name .Inner }}{{ validateParams .Name .Params "caption" "align" "class" }}{{ $align := optionalParamOneOf .Params "align" "left" "center" "right" }}{{ $caption := optionalParam .Params "caption" }}{{ $extraClass := optionalParam .Params "class" }}<figure class="shortcode-mermaid{{ if $align }} shortcode-mermaid-align-{{ $align }}{{ else }} shortcode-mermaid-align-center{{ end }}{{ if $extraClass }} {{ $extraClass }}{{ end }}"><div class="shortcode-mermaid-render" aria-hidden="true"></div><pre class="shortcode-mermaid-definition">{{ .Inner }}</pre>{{ if $caption }}<figcaption class="shortcode-mermaid-caption">{{ $caption }}</figcaption>{{ end }}</figure>
+`
+}
+
+func defaultThemeChartShortcode() string {
+	return `{{ requiredInner .Name .Inner }}{{ validateParams .Name .Params "caption" "class" "height" "width" "id" }}{{ $config := chartConfigJSON .Name .Inner }}{{ $chartID := chartID .Name .Params .Inner }}{{ $caption := optionalParam .Params "caption" }}{{ $extraClass := optionalParam .Params "class" }}{{ $height := optionalParam .Params "height" }}{{ $width := optionalParam .Params "width" }}<figure class="shortcode-chart{{ if $extraClass }} {{ $extraClass }}{{ end }}"{{ if or $height $width }} style="{{ if $height }} --shortcode-chart-height: {{ $height }};{{ end }}{{ if $width }} --shortcode-chart-width: {{ $width }};{{ end }}"{{ end }}><div class="shortcode-chart-frame"><canvas class="shortcode-chart-canvas" id="{{ $chartID }}" aria-label="{{ if $caption }}{{ $caption }}{{ else }}Chart{{ end }}" role="img"></canvas><pre class="shortcode-chart-config">{{ $config }}</pre><pre class="shortcode-chart-fallback">{{ $config }}</pre></div>{{ if $caption }}<figcaption class="shortcode-chart-caption">{{ $caption }}</figcaption>{{ end }}</figure>
 `
 }
 
@@ -961,6 +968,87 @@ func defaultThemeDeckLayout() string {
       text-transform: uppercase;
       color: var(--muted);
     }
+    .shortcode-chart {
+      margin: 28px 0;
+      display: grid;
+      gap: 12px;
+      width: min(100%, var(--shortcode-chart-width, 860px));
+    }
+    .shortcode-chart-frame {
+      padding: 20px;
+      border-radius: 20px;
+      background: color-mix(in srgb, var(--card) 95%, transparent);
+      box-shadow: 0 20px 48px var(--shadow);
+    }
+    .shortcode-chart-canvas {
+      display: block;
+      width: 100%;
+      height: var(--shortcode-chart-height, 320px);
+    }
+    .shortcode-chart-config {
+      display: none;
+    }
+    .shortcode-chart-fallback {
+      margin: 0;
+      padding: 18px 20px;
+      border-radius: 20px;
+      background: color-mix(in srgb, var(--card) 92%, transparent);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+      color: var(--fg);
+      font: 15px/1.5 "SFMono-Regular", "Menlo", "Consolas", monospace;
+      white-space: pre-wrap;
+      overflow: auto;
+    }
+    .shortcode-chart.is-rendered .shortcode-chart-fallback {
+      display: none;
+    }
+    .shortcode-chart-caption {
+      font: 12px/1.3 sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .shortcode-chart {
+      margin: 28px 0;
+      display: grid;
+      gap: 12px;
+      width: min(100%, var(--shortcode-chart-width, 860px));
+    }
+    .shortcode-chart-frame {
+      padding: 20px;
+      border-radius: 20px;
+      background: color-mix(in srgb, var(--card) 95%, transparent);
+      box-shadow: 0 20px 48px var(--shadow);
+    }
+    .shortcode-chart-canvas {
+      display: block;
+      width: 100%;
+      height: var(--shortcode-chart-height, 320px);
+      max-height: 48vh;
+    }
+    .shortcode-chart-config {
+      display: none;
+    }
+    .shortcode-chart-fallback {
+      margin: 0;
+      padding: 18px 20px;
+      border-radius: 20px;
+      background: color-mix(in srgb, var(--card) 92%, transparent);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+      color: var(--fg);
+      font: 15px/1.5 "SFMono-Regular", "Menlo", "Consolas", monospace;
+      white-space: pre-wrap;
+      overflow: auto;
+    }
+    .shortcode-chart.is-rendered .shortcode-chart-fallback {
+      display: none;
+    }
+    .shortcode-chart-caption {
+      font: 12px/1.3 sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
     .agenda-slide ol {
       margin: 22px 0 0;
       padding-left: 28px;
@@ -1383,6 +1471,7 @@ func defaultThemeDeckLayout() string {
       </div>
     </div>
   </main>
+  {{ if .HasCharts }}<script src="themes/{{ .Theme.Name }}/assets/chart.umd.min.js"></script>{{ end }}
   <script>
     const deck = document.querySelector('.deck');
     const slides = Array.from(document.querySelectorAll('.slide'));
@@ -1459,6 +1548,23 @@ func defaultThemeDeckLayout() string {
       }
     };
     renderMermaidDiagrams();
+    const renderCharts = () => {
+      if (!window.Chart) return;
+      const charts = Array.from(document.querySelectorAll('.shortcode-chart'));
+      for (const chart of charts) {
+        const configNode = chart.querySelector('.shortcode-chart-config');
+        const canvas = chart.querySelector('.shortcode-chart-canvas');
+        if (!configNode || !canvas) continue;
+        try {
+          const config = JSON.parse(configNode.textContent || '{}');
+          new window.Chart(canvas, config);
+          chart.classList.add('is-rendered');
+        } catch (error) {
+          console.warn('Chart render failed', error);
+        }
+      }
+    };
+    renderCharts();
     const exportButton = document.getElementById('export-pdf');
     if (exportButton) {
       exportButton.addEventListener('click', async () => {
@@ -2133,6 +2239,7 @@ func defaultThemePrintDeckLayout() string {
       {{ end }}
     </div>
   </main>
+  {{ if .HasCharts }}<script src="themes/{{ .Theme.Name }}/assets/chart.umd.min.js"></script>{{ end }}
   <script type="module">
     const diagrams = Array.from(document.querySelectorAll('.shortcode-mermaid'));
     if (diagrams.length) {
@@ -2154,6 +2261,23 @@ func defaultThemePrintDeckLayout() string {
       }
     }
   </script>
+  {{ if .HasCharts }}<script>
+    const charts = Array.from(document.querySelectorAll('.shortcode-chart'));
+    if (window.Chart && charts.length) {
+      for (const chart of charts) {
+        const configNode = chart.querySelector('.shortcode-chart-config');
+        const canvas = chart.querySelector('.shortcode-chart-canvas');
+        if (!configNode || !canvas) continue;
+        try {
+          const config = JSON.parse(configNode.textContent || '{}');
+          new window.Chart(canvas, config);
+          chart.classList.add('is-rendered');
+        } catch (error) {
+          console.warn('Chart render failed', error);
+        }
+      }
+    }
+  </script>{{ end }}
   {{ .Snippets.BodyEnd }}
 </body>
 </html>

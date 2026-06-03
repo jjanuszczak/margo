@@ -2,13 +2,18 @@ package shortcode
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"text/template"
 
+	"gopkg.in/yaml.v3"
 	"margo/internal/deck"
 	"margo/internal/theme"
 )
@@ -216,6 +221,15 @@ func executeShortcode(name string, params map[string]string, inner string, ctx C
 			}
 			return value, nil
 		},
+		"chartConfigJSON": func(shortcodeName, inner string) (string, error) {
+			return chartConfigJSON(shortcodeName, inner)
+		},
+		"chartID": func(shortcodeName string, params map[string]string, inner string) (string, error) {
+			if id := strings.TrimSpace(params["id"]); id != "" {
+				return id, nil
+			}
+			return generatedChartID(ctx.Slide.ID, params, inner, shortcodeName), nil
+		},
 	}).ParseFiles(path)
 	if err != nil {
 		return "", fmt.Errorf("parse shortcode template %q: %w", path, err)
@@ -343,4 +357,108 @@ func withinRoot(path string, root string) bool {
 		return false
 	}
 	return relPath != ".." && !strings.HasPrefix(relPath, ".."+string(filepath.Separator))
+}
+
+var supportedChartTypes = map[string]struct{}{
+	"bar":      {},
+	"line":     {},
+	"pie":      {},
+	"doughnut": {},
+	"radar":    {},
+}
+
+func chartConfigJSON(shortcodeName, inner string) (string, error) {
+	var raw map[string]any
+	if err := yaml.Unmarshal([]byte(strings.TrimSpace(inner)), &raw); err != nil {
+		return "", fmt.Errorf("shortcode %q chart config must be valid YAML: %w", shortcodeName, err)
+	}
+	if len(raw) == 0 {
+		return "", fmt.Errorf("shortcode %q chart config must be a non-empty object", shortcodeName)
+	}
+
+	chartType, ok := raw["type"].(string)
+	if !ok || strings.TrimSpace(chartType) == "" {
+		return "", fmt.Errorf("shortcode %q chart config requires string field %q", shortcodeName, "type")
+	}
+	if _, ok := supportedChartTypes[strings.TrimSpace(chartType)]; !ok {
+		return "", fmt.Errorf("shortcode %q unsupported chart type %q", shortcodeName, chartType)
+	}
+
+	data, ok := raw["data"].(map[string]any)
+	if !ok {
+		return "", fmt.Errorf("shortcode %q chart config requires object field %q", shortcodeName, "data")
+	}
+	datasets, ok := data["datasets"].([]any)
+	if !ok || len(datasets) == 0 {
+		return "", fmt.Errorf("shortcode %q chart config requires non-empty array field %q", shortcodeName, "data.datasets")
+	}
+
+	normalized := normalizeYAMLValue(raw)
+	encoded, err := json.MarshalIndent(normalized, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("shortcode %q encode chart config: %w", shortcodeName, err)
+	}
+	return string(encoded), nil
+}
+
+func normalizeYAMLValue(value any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		keys := make([]string, 0, len(typed))
+		for key := range typed {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		out := make(map[string]any, len(typed))
+		for _, key := range keys {
+			out[key] = normalizeYAMLValue(typed[key])
+		}
+		return out
+	case map[any]any:
+		keys := make([]string, 0, len(typed))
+		tmp := make(map[string]any, len(typed))
+		for key, item := range typed {
+			textKey := fmt.Sprint(key)
+			keys = append(keys, textKey)
+			tmp[textKey] = item
+		}
+		sort.Strings(keys)
+		out := make(map[string]any, len(tmp))
+		for _, key := range keys {
+			out[key] = normalizeYAMLValue(tmp[key])
+		}
+		return out
+	case []any:
+		out := make([]any, 0, len(typed))
+		for _, item := range typed {
+			out = append(out, normalizeYAMLValue(item))
+		}
+		return out
+	default:
+		return typed
+	}
+}
+
+func generatedChartID(slideID string, params map[string]string, inner string, shortcodeName string) string {
+	keys := make([]string, 0, len(params))
+	for key := range params {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	var material strings.Builder
+	material.WriteString(slideID)
+	material.WriteString("|")
+	material.WriteString(shortcodeName)
+	material.WriteString("|")
+	material.WriteString(strings.TrimSpace(inner))
+	for _, key := range keys {
+		material.WriteString("|")
+		material.WriteString(key)
+		material.WriteString("=")
+		material.WriteString(params[key])
+	}
+
+	sum := sha1.Sum([]byte(material.String()))
+	return "margo-chart-" + hex.EncodeToString(sum[:6])
 }

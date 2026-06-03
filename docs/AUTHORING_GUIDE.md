@@ -498,6 +498,31 @@ Current `mermaid` behavior:
 - `align` supports `left`, `center`, or `right`
 - generated HTML renders a readable source fallback first, then upgrades it to a Mermaid diagram in the browser when the Mermaid runtime loads
 
+### Chart
+
+```md
+{{< chart caption="Quarterly broker growth" height="280px" >}}
+type: line
+data:
+  labels: ["Q1", "Q2", "Q3", "Q4"]
+  datasets:
+    - label: "Active brokers"
+      data: [12, 18, 27, 35]
+      borderColor: "#4db6ac"
+      tension: 0.3
+options:
+  plugins:
+    legend:
+      display: true
+{{< /chart >}}
+```
+
+Current `chart` behavior:
+- chart configuration lives in the shortcode inner content as YAML
+- `caption`, `class`, `height`, `width`, and `id` are optional shortcode params
+- supported chart types in the first version are `bar`, `line`, `pie`, `doughnut`, and `radar`
+- generated HTML renders a readable configuration fallback first, then upgrades it to a Chart.js canvas in the browser when the Chart.js runtime loads
+
 ### GitHub Repo
 
 ```md

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"margo/internal/deck"
+	"margo/internal/output/render"
 )
 
 func TestRenderBodyColumnsForTwoColumnLayout(t *testing.T) {
@@ -184,5 +185,17 @@ func TestMarkdownToHTMLRendersTables(t *testing.T) {
 	}
 	if !strings.Contains(rendered, "<td>1</td>") {
 		t.Fatalf("expected markdown table cell content in rendered html, got %q", rendered)
+	}
+}
+
+func TestHasChartsDetectsRenderedChartShortcodes(t *testing.T) {
+	slides := []render.RenderedSlide{
+		{Body: template.HTML(`<div class="shortcode-chart"></div>`)},
+	}
+	if !hasCharts(slides) {
+		t.Fatal("expected hasCharts to detect chart shortcode markup")
+	}
+	if hasCharts([]render.RenderedSlide{{Body: template.HTML(`<div class="shortcode-mermaid"></div>`)}}) {
+		t.Fatal("expected hasCharts to ignore non-chart shortcode markup")
 	}
 }

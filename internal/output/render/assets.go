@@ -12,6 +12,7 @@ import (
 	"margo/internal/deck"
 	"margo/internal/diagnostics"
 	"margo/internal/ignore"
+	"margo/internal/theme"
 )
 
 var markdownAssetRefPattern = regexp.MustCompile(`\]\(([^)\s]+)([^)]*)\)`)
@@ -37,6 +38,44 @@ func StageAssets(projectRoot string, outputDir string, slides []deck.Slide) erro
 		}
 	}
 	return nil
+}
+
+func StageThemeAssets(projectRoot string, outputDir string, activeTheme theme.Metadata) error {
+	if strings.TrimSpace(activeTheme.RootDir) == "" || strings.TrimSpace(activeTheme.Name) == "" {
+		return nil
+	}
+
+	srcRoot := filepath.Join(activeTheme.RootDir, "assets")
+	info, err := os.Stat(srcRoot)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("stat theme assets: %w", err)
+	}
+	if !info.IsDir() {
+		return nil
+	}
+
+	dstRoot := filepath.Join(projectRoot, outputDir, "themes", activeTheme.Name, "assets")
+	return filepath.WalkDir(srcRoot, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		relPath, err := filepath.Rel(srcRoot, path)
+		if err != nil {
+			return err
+		}
+		if relPath == "." {
+			return os.MkdirAll(dstRoot, 0o755)
+		}
+
+		targetPath := filepath.Join(dstRoot, relPath)
+		if d.IsDir() {
+			return os.MkdirAll(targetPath, 0o755)
+		}
+		return copyFile(path, targetPath)
+	})
 }
 
 func copyDeckAssets(projectRoot string, outputDir string, ignored ignore.Matcher) error {
