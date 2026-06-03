@@ -287,6 +287,72 @@ func TestRenderGitHubRepoShortcodeValidatesRepoAndRendersCard(t *testing.T) {
 	}
 }
 
+func TestRenderChartShortcodeValidatesYAMLAndRendersConfig(t *testing.T) {
+	projectRoot := t.TempDir()
+	themeRoot := filepath.Join(projectRoot, "themes", "default")
+	if err := os.MkdirAll(filepath.Join(themeRoot, "shortcodes"), 0o755); err != nil {
+		t.Fatalf("create theme shortcode dir: %v", err)
+	}
+
+	chart := `{{ requiredInner .Name .Inner }}{{ validateParams .Name .Params "caption" "class" "height" "width" "id" }}{{ $config := chartConfigJSON .Name .Inner }}{{ $chartID := chartID .Name .Params .Inner }}{{ $caption := optionalParam .Params "caption" }}{{ $extraClass := optionalParam .Params "class" }}{{ $height := optionalParam .Params "height" }}{{ $width := optionalParam .Params "width" }}<figure class="shortcode-chart{{ if $extraClass }} {{ $extraClass }}{{ end }}"{{ if or $height $width }} style="{{ if $height }} --shortcode-chart-height: {{ $height }};{{ end }}{{ if $width }} --shortcode-chart-width: {{ $width }};{{ end }}"{{ end }}><div class="shortcode-chart-frame"><canvas class="shortcode-chart-canvas" id="{{ $chartID }}" aria-label="{{ if $caption }}{{ $caption }}{{ else }}Chart{{ end }}" role="img"></canvas><pre class="shortcode-chart-config">{{ $config }}</pre><pre class="shortcode-chart-fallback">{{ $config }}</pre></div>{{ if $caption }}<figcaption class="shortcode-chart-caption">{{ $caption }}</figcaption>{{ end }}</figure>`
+	if err := os.WriteFile(filepath.Join(themeRoot, "shortcodes", "chart.html"), []byte(chart), 0o644); err != nil {
+		t.Fatalf("write chart shortcode: %v", err)
+	}
+
+	rendered, err := Render(`{{< chart caption="Quarterly growth" height="280px" >}}
+type: bar
+data:
+  labels: ["Q1", "Q2"]
+  datasets:
+    - label: "Revenue"
+      data: [12, 18]
+{{< /chart >}}`, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+		Slide:       deck.Slide{ID: "06-architecture-view"},
+	})
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+
+	for _, needle := range []string{
+		`class="shortcode-chart"`,
+		`class="shortcode-chart-canvas"`,
+		`class="shortcode-chart-config"`,
+		`"type": "bar"`,
+		`"label": "Revenue"`,
+		`Quarterly growth`,
+		`--shortcode-chart-height: 280px;`,
+		`margo-chart-`,
+	} {
+		if !strings.Contains(rendered, needle) {
+			t.Fatalf("expected rendered chart to contain %q, got %q", needle, rendered)
+		}
+	}
+
+	_, err = Render(`{{< chart >}}type: scatter
+data:
+  labels: ["Q1"]
+  datasets:
+    - label: "Series"
+      data: [1]
+{{< /chart >}}`, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+	})
+	if err == nil || !strings.Contains(err.Error(), `unsupported chart type`) {
+		t.Fatalf("expected unsupported chart type error, got %v", err)
+	}
+
+	_, err = Render(`{{< chart >}}type: bar{{< /chart >}}`, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+	})
+	if err == nil || !strings.Contains(err.Error(), `data`) {
+		t.Fatalf("expected missing data error, got %v", err)
+	}
+}
+
 func TestRenderRejectsUnknownOrMalformedShortcodes(t *testing.T) {
 	projectRoot := t.TempDir()
 

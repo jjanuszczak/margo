@@ -76,6 +76,11 @@ func TestReferenceDeckPrintBuildFlow(t *testing.T) {
 		`slides/02-why/diagram.svg`,
 		`slides/05-customer-story/spotlight.svg`,
 		`class="shortcode-figure shortcode-figure-fit-contain"`,
+		`class="shortcode-chart"`,
+		`class="shortcode-chart-canvas"`,
+		`themes/default/assets/chart.umd.min.js`,
+		`"type": "doughnut"`,
+		`Reference-deck Chart.js smoke test`,
 		`Deck-level asset rendered through the figure shortcode.`,
 		`Source: shared deck assets`,
 		`size: 13.333in 7.5in`,
@@ -106,6 +111,9 @@ func TestReferenceDeckPrintBuildFlow(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "slides", "02-why", "diagram.svg")); err != nil {
 		t.Fatalf("expected staged print slide asset to exist: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "themes", "default", "assets", "chart.umd.min.js")); err != nil {
+		t.Fatalf("expected staged print theme asset to exist: %v", err)
 	}
 }
 

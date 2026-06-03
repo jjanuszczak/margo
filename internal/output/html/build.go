@@ -22,6 +22,7 @@ type pageData struct {
 	Deck         deck.DeckMetadata
 	DeckLogo     render.RenderedLogo
 	PDFEnabled   bool
+	HasCharts    bool
 	Theme        theme.Metadata
 	ThemeOptions map[string]any
 	Snippets     renderedSnippets
@@ -52,6 +53,9 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) (di
 	if err != nil {
 		return diagnostics.Report{}, err
 	}
+	if err := render.StageThemeAssets(projectRoot, OutputDir, activeTheme); err != nil {
+		return diagnostics.Report{}, fmt.Errorf("stage theme assets: %w", err)
+	}
 	logo, logoReport := resolveDeckLogo(projectRoot, model.Config.Deck.Logo)
 	report.Items = append(report.Items, logoReport.Items...)
 
@@ -59,6 +63,7 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) (di
 		Deck:         model.Config.Deck,
 		DeckLogo:     logo,
 		PDFEnabled:   model.Config.Outputs.PDF,
+		HasCharts:    hasCharts(slides),
 		Theme:        activeTheme,
 		ThemeOptions: model.Config.Theme.Options,
 		Snippets:     resolveSnippets(model.Config.Snippets),
@@ -112,4 +117,13 @@ func themeOption(options map[string]any, key string, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func hasCharts(slides []render.RenderedSlide) bool {
+	for _, slide := range slides {
+		if strings.Contains(string(slide.Body), "shortcode-chart") {
+			return true
+		}
+	}
+	return false
 }
