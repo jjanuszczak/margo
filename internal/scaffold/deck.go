@@ -1232,6 +1232,8 @@ func defaultThemeDeckLayout() string {
         display: block;
       }
       .slide-shell {
+        height: auto;
+        grid-template-rows: auto auto auto;
         gap: 12px;
       }
       .deck-logo {
@@ -1239,8 +1241,8 @@ func defaultThemeDeckLayout() string {
         right: 20px;
       }
       .deck-footer {
-        left: 24px;
-        bottom: 26px;
+        position: static;
+        margin-top: 18px;
       }
       .title-stack h1,
       .section-stack h1 {
@@ -1259,6 +1261,13 @@ func defaultThemeDeckLayout() string {
       .slide-body li {
         font-size: 18px;
         line-height: 1.45;
+      }
+      .slide-body table {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
       }
       .title-stack p {
         font-size: 22px;

@@ -204,7 +204,7 @@ func executeShortcode(name string, params map[string]string, inner string, ctx C
 			if strings.TrimSpace(inner) == "" {
 				return "", fmt.Errorf("shortcode %q requires inner content", shortcodeName)
 			}
-			return inner, nil
+			return "", nil
 		},
 		"mustMatch": func(shortcodeName, value, label, pattern string) (string, error) {
 			re, err := regexp.Compile(pattern)

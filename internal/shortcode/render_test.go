@@ -222,6 +222,9 @@ flowchart LR
 			t.Fatalf("expected rendered mermaid to contain %q, got %q", needle, rendered)
 		}
 	}
+	if strings.HasPrefix(strings.TrimSpace(rendered), "flowchart LR") {
+		t.Fatalf("expected rendered mermaid shortcode not to leak raw inner content, got %q", rendered)
+	}
 
 	_, err = Render(`{{< mermaid />}}`, Context{
 		ProjectRoot: projectRoot,
