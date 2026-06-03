@@ -481,6 +481,35 @@ Current `figure` behavior:
 - `position` maps to CSS `object-position` for the image
 - `link` optionally wraps the image in an anchor
 
+### Mermaid
+
+```md
+{{< mermaid caption="Authoring-to-output flow" align="center" >}}
+flowchart LR
+  A[Markdown] --> B[Build]
+  B --> C[HTML]
+  B --> D[PDF]
+{{< /mermaid >}}
+```
+
+Current `mermaid` behavior:
+- Mermaid source lives in the shortcode inner content
+- `caption` is optional
+- `align` supports `left`, `center`, or `right`
+- generated HTML renders a readable source fallback first, then upgrades it to a Mermaid diagram in the browser when the Mermaid runtime loads
+
+### GitHub Repo
+
+```md
+{{< github-repo repo="jjanuszczak/margo" caption="Markdown-first deck authoring with Hugo-like themes." >}}
+```
+
+Current `github-repo` behavior:
+- `repo` is required and must use `owner/name`
+- `caption` is optional
+- generated HTML renders a static, styled repo card with a direct GitHub link
+- no GitHub API call is made in the first version
+
 ### Deck-local shortcodes
 
 The scaffold also creates a deck-local shortcode at:
@@ -548,6 +577,10 @@ Every scaffolded deck starts with:
 theme:
   name: default
 ```
+
+The default theme now supports two viewing modes from the same generated HTML:
+- desktop keeps the fixed-stage presentation view
+- narrow screens switch to a mobile reading/paging mode with touch scrolling and slide dots
 
 ### Create a new theme
 

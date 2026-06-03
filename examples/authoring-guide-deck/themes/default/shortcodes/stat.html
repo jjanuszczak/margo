@@ -1,0 +1,5 @@
+<div class="shortcode-stat">
+  <div class="shortcode-stat-value">{{ index .Params "value" }}</div>
+  <div class="shortcode-stat-label">{{ index .Params "label" }}</div>
+  {{ with index .Params "detail" }}<div class="shortcode-stat-detail">{{ . }}</div>{{ end }}
+</div>

@@ -200,6 +200,22 @@ func executeShortcode(name string, params map[string]string, inner string, ctx C
 			}
 			return "", nil
 		},
+		"requiredInner": func(shortcodeName, inner string) (string, error) {
+			if strings.TrimSpace(inner) == "" {
+				return "", fmt.Errorf("shortcode %q requires inner content", shortcodeName)
+			}
+			return "", nil
+		},
+		"mustMatch": func(shortcodeName, value, label, pattern string) (string, error) {
+			re, err := regexp.Compile(pattern)
+			if err != nil {
+				return "", fmt.Errorf("shortcode %q invalid pattern for %s: %w", shortcodeName, label, err)
+			}
+			if !re.MatchString(strings.TrimSpace(value)) {
+				return "", fmt.Errorf("shortcode %q %s must match %q", shortcodeName, label, pattern)
+			}
+			return value, nil
+		},
 	}).ParseFiles(path)
 	if err != nil {
 		return "", fmt.Errorf("parse shortcode template %q: %w", path, err)

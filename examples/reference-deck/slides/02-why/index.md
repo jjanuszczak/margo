@@ -28,6 +28,13 @@ notes:
 Theme-provided shortcodes make expressive slides possible without abandoning Markdown.
 {{< /callout >}}
 
+{{< mermaid caption="Authoring-to-output flow" align="center" >}}
+flowchart LR
+  A[Markdown] --> B[Build]
+  B --> C[HTML]
+  B --> D[PDF]
+{{< /mermaid >}}
+
 {{< columns >}}
 {{< column >}}
 {{< include "shared/authoring-pillars.md" >}}

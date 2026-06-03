@@ -375,6 +375,8 @@ func ThemeFiles(themeName string, includeStyles bool) map[string]string {
 		filepath.Join("themes", themeName, "shortcodes", "column.html"):         defaultThemeColumnShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "columns.html"):        defaultThemeColumnsShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "figure.html"):         defaultThemeFigureShortcode(),
+		filepath.Join("themes", themeName, "shortcodes", "github-repo.html"):    defaultThemeGitHubRepoShortcode(),
+		filepath.Join("themes", themeName, "shortcodes", "mermaid.html"):        defaultThemeMermaidShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "stat.html"):           defaultThemeStatShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "video.html"):          defaultThemeVideoShortcode(),
 	}
@@ -484,6 +486,16 @@ func defaultThemeFigureShortcode() string {
 `
 }
 
+func defaultThemeGitHubRepoShortcode() string {
+	return `{{ validateNoInner .Name .Inner }}{{ validateParams .Name .Params "repo" "caption" "class" }}{{ $repo := mustMatch .Name (requiredParam .Params "repo") "repo" "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" }}{{ $caption := optionalParam .Params "caption" }}{{ $extraClass := optionalParam .Params "class" }}{{ $url := printf "https://github.com/%s" $repo }}<figure class="shortcode-github-repo{{ if $extraClass }} {{ $extraClass }}{{ end }}"><a class="shortcode-github-repo-card" href="{{ $url }}"><div class="shortcode-github-repo-label">GitHub Repo</div><div class="shortcode-github-repo-name">{{ $repo }}</div><div class="shortcode-github-repo-url">{{ $url }}</div></a>{{ if $caption }}<figcaption class="shortcode-github-repo-caption">{{ $caption }}</figcaption>{{ end }}</figure>
+`
+}
+
+func defaultThemeMermaidShortcode() string {
+	return `{{ requiredInner .Name .Inner }}{{ validateParams .Name .Params "caption" "align" "class" }}{{ $align := optionalParamOneOf .Params "align" "left" "center" "right" }}{{ $caption := optionalParam .Params "caption" }}{{ $extraClass := optionalParam .Params "class" }}<figure class="shortcode-mermaid{{ if $align }} shortcode-mermaid-align-{{ $align }}{{ else }} shortcode-mermaid-align-center{{ end }}{{ if $extraClass }} {{ $extraClass }}{{ end }}"><div class="shortcode-mermaid-render" aria-hidden="true"></div><pre class="shortcode-mermaid-definition">{{ .Inner }}</pre>{{ if $caption }}<figcaption class="shortcode-mermaid-caption">{{ $caption }}</figcaption>{{ end }}</figure>
+`
+}
+
 func defaultThemeVideoShortcode() string {
 	return `<figure class="shortcode-video">
   <video controls preload="metadata"{{ with index .Params "poster" }} poster="{{ assetRef . }}"{{ end }}>
@@ -530,6 +542,7 @@ func defaultThemeDeckLayout() string {
     }
     main {
       min-height: 100vh;
+      min-height: 100svh;
       display: grid;
       place-items: center;
       padding: 24px;
@@ -852,6 +865,102 @@ func defaultThemeDeckLayout() string {
       text-transform: uppercase;
       color: var(--muted);
     }
+    .shortcode-github-repo {
+      margin: 28px 0;
+      max-width: min(100%, 32rem);
+    }
+    .shortcode-github-repo-card {
+      display: grid;
+      gap: 8px;
+      padding: 20px 22px;
+      border-radius: 22px;
+      border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+      background:
+        radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 18%, transparent), transparent 42%),
+        color-mix(in srgb, var(--card) 95%, transparent);
+      box-shadow: 0 20px 48px var(--shadow);
+      color: inherit;
+      text-decoration: none;
+    }
+    .shortcode-github-repo-card:hover,
+    .shortcode-github-repo-card:focus-visible {
+      transform: translateY(-1px);
+      box-shadow: 0 24px 54px var(--shadow);
+      outline: none;
+    }
+    .shortcode-github-repo-label {
+      font: 12px/1.2 sans-serif;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .shortcode-github-repo-name {
+      font-size: 28px;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      color: color-mix(in srgb, var(--fg) 88%, var(--accent));
+    }
+    .shortcode-github-repo-url {
+      font: 14px/1.35 "SFMono-Regular", "Menlo", "Consolas", monospace;
+      color: var(--muted);
+      word-break: break-all;
+    }
+    .shortcode-github-repo-caption {
+      margin-top: 12px;
+      font: 12px/1.3 sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .shortcode-mermaid {
+      margin: 28px 0;
+      display: grid;
+      gap: 12px;
+    }
+    .shortcode-mermaid.shortcode-mermaid-align-center {
+      justify-items: center;
+    }
+    .shortcode-mermaid.shortcode-mermaid-align-right {
+      justify-items: end;
+    }
+    .shortcode-mermaid-render {
+      display: none;
+      width: min(100%, 860px);
+      padding: 18px;
+      border-radius: 20px;
+      background: color-mix(in srgb, var(--card) 95%, transparent);
+      box-shadow: 0 20px 48px var(--shadow);
+      overflow: auto;
+    }
+    .shortcode-mermaid.is-rendered .shortcode-mermaid-render {
+      display: block;
+    }
+    .shortcode-mermaid-render svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .shortcode-mermaid-definition {
+      width: min(100%, 860px);
+      margin: 0;
+      padding: 18px 20px;
+      border-radius: 20px;
+      background: color-mix(in srgb, var(--card) 92%, transparent);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+      color: var(--fg);
+      font: 15px/1.5 "SFMono-Regular", "Menlo", "Consolas", monospace;
+      white-space: pre-wrap;
+      overflow: auto;
+    }
+    .shortcode-mermaid.is-rendered .shortcode-mermaid-definition {
+      display: none;
+    }
+    .shortcode-mermaid-caption {
+      font: 12px/1.3 sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
     .agenda-slide ol {
       margin: 22px 0 0;
       padding-left: 28px;
@@ -1028,6 +1137,10 @@ func defaultThemeDeckLayout() string {
       display: flex;
       gap: 12px;
       align-items: center;
+      z-index: 3;
+    }
+    .nav-hint {
+      white-space: nowrap;
     }
     .pdf-export {
       border: 1px solid rgba(28, 26, 23, 0.18);
@@ -1043,16 +1156,159 @@ func defaultThemeDeckLayout() string {
     .pdf-export:hover {
       background: #fffdf9;
     }
+    .slide-dots {
+      position: absolute;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--card) 86%, transparent);
+      box-shadow: 0 16px 36px var(--shadow);
+      backdrop-filter: blur(16px);
+      z-index: 3;
+    }
+    .slide-dot {
+      width: 11px;
+      height: 11px;
+      border: 0;
+      border-radius: 999px;
+      padding: 0;
+      background: color-mix(in srgb, var(--muted) 36%, transparent);
+      cursor: pointer;
+      transition: transform 160ms ease, background 160ms ease;
+    }
+    .slide-dot:hover,
+    .slide-dot:focus-visible {
+      background: color-mix(in srgb, var(--accent) 55%, var(--card));
+      transform: scale(1.08);
+      outline: none;
+    }
+    .slide-dot[aria-current="true"] {
+      background: var(--accent);
+      transform: scale(1.16);
+    }
     @media (max-width: 900px) {
+      body {
+        background: var(--bg);
+      }
+      main {
+        display: block;
+        min-height: 100vh;
+        min-height: 100svh;
+        padding: 0;
+      }
+      .deck {
+        width: 100%;
+        min-height: 100vh;
+        min-height: 100svh;
+        aspect-ratio: auto;
+        display: flex;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scroll-snap-type: x mandatory;
+        scroll-behavior: smooth;
+        overscroll-behavior-x: contain;
+        background: transparent;
+        box-shadow: none;
+      }
+      .deck::-webkit-scrollbar {
+        display: none;
+      }
       .slide {
-        padding: 48px;
+        display: block;
+        flex: 0 0 100%;
+        width: 100%;
+        min-height: 100vh;
+        min-height: 100svh;
+        height: auto;
+        padding: 76px 24px 88px;
+        scroll-snap-align: start;
+      }
+      .slide.active {
+        display: block;
+      }
+      .slide-shell {
+        height: auto;
+        grid-template-rows: auto auto auto;
+        gap: 12px;
+      }
+      .deck-logo {
+        top: 18px;
+        right: 20px;
+      }
+      .deck-footer {
+        position: static;
+        margin-top: 18px;
       }
       .title-stack h1,
       .section-stack h1 {
-        font-size: 64px;
+        font-size: 52px;
       }
       .slide-body h1 {
+        font-size: 42px;
+      }
+      .slide-body h2 {
+        font-size: 28px;
+      }
+      .slide-body h3 {
+        font-size: 20px;
+      }
+      .slide-body p,
+      .slide-body li {
+        font-size: 18px;
+        line-height: 1.45;
+      }
+      .slide-body table {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .title-stack p {
+        font-size: 22px;
+      }
+      .closing-shell {
+        padding: 28px 24px;
+      }
+      .closing-shell h1 {
         font-size: 48px;
+      }
+      .closing-shell p {
+        font-size: 18px;
+      }
+      .controls {
+        position: fixed;
+        right: 16px;
+        left: 16px;
+        bottom: 72px;
+        justify-content: flex-end;
+      }
+      .nav-hint {
+        display: none;
+      }
+      .slide-dots {
+        position: fixed;
+        display: inline-flex;
+        bottom: 18px;
+        max-width: calc(100% - 32px);
+        overflow-x: auto;
+      }
+      .slide-dots::-webkit-scrollbar {
+        display: none;
+      }
+      .prose-body,
+      .title-stack,
+      .section-stack {
+        max-width: none;
+      }
+      .slide.image-fit-contain .slide-body img,
+      .slide.image-fit-cover .slide-body img {
+        max-height: 34vh;
       }
       .media-split-slide,
       .two-column-slide,
@@ -1118,22 +1374,91 @@ func defaultThemeDeckLayout() string {
       {{ end }}
       <div class="controls">
         {{ if .PDFEnabled }}<button class="pdf-export" type="button" id="export-pdf">Export PDF</button>{{ end }}
-        <span>Use left/right arrow keys</span>
+        <span class="nav-hint">Use left/right arrow keys</span>
+      </div>
+      <div class="slide-dots" aria-label="Slide navigation">
+        {{ range $i, $slide := .Slides }}
+        <button class="slide-dot" type="button" data-slide-dot="{{ $i }}" aria-label="{{ if $slide.Title }}Go to slide: {{ $slide.Title }}{{ else }}Go to slide{{ end }}"{{ if eq $i 0 }} aria-current="true"{{ end }}></button>
+        {{ end }}
       </div>
     </div>
   </main>
   <script>
+    const deck = document.querySelector('.deck');
     const slides = Array.from(document.querySelectorAll('.slide'));
+    const dots = Array.from(document.querySelectorAll('[data-slide-dot]'));
+    const mobileQuery = window.matchMedia('(max-width: 900px)');
     let index = 0;
+    const syncDots = () => {
+      dots.forEach((dot, i) => {
+        if (i === index) {
+          dot.setAttribute('aria-current', 'true');
+        } else {
+          dot.removeAttribute('aria-current');
+        }
+      });
+    };
     const show = (nextIndex) => {
       if (!slides.length) return;
       index = Math.max(0, Math.min(nextIndex, slides.length - 1));
       slides.forEach((slide, i) => slide.classList.toggle('active', i === index));
+      syncDots();
+      if (mobileQuery.matches) {
+        slides[index].scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+      }
+    };
+    const syncIndexFromScroll = () => {
+      if (!mobileQuery.matches || !deck || !slides.length) return;
+      const nextIndex = Math.round(deck.scrollLeft / Math.max(deck.clientWidth, 1));
+      if (nextIndex !== index) {
+        index = Math.max(0, Math.min(nextIndex, slides.length - 1));
+        slides.forEach((slide, i) => slide.classList.toggle('active', i === index));
+        syncDots();
+      }
     };
     document.addEventListener('keydown', (event) => {
+      if (mobileQuery.matches) return;
       if (event.key === 'ArrowRight' || event.key === 'PageDown') show(index + 1);
       if (event.key === 'ArrowLeft' || event.key === 'PageUp') show(index - 1);
     });
+    dots.forEach((dot, dotIndex) => {
+      dot.addEventListener('click', () => show(dotIndex));
+    });
+    if (deck) {
+      deck.addEventListener('scroll', syncIndexFromScroll, { passive: true });
+    }
+    mobileQuery.addEventListener('change', () => {
+      if (mobileQuery.matches) {
+        slides[index]?.scrollIntoView({ block: 'nearest', inline: 'start' });
+      } else {
+        if (deck) {
+          deck.scrollTo({ left: 0, top: 0 });
+        }
+        show(index);
+      }
+    });
+    syncDots();
+    const renderMermaidDiagrams = async () => {
+      const diagrams = Array.from(document.querySelectorAll('.shortcode-mermaid'));
+      if (!diagrams.length) return;
+      try {
+        const mermaidModule = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+        const mermaid = mermaidModule.default;
+        const mermaidTheme = getComputedStyle(document.documentElement).colorScheme === 'dark' ? 'dark' : 'default';
+        mermaid.initialize({ startOnLoad: false, securityLevel: 'loose', theme: mermaidTheme });
+        for (const [diagramIndex, diagram] of diagrams.entries()) {
+          const definition = diagram.querySelector('.shortcode-mermaid-definition')?.textContent?.trim();
+          const target = diagram.querySelector('.shortcode-mermaid-render');
+          if (!definition || !target) continue;
+          const { svg } = await mermaid.render('margo-mermaid-' + diagramIndex, definition);
+          target.innerHTML = svg;
+          diagram.classList.add('is-rendered');
+        }
+      } catch (error) {
+        console.warn('Mermaid render failed', error);
+      }
+    };
+    renderMermaidDiagrams();
     const exportButton = document.getElementById('export-pdf');
     if (exportButton) {
       exportButton.addEventListener('click', async () => {
@@ -1530,6 +1855,96 @@ func defaultThemePrintDeckLayout() string {
       text-transform: uppercase;
       color: var(--muted);
     }
+    .shortcode-github-repo {
+      margin: 28px 0;
+      max-width: min(100%, 32rem);
+    }
+    .shortcode-github-repo-card {
+      display: grid;
+      gap: 8px;
+      padding: 20px 22px;
+      border-radius: 22px;
+      border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+      background:
+        radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 18%, transparent), transparent 42%),
+        color-mix(in srgb, var(--card) 95%, transparent);
+      box-shadow: 0 20px 48px var(--shadow);
+      color: inherit;
+      text-decoration: none;
+    }
+    .shortcode-github-repo-label {
+      font: 12px/1.2 sans-serif;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .shortcode-github-repo-name {
+      font-size: 28px;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      color: color-mix(in srgb, var(--fg) 88%, var(--accent));
+    }
+    .shortcode-github-repo-url {
+      font: 14px/1.35 "SFMono-Regular", "Menlo", "Consolas", monospace;
+      color: var(--muted);
+      word-break: break-all;
+    }
+    .shortcode-github-repo-caption {
+      margin-top: 12px;
+      font: 12px/1.3 sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .shortcode-mermaid {
+      margin: 28px 0;
+      display: grid;
+      gap: 12px;
+    }
+    .shortcode-mermaid.shortcode-mermaid-align-center {
+      justify-items: center;
+    }
+    .shortcode-mermaid.shortcode-mermaid-align-right {
+      justify-items: end;
+    }
+    .shortcode-mermaid-render {
+      display: none;
+      width: min(100%, 860px);
+      padding: 18px;
+      border-radius: 20px;
+      background: color-mix(in srgb, var(--card) 95%, transparent);
+      box-shadow: 0 20px 48px var(--shadow);
+      overflow: auto;
+    }
+    .shortcode-mermaid.is-rendered .shortcode-mermaid-render {
+      display: block;
+    }
+    .shortcode-mermaid-render svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .shortcode-mermaid-definition {
+      width: min(100%, 860px);
+      margin: 0;
+      padding: 18px 20px;
+      border-radius: 20px;
+      background: color-mix(in srgb, var(--card) 92%, transparent);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+      color: var(--fg);
+      font: 15px/1.5 "SFMono-Regular", "Menlo", "Consolas", monospace;
+      white-space: pre-wrap;
+      overflow: auto;
+    }
+    .shortcode-mermaid.is-rendered .shortcode-mermaid-definition {
+      display: none;
+    }
+    .shortcode-mermaid-caption {
+      font: 12px/1.3 sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
     .agenda-slide ol {
       margin: 22px 0 0;
       padding-left: 28px;
@@ -1718,6 +2133,27 @@ func defaultThemePrintDeckLayout() string {
       {{ end }}
     </div>
   </main>
+  <script type="module">
+    const diagrams = Array.from(document.querySelectorAll('.shortcode-mermaid'));
+    if (diagrams.length) {
+      try {
+        const mermaidModule = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+        const mermaid = mermaidModule.default;
+        const mermaidTheme = getComputedStyle(document.documentElement).colorScheme === 'dark' ? 'dark' : 'default';
+        mermaid.initialize({ startOnLoad: false, securityLevel: 'loose', theme: mermaidTheme });
+        for (const [diagramIndex, diagram] of diagrams.entries()) {
+          const definition = diagram.querySelector('.shortcode-mermaid-definition')?.textContent?.trim();
+          const target = diagram.querySelector('.shortcode-mermaid-render');
+          if (!definition || !target) continue;
+          const { svg } = await mermaid.render('margo-print-mermaid-' + diagramIndex, definition);
+          target.innerHTML = svg;
+          diagram.classList.add('is-rendered');
+        }
+      } catch (error) {
+        console.warn('Mermaid render failed', error);
+      }
+    }
+  </script>
   {{ .Snippets.BodyEnd }}
 </body>
 </html>

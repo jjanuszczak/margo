@@ -1,0 +1,12 @@
+<div class="slide-shell split-layout">
+  {{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
+  <div class="slide-meta">{{ .Slide.Title }}</div>
+  <div class="slide-body media-split-slide media-right">
+    <div class="content-pane prose-body">
+      {{ .LeadContent }}
+    </div>
+    <div class="media-pane">
+      {{ .LeadMedia }}
+    </div>
+  </div>
+</div>

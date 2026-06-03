@@ -1,0 +1,22 @@
+name: default
+version: 0.1.0
+description: Default Margo starter theme
+config_options:
+  - name: color_mode
+    type: string
+    description: Light or dark presentation mode
+    default: light
+    values:
+      - light
+      - dark
+  - name: typography
+    type: string
+    description: Typography preset for deck tone
+    default: editorial
+    values:
+      - editorial
+      - executive
+  - name: accent_color
+    type: string
+    description: Accent color used for emphasis
+    default: "#8f6f33"
