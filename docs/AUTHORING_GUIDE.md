@@ -641,6 +641,7 @@ Useful variants:
 
 ```bash
 ../bin/margo theme add https://example.com/brand-theme.git --name brand
+../bin/margo theme update brand
 ../bin/margo theme list
 ```
 

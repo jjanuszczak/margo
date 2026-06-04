@@ -31,6 +31,7 @@ Working today:
 - `margo new slide <name>`
 - `margo new theme <name>`
 - `margo new theme <name> blank`
+- `margo theme update <name>`
 
 Implemented in the content model:
 - YAML config parsing
@@ -117,6 +118,12 @@ Install a vendored theme from a Git repo:
 ```bash
 ../bin/margo theme add https://example.com/brand-theme.git --ref v0.1.0
 ../bin/margo theme list
+```
+
+Update an installed vendored theme from its recorded Git source:
+
+```bash
+../bin/margo theme update brand
 ```
 
 ## Project Shape

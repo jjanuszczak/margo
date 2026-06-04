@@ -92,6 +92,70 @@ func TestListIncludesSourceMetadata(t *testing.T) {
 	}
 }
 
+func TestUpdateReinstallsThemeFromRecordedSource(t *testing.T) {
+	projectRoot := t.TempDir()
+	repoRoot := createThemeRepo(t, "portable")
+
+	installed, err := Install(InstallOptions{
+		ProjectRoot: projectRoot,
+		Repo:        repoRoot,
+		Name:        "brand",
+	})
+	if err != nil {
+		t.Fatalf("install returned error: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(repoRoot, "layouts", "default.html"), []byte("updated layout"), 0o644); err != nil {
+		t.Fatalf("write updated theme layout: %v", err)
+	}
+	runGitCommand(t, repoRoot, "add", ".")
+	runGitCommand(t, repoRoot, "commit", "-m", "update theme")
+
+	updated, err := Update(projectRoot, installed.Name)
+	if err != nil {
+		t.Fatalf("update returned error: %v", err)
+	}
+	if updated.Name != "brand" {
+		t.Fatalf("expected updated name %q, got %q", "brand", updated.Name)
+	}
+	data, err := os.ReadFile(filepath.Join(projectRoot, ThemesDirName, "brand", "layouts", "default.html"))
+	if err != nil {
+		t.Fatalf("read updated layout: %v", err)
+	}
+	if string(data) != "updated layout" {
+		t.Fatalf("expected updated layout contents, got %q", string(data))
+	}
+	meta, err := Load(projectRoot, "brand")
+	if err != nil {
+		t.Fatalf("load updated theme: %v", err)
+	}
+	if meta.Source == nil || meta.Source.Repo != repoRoot {
+		t.Fatalf("expected source repo %q, got %#v", repoRoot, meta.Source)
+	}
+	if meta.Source.ResolvedRef == installed.Source.ResolvedRef {
+		t.Fatalf("expected resolved ref to change after update")
+	}
+}
+
+func TestUpdateRequiresGitSourceMetadata(t *testing.T) {
+	projectRoot := t.TempDir()
+	themeRoot := filepath.Join(projectRoot, ThemesDirName, "custom")
+	if err := os.MkdirAll(filepath.Join(themeRoot, "layouts"), 0o755); err != nil {
+		t.Fatalf("mkdir layouts: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(themeRoot, ThemeMetadataFile), []byte("name: custom\n"), 0o644); err != nil {
+		t.Fatalf("write metadata: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(themeRoot, "layouts", "default.html"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("write layout: %v", err)
+	}
+
+	_, err := Update(projectRoot, "custom")
+	if err == nil || !strings.Contains(err.Error(), "has no recorded source metadata") {
+		t.Fatalf("expected missing source metadata error, got %v", err)
+	}
+}
+
 func createThemeRepo(t *testing.T, name string) string {
 	t.Helper()
 	repoRoot := t.TempDir()

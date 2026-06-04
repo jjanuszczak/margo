@@ -453,6 +453,44 @@ func TestRunThemeListReportsVendoredSources(t *testing.T) {
 	}
 }
 
+func TestRunThemeUpdateRefreshesInstalledTheme(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := scaffold.CreateDeck(scaffold.DeckOptions{
+		Name:      "test-deck",
+		TargetDir: projectRoot,
+	}); err != nil {
+		t.Fatalf("create deck: %v", err)
+	}
+	repoRoot := createThemeGitRepo(t, "portable")
+
+	restoreWD := withWorkingDir(t, projectRoot)
+	defer restoreWD()
+
+	if err := runThemeAdd([]string{repoRoot, "--name", "brand"}, io.Discard); err != nil {
+		t.Fatalf("runThemeAdd returned error: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(repoRoot, "layouts", "default.html"), []byte("updated from repo"), 0o644); err != nil {
+		t.Fatalf("write updated layout: %v", err)
+	}
+	runGit(t, repoRoot, "add", ".")
+	runGit(t, repoRoot, "commit", "-m", "update theme")
+
+	var out bytes.Buffer
+	if err := runThemeUpdate([]string{"brand"}, &out); err != nil {
+		t.Fatalf("runThemeUpdate returned error: %v", err)
+	}
+	if !strings.Contains(out.String(), "updated theme brand") {
+		t.Fatalf("expected update output, got %q", out.String())
+	}
+	data, err := os.ReadFile(filepath.Join(projectRoot, "themes", "brand", "layouts", "default.html"))
+	if err != nil {
+		t.Fatalf("read updated vendored theme: %v", err)
+	}
+	if string(data) != "updated from repo" {
+		t.Fatalf("expected updated vendored theme, got %q", string(data))
+	}
+}
+
 func writeArchetype(t *testing.T, projectRoot string, name string, description string) {
 	t.Helper()
 	dir := filepath.Join(projectRoot, "archetypes", name)
