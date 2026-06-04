@@ -113,6 +113,8 @@ func runThemeCommand(args []string, stdout io.Writer) error {
 	switch args[0] {
 	case "add":
 		return runThemeAdd(args[1:], stdout)
+	case "update":
+		return runThemeUpdate(args[1:], stdout)
 	case "list":
 		return runThemeList(stdout)
 	default:
@@ -347,6 +349,49 @@ func runThemeList(stdout io.Writer) error {
 			continue
 		}
 		fmt.Fprintln(stdout, installed.Name)
+	}
+	return nil
+}
+
+func runThemeUpdate(args []string, stdout io.Writer) error {
+	themeName, err := parseThemeUpdateArgs(args)
+	if err != nil {
+		return err
+	}
+	if themeName == "" {
+		return fmt.Errorf("theme update requires a theme name")
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working directory: %w", err)
+	}
+	root, err := project.Discover(wd)
+	if err != nil {
+		report := diagnostics.Report{}
+		report.Add(diagnostics.Diagnostic{
+			Severity: diagnostics.SeverityError,
+			Code:     "project_not_found",
+			Message:  err.Error(),
+			Path:     wd,
+		})
+		return commandError{
+			message: "theme update requires a Margo project root",
+			report:  report,
+		}
+	}
+
+	updated, err := theme.Update(root.Dir, themeName)
+	if err != nil {
+		return fmt.Errorf("update theme: %w", err)
+	}
+
+	fmt.Fprintf(stdout, "updated theme %s at %s\n", updated.Name, filepath.Join(root.Dir, "themes", updated.Name))
+	if updated.Source != nil {
+		fmt.Fprintf(stdout, "theme source: %s %s\n", updated.Source.Type, updated.Source.Repo)
+		if updated.Source.ResolvedRef != "" {
+			fmt.Fprintf(stdout, "theme revision: %s\n", updated.Source.ResolvedRef)
+		}
 	}
 	return nil
 }
@@ -697,6 +742,7 @@ func writeHelp(w io.Writer) {
 	fmt.Fprintln(w, "  margo build --include-drafts")
 	fmt.Fprintln(w, "  margo serve [--include-drafts] [--no-open] [--port <port>]")
 	fmt.Fprintln(w, "  margo theme add <repo> [--ref <rev>] [--name <local-name>]")
+	fmt.Fprintln(w, "  margo theme update <name>")
 	fmt.Fprintln(w, "  margo theme list")
 	fmt.Fprintln(w, "  margo new slide <name> [--archetype <name>]")
 	fmt.Fprintln(w, "  margo new theme <name> [--blank]")
@@ -849,6 +895,19 @@ func parseNewThemeArgs(args []string) (string, bool, error) {
 	}
 
 	return themeName, blank, nil
+}
+
+func parseThemeUpdateArgs(args []string) (string, error) {
+	if len(args) == 0 {
+		return "", nil
+	}
+	if len(args) > 1 {
+		return "", fmt.Errorf("theme update accepts exactly one theme name")
+	}
+	if strings.HasPrefix(args[0], "--") {
+		return "", fmt.Errorf("unknown theme update option %q", args[0])
+	}
+	return strings.TrimSpace(args[0]), nil
 }
 
 func parseThemeAddArgs(args []string) (string, string, string, error) {

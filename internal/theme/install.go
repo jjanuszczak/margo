@@ -33,67 +33,186 @@ func Install(opts InstallOptions) (InstalledTheme, error) {
 		return InstalledTheme{}, errors.New("theme repo is required")
 	}
 
-	cloneDir, err := os.MkdirTemp("", "margo-theme-clone-*")
+	cloneDir, resolvedRef, err := cloneThemeRepo(opts.Repo, opts.Ref)
 	if err != nil {
-		return InstalledTheme{}, fmt.Errorf("create temporary clone directory: %w", err)
+		return InstalledTheme{}, err
 	}
 	defer os.RemoveAll(cloneDir)
 
-	if err := runGit("", "clone", opts.Repo, cloneDir); err != nil {
-		return InstalledTheme{}, fmt.Errorf("clone theme repo %q: %w", opts.Repo, err)
+	return installFromClonedTheme(cloneDir, resolvedRef, opts)
+}
+
+func Update(projectRoot, themeName string) (InstalledTheme, error) {
+	if strings.TrimSpace(projectRoot) == "" {
+		return InstalledTheme{}, errors.New("project root is required")
 	}
-	if strings.TrimSpace(opts.Ref) != "" {
-		if err := runGit(cloneDir, "checkout", opts.Ref); err != nil {
-			return InstalledTheme{}, fmt.Errorf("checkout theme ref %q: %w", opts.Ref, err)
+	themeName = strings.TrimSpace(themeName)
+	if themeName == "" {
+		return InstalledTheme{}, errors.New("theme name is required")
+	}
+
+	meta, err := Load(projectRoot, themeName)
+	if err != nil {
+		return InstalledTheme{}, fmt.Errorf("load installed theme: %w", err)
+	}
+	if meta.Source == nil {
+		return InstalledTheme{}, fmt.Errorf("theme %q has no recorded source metadata", themeName)
+	}
+	if meta.Source.Type != "git" {
+		return InstalledTheme{}, fmt.Errorf("theme %q source type %q is not updatable", themeName, meta.Source.Type)
+	}
+	if strings.TrimSpace(meta.Source.Repo) == "" {
+		return InstalledTheme{}, fmt.Errorf("theme %q source repo is empty", themeName)
+	}
+
+	cloneDir, resolvedRef, err := cloneThemeRepo(meta.Source.Repo, meta.Source.Ref)
+	if err != nil {
+		return InstalledTheme{}, err
+	}
+	defer os.RemoveAll(cloneDir)
+
+	stagedDir, source, err := stageInstalledTheme(cloneDir, resolvedRef, InstallOptions{
+		ProjectRoot: projectRoot,
+		Repo:        meta.Source.Repo,
+		Ref:         meta.Source.Ref,
+		Name:        themeName,
+	})
+	if err != nil {
+		return InstalledTheme{}, err
+	}
+	defer os.RemoveAll(stagedDir)
+
+	targetDir := filepath.Join(projectRoot, ThemesDirName, themeName)
+	backupDir := targetDir + ".bak"
+	_ = os.RemoveAll(backupDir)
+	if err := os.Rename(targetDir, backupDir); err != nil {
+		return InstalledTheme{}, fmt.Errorf("backup installed theme %q: %w", themeName, err)
+	}
+	restoreBackup := true
+	defer func() {
+		if restoreBackup {
+			_ = os.RemoveAll(targetDir)
+			_ = os.Rename(backupDir, targetDir)
+		}
+	}()
+	if err := os.Rename(stagedDir, targetDir); err != nil {
+		return InstalledTheme{}, fmt.Errorf("replace installed theme %q: %w", themeName, err)
+	}
+	restoreBackup = false
+	_ = os.RemoveAll(backupDir)
+
+	return InstalledTheme{Name: themeName, Source: source}, nil
+}
+
+func cloneThemeRepo(repo, ref string) (string, string, error) {
+	cloneDir, err := os.MkdirTemp("", "margo-theme-clone-*")
+	if err != nil {
+		return "", "", fmt.Errorf("create temporary clone directory: %w", err)
+	}
+
+	if err := runGit("", "clone", repo, cloneDir); err != nil {
+		_ = os.RemoveAll(cloneDir)
+		return "", "", fmt.Errorf("clone theme repo %q: %w", repo, err)
+	}
+	if strings.TrimSpace(ref) != "" {
+		if err := runGit(cloneDir, "checkout", ref); err != nil {
+			_ = os.RemoveAll(cloneDir)
+			return "", "", fmt.Errorf("checkout theme ref %q: %w", ref, err)
 		}
 	}
 
 	resolvedRef, err := gitOutput(cloneDir, "rev-parse", "HEAD")
 	if err != nil {
-		return InstalledTheme{}, fmt.Errorf("resolve installed theme revision: %w", err)
+		_ = os.RemoveAll(cloneDir)
+		return "", "", fmt.Errorf("resolve installed theme revision: %w", err)
 	}
+	return cloneDir, resolvedRef, nil
+}
 
-	meta, err := loadFromRootDir(cloneDir, filepath.Base(cloneDir))
+func installFromClonedTheme(cloneDir, resolvedRef string, opts InstallOptions) (InstalledTheme, error) {
+	themeName, err := installedThemeName(cloneDir, opts.Name)
 	if err != nil {
-		return InstalledTheme{}, fmt.Errorf("load cloned theme: %w", err)
+		return InstalledTheme{}, err
 	}
-
-	themeName := strings.TrimSpace(opts.Name)
-	if themeName == "" {
-		themeName = strings.TrimSpace(meta.Name)
-	}
-	if themeName == "" {
-		return InstalledTheme{}, errors.New("installed theme name is empty")
-	}
-
-	targetDir := filepath.Join(opts.ProjectRoot, ThemesDirName, themeName)
+	parentDir := filepath.Join(opts.ProjectRoot, ThemesDirName)
+	targetDir := filepath.Join(parentDir, themeName)
 	if _, err := os.Stat(targetDir); err == nil {
 		return InstalledTheme{}, fmt.Errorf("theme already exists: %s", targetDir)
 	} else if !os.IsNotExist(err) {
 		return InstalledTheme{}, fmt.Errorf("stat target theme directory %q: %w", targetDir, err)
 	}
 
+	stagedDir, source, err := stageInstalledTheme(cloneDir, resolvedRef, InstallOptions{
+		ProjectRoot: opts.ProjectRoot,
+		Repo:        opts.Repo,
+		Ref:         opts.Ref,
+		Name:        themeName,
+	})
+	if err != nil {
+		return InstalledTheme{}, err
+	}
+	defer os.RemoveAll(stagedDir)
+
+	if err := os.Rename(stagedDir, targetDir); err != nil {
+		return InstalledTheme{}, fmt.Errorf("move installed theme into deck: %w", err)
+	}
+
+	return InstalledTheme{Name: themeName, Source: source}, nil
+}
+
+func stageInstalledTheme(cloneDir, resolvedRef string, opts InstallOptions) (string, *Source, error) {
+	themeName, err := installedThemeName(cloneDir, opts.Name)
+	if err != nil {
+		return "", nil, err
+	}
+
+	parentDir := filepath.Join(opts.ProjectRoot, ThemesDirName)
+	if err := os.MkdirAll(parentDir, 0o755); err != nil {
+		return "", nil, fmt.Errorf("create themes directory %q: %w", parentDir, err)
+	}
+	targetDir, err := os.MkdirTemp(parentDir, themeName+".staged-*")
+	if err != nil {
+		return "", nil, fmt.Errorf("create staged theme directory: %w", err)
+	}
+
 	if err := copyThemeTree(cloneDir, targetDir); err != nil {
-		return InstalledTheme{}, fmt.Errorf("copy theme into deck: %w", err)
+		_ = os.RemoveAll(targetDir)
+		return "", nil, fmt.Errorf("copy theme into deck: %w", err)
 	}
 
 	source := &Source{
 		Type:        "git",
-		Repo:        opts.Repo,
+		Repo:        strings.TrimSpace(opts.Repo),
 		Ref:         strings.TrimSpace(opts.Ref),
 		ResolvedRef: strings.TrimSpace(resolvedRef),
 	}
 	if err := writeSourceMetadata(filepath.Join(targetDir, ThemeMetadataFile), source, themeName); err != nil {
 		_ = os.RemoveAll(targetDir)
-		return InstalledTheme{}, fmt.Errorf("write installed theme metadata: %w", err)
+		return "", nil, fmt.Errorf("write installed theme metadata: %w", err)
 	}
 
 	if _, err := loadFromRootDir(targetDir, themeName); err != nil {
 		_ = os.RemoveAll(targetDir)
-		return InstalledTheme{}, fmt.Errorf("validate installed theme: %w", err)
+		return "", nil, fmt.Errorf("validate installed theme: %w", err)
 	}
 
-	return InstalledTheme{Name: themeName, Source: source}, nil
+	return targetDir, source, nil
+}
+
+func installedThemeName(cloneDir, requestedName string) (string, error) {
+	meta, err := loadFromRootDir(cloneDir, filepath.Base(cloneDir))
+	if err != nil {
+		return "", fmt.Errorf("load cloned theme: %w", err)
+	}
+
+	themeName := strings.TrimSpace(requestedName)
+	if themeName == "" {
+		themeName = strings.TrimSpace(meta.Name)
+	}
+	if themeName == "" {
+		return "", errors.New("installed theme name is empty")
+	}
+	return themeName, nil
 }
 
 func List(projectRoot string) ([]InstalledTheme, error) {
