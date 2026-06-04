@@ -70,6 +70,8 @@ Build versioned release archives:
 VERSION=0.1.0 ./scripts/release.sh
 ```
 
+Homebrew packaging notes for maintainers live in [docs/HOMEBREW.md](./docs/HOMEBREW.md).
+
 Override the default targets by passing explicit `GOOS/GOARCH` pairs:
 
 ```bash
