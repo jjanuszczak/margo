@@ -48,6 +48,7 @@ Use the product docs for intent and scope boundaries. Use the authoring guide fo
 - `margo new slide <name>`
 - `margo new theme <name>`
 - `margo theme add <repo> [--ref <rev>] [--name <local-name>]`
+- `margo theme update <name>`
 - `margo theme list`
 
 ### Implemented platform pieces
@@ -149,6 +150,16 @@ Margo should preserve a clear boundary:
 - author-facing content usage in Markdown/front matter
 
 Do not quietly collapse those layers together.
+
+Treat engine/theme decoupling as a first-class rule, not a stylistic preference.
+
+- Avoid making themes depend on ad hoc engine-only template fields when the same behavior can be derived from rendered markup or stable generic helpers.
+- Prefer theme behavior that keys off HTML structure, CSS classes, declared assets, or reusable template primitives rather than feature-specific booleans injected from Go.
+- If the engine must expose something to templates, prefer a stable mechanism-level helper over a narrow feature flag that couples one theme behavior to one internal implementation detail.
+
+Example:
+- loading a chart runtime because the deck contains `.shortcode-chart` markup is a good theme-side decision
+- requiring a theme to read a special field like `.HasCharts` is tighter coupling and should be avoided unless there is a strong cross-cutting reason
 
 ### 5. Favor explicit override models
 

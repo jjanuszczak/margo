@@ -120,12 +120,28 @@ def verify_tap_formula(tap_path: Path, tag: str) -> Path:
 
 
 def run_brew_checks(repo_root: Path, formula: Path) -> list[str]:
+    return run_brew_checks_with_formula_name(repo_root, "jjanuszczak/margo/margo")
+
+
+def run_brew_checks_with_formula_name(repo_root: Path, formula_name: str) -> list[str]:
     if shutil.which("brew") is None:
         fail("brew is required for Homebrew verification")
+    info = run(
+        ["brew", "info", "--json=v2", formula_name],
+        cwd=repo_root,
+        capture_output=True,
+    )
+    payload = json.loads(info.stdout)
+    installed = payload.get("formulae", [{}])[0].get("installed", [])
+    install_or_upgrade = (
+        ["brew", "upgrade", "--build-from-source", formula_name]
+        if installed
+        else ["brew", "install", "--build-from-source", formula_name]
+    )
     commands = [
-        ["brew", "install", "--build-from-source", str(formula)],
-        ["brew", "test", "margo"],
-        ["brew", "audit", "--strict", "--formula", str(formula)],
+        install_or_upgrade,
+        ["brew", "test", formula_name],
+        ["brew", "audit", "--strict", "--formula", formula_name],
     ]
     executed: list[str] = []
     for command in commands:
@@ -158,6 +174,11 @@ def main() -> int:
         action="store_true",
         help="Skip brew install/test/audit even when a tap path is provided",
     )
+    parser.add_argument(
+        "--brew-formula",
+        default="jjanuszczak/margo/margo",
+        help="Tap-qualified Homebrew formula name to verify",
+    )
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[3]
@@ -179,7 +200,10 @@ def main() -> int:
         formula = verify_tap_formula(tap_path, tag)
         results["tap_formula"] = str(formula)
         if not args.skip_brew:
-            results["brew_checks"] = run_brew_checks(repo_root, formula)
+            results["brew_checks"] = run_brew_checks_with_formula_name(
+                repo_root,
+                args.brew_formula,
+            )
 
     print(json.dumps(results, indent=2))
     return 0

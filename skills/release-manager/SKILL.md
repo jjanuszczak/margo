@@ -49,12 +49,13 @@ This script:
 - re-validates the built archives
 - verifies the GitHub release via `gh` when available
 - checks that the tap formula points at the expected tag and has a non-placeholder checksum
-- runs `brew install --build-from-source`, `brew test`, and `brew audit --strict` when a tap checkout is available
+- runs `brew install` or `brew upgrade --build-from-source`, then `brew test`, and `brew audit --strict` using the tap-qualified formula name when a tap checkout is available
 
 Useful flags:
 
 - `--skip-gh-release-check`
 - `--skip-brew`
+- `--brew-formula jjanuszczak/margo/margo`
 
 ## Instructions
 

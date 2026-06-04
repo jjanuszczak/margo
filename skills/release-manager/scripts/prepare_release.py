@@ -184,9 +184,9 @@ def build_followup_markdown(
                 "   - `sha256` matches the checksum from the previous step",
                 "6. Verify the tap formula:",
                 "   ```bash",
-                f"   brew install --build-from-source {tap_path / 'Formula' / 'margo.rb'}",
-                "   brew test margo",
-                f"   brew audit --strict --formula {tap_path / 'Formula' / 'margo.rb'}",
+                "   brew upgrade --build-from-source jjanuszczak/margo/margo",
+                "   brew test jjanuszczak/margo/margo",
+                "   brew audit --strict --formula jjanuszczak/margo/margo",
                 "   ```",
                 "7. Commit and push the tap update.",
             ]
@@ -195,7 +195,7 @@ def build_followup_markdown(
         lines.extend(
             [
                 "5. Update `Formula/margo.rb` in `jjanuszczak/homebrew-margo` with the new tag URL and checksum.",
-                "6. In the tap checkout, run `brew install --build-from-source`, `brew test margo`, and `brew audit --strict --formula ./Formula/margo.rb`.",
+                "6. In the tap checkout, run `brew upgrade --build-from-source jjanuszczak/margo/margo`, `brew test jjanuszczak/margo/margo`, and `brew audit --strict --formula jjanuszczak/margo/margo`.",
                 "7. Commit and push the tap update.",
             ]
         )
