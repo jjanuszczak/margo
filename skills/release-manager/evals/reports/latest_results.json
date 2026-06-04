@@ -1,0 +1,33 @@
+{
+  "timestamp": "2026-06-04T05:39:08.537934+00:00",
+  "overall_status": "PASS",
+  "checks": [
+    {
+      "name": "prepare_release",
+      "status": "PASS",
+      "command": [
+        "/usr/local/bin/python3",
+        "/Users/johnjanuszczak/Projects/margo/skills/release-manager/scripts/prepare_release.py",
+        "0.0.0-eval",
+        "--allow-dirty"
+      ],
+      "stdout": "?   \tmargo/cmd/margo\t[no test files]\nok  \tmargo/internal/archetype\t(cached)\n?   \tmargo/internal/clean\t[no test files]\nok  \tmargo/internal/cli\t(cached)\nok  \tmargo/internal/config\t(cached)\nok  \tmargo/internal/content\t(cached)\nok  \tmargo/internal/deck\t(cached)\n?   \tmargo/internal/diagnostics\t[no test files]\nok  \tmargo/internal/ignore\t(cached)\nok  \tmargo/internal/manifest\t(cached)\nok  \tmargo/internal/output/html\t(cached)\nok  \tmargo/internal/output/pdf\t(cached)\nok  \tmargo/internal/output/printhtml\t(cached)\n?   \tmargo/internal/output/render\t[no test files]\n?   \tmargo/internal/project\t[no test files]\nok  \tmargo/internal/scaffold\t(cached)\nok  \tmargo/internal/serve\t(cached)\nok  \tmargo/internal/shortcode\t(cached)\nok  \tmargo/internal/theme\t(cached)\n?   \tmargo/internal/version\t[no test files]\nok  \tmargo/internal/watch\t(cached)\n==> building margo-darwin-arm64\ncreated /Users/johnjanuszczak/Projects/margo/dist/release/margo-darwin-arm64/margo-darwin-arm64.tar.gz\n==> building margo-darwin-amd64\ncreated /Users/johnjanuszczak/Projects/margo/dist/release/margo-darwin-amd64/margo-darwin-amd64.tar.gz\n==> building margo-linux-amd64\ncreated /Users/johnjanuszczak/Projects/margo/dist/release/margo-linux-amd64/margo-linux-amd64.tar.gz\n\nrelease artifacts written to /Users/johnjanuszczak/Projects/margo/dist/release\nPrepared release v0.0.0-eval\nManifest: /Users/johnjanuszczak/Projects/margo/dist/release/release-0.0.0-eval/manifest.json\nFollow-up: /Users/johnjanuszczak/Projects/margo/dist/release/release-0.0.0-eval/release-followup.md\n",
+      "stderr": "bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): Bad file descriptor\ntar: Failed to set default locale\ntar: Failed to set default locale\ntar: Failed to set default locale\ntar: Failed to set default locale\ntar: Failed to set default locale\ntar: Failed to set default locale\n",
+      "returncode": 0
+    },
+    {
+      "name": "verify_release",
+      "status": "PASS",
+      "command": [
+        "/usr/local/bin/python3",
+        "/Users/johnjanuszczak/Projects/margo/skills/release-manager/scripts/verify_release.py",
+        "0.0.0-eval",
+        "--skip-gh-release-check",
+        "--skip-brew"
+      ],
+      "stdout": "{\n  \"version\": \"0.0.0-eval\",\n  \"tag\": \"v0.0.0-eval\",\n  \"archives\": [\n    {\n      \"target\": \"darwin/arm64\",\n      \"archive\": \"/Users/johnjanuszczak/Projects/margo/dist/release/margo-darwin-arm64/margo-darwin-arm64.tar.gz\",\n      \"version_output\": \"margo 0.0.0-eval\"\n    },\n    {\n      \"target\": \"darwin/amd64\",\n      \"archive\": \"/Users/johnjanuszczak/Projects/margo/dist/release/margo-darwin-amd64/margo-darwin-amd64.tar.gz\",\n      \"version_output\": \"skipped execution for non-host target: /var/folders/ck/_5v44nkn2kqg610n4d52hmvc0000gn/T/margo-release-verify-1wjxl253/margo-0.0.0-eval/margo: Mach-O 64-bit executable x86_64\"\n    },\n    {\n      \"target\": \"linux/amd64\",\n      \"archive\": \"/Users/johnjanuszczak/Projects/margo/dist/release/margo-linux-amd64/margo-linux-amd64.tar.gz\",\n      \"version_output\": \"skipped execution for non-host target: /var/folders/ck/_5v44nkn2kqg610n4d52hmvc0000gn/T/margo-release-verify-rzxozh1i/margo-0.0.0-eval/margo: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=zAuXMfUBrBnGOJKKLLVn/hJ86LuLPMUcT_7fwj5Mk/s7M5YhgzRjPyKdy6beM_/JwCCO-umU7F6qvhjsZ0O, BuildID[sha1]=173e29c31d1908c27c473e65885eb92590c59d41, with debug_info, not stripped\"\n    }\n  ]\n}\n",
+      "stderr": "tar: Failed to set default locale\ntar: Failed to set default locale\ntar: Failed to set default locale\n",
+      "returncode": 0
+    }
+  ]
+}
