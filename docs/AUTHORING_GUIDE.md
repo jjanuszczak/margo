@@ -332,8 +332,8 @@ layout: media-right
 - `section`: divider slide
 - `agenda`: ordered list of topics
 - `image`: visual-first slide
-- `two-column`: split text or mixed content
-- `media-left` / `media-right`: first image becomes the media pane, remaining content becomes the text pane
+- `two-column`: split text or mixed content, usually driven by a `<!-- column-break -->` marker
+- `media-left` / `media-right`: media-and-copy compositions provided by the theme template
 - `quote`: pull quote with attribution
 - `metric`: single KPI slide
 - `closing`: thank-you or wrap-up slide
@@ -662,6 +662,7 @@ The default theme uses:
 
 ```text
 themes/default/theme.yaml
+themes/default/assets/theme.css
 themes/default/layouts/deck.html
 themes/default/layouts/slide-default.html
 themes/default/layouts/slide-title.html
@@ -681,7 +682,18 @@ themes/default/shortcodes/*.html
 The easiest way to customize appearance today is:
 1. create a new theme scaffold
 2. point `margo.yaml` at it
-3. edit the theme's `layouts/`, `partials/`, and `shortcodes/`
+3. edit the theme's `layouts/`, `partials/`, `assets/`, and `shortcodes/`
+
+For ordinary content slides, the default theme now standardizes around a simple region contract:
+
+- `chrome`: logo, slide number, footer text
+- `header`: section label or eyebrow plus title
+- `context`: optional subtitle, intro, or breadcrumb
+- `body`: the dominant content composition for the slide
+- `annotations`: caption, source, or side note
+- `footer`: persistent deck metadata
+
+In practice, that means the default theme favors reusable partials such as `slide-header` and `slide-annotations`, while shared styling lives in `themes/<name>/assets/theme.css` instead of being repeated inline across every layout.
 
 Current partial rules:
 - deck-local partials may be added under `partials/*.html`
@@ -718,6 +730,7 @@ Current interplay:
 - slide layouts wrap rendered slide body content
 - deck and print layouts wrap the full slide collection
 - partials can be called from slide, deck, or print templates using standard Go template calls such as `{{ template "deck-logo" . }}`
+- layout-specific composition should stay in templates; the Go layer exposes generic helpers rather than named layout behavior
 
 Current override model:
 
@@ -766,7 +779,7 @@ section: Strategy
 
 ### Media split slide
 
-For `media-left` or `media-right`, place the first image in the body before the remaining content:
+For `media-left` or `media-right`, author the slide with the lead image first and the remaining content after it. The default theme composes that structure into the final media-and-copy layout:
 
 ```md
 ![Customer spotlight](spotlight.svg)

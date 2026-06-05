@@ -1,12 +1,13 @@
 <div class="slide-shell split-layout">
-  {{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
-  <div class="slide-meta">{{ .Slide.Title }}</div>
+  {{ template "slide-header" . }}
+  {{ $lead := leadingImage .Body }}
+  {{ $content := withoutLeadingImage .Body }}
   <div class="slide-body media-split-slide media-left">
     <div class="media-pane">
-      {{ .LeadMedia }}
+      {{ $lead }}
     </div>
     <div class="content-pane prose-body">
-      {{ .LeadContent }}
+      {{ $content }}
     </div>
   </div>
 </div>

@@ -1,5 +1,5 @@
 <div class="slide-shell agenda-layout">
-  <div class="slide-meta">Agenda</div>
+  {{ template "slide-header" (dict "Slide" (dict "Title" "Agenda") "SectionTitle" .SectionTitle) }}
   <div class="slide-body agenda-slide prose-body">
     {{ .Body }}
   </div>

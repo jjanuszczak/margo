@@ -12,10 +12,10 @@ footer_text: Rendering Model
 2. slide Markdown and front matter are loaded
 3. shortcodes expand inside the body
 4. Markdown is converted to HTML
-5. slide layouts wrap the content
-6. deck and print layouts wrap the slide collection
-7. partials provide reusable layout fragments
+5. generic helpers are available to templates
+6. slide layouts and partials wrap the content
+7. deck and print layouts wrap the slide collection
 
 {{< callout tone="info" >}}
-The Go code should stay generic: parsing, validation, asset resolution, and model shaping. Markup shape belongs in templates.
+The Go code should stay generic: parsing, validation, asset resolution, and model shaping. Layout-specific composition belongs in templates and partials.
 {{< /callout >}}
