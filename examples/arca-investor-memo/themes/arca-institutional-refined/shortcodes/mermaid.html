@@ -1,0 +1,6 @@
+{{ requiredInner .Name .Inner }}{{ validateParams .Name .Params "caption" "align" "class" }}{{ $align := optionalParamOneOf .Params "align" "left" "center" "right" }}{{ $caption := optionalParam .Params "caption" }}{{ $extraClass := optionalParam .Params "class" }}
+<div class="shortcode-mermaid{{ if $align }} shortcode-mermaid-align-{{ $align }}{{ else }} shortcode-mermaid-align-center{{ end }}{{ if $extraClass }} {{ $extraClass }}{{ end }}">
+  <div class="shortcode-mermaid-render" aria-hidden="true"></div>
+  <pre class="shortcode-mermaid-definition">{{ .Inner }}</pre>
+  {{ if $caption }}<div class="shortcode-mermaid-caption">{{ $caption }}</div>{{ end }}
+</div>

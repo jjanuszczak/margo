@@ -1,0 +1,4 @@
+<div class="frame-bottom">
+  {{ if ne .Slide.Layout "fancy-title" }}<div>{{ .Root.Deck.Title }} | {{ .Slide.Title }}</div>{{ else }}<div></div>{{ end }}
+  {{ if not .Slide.HideFooter }}<div>{{ .Slide.ResolvedFooterText }}</div>{{ end }}
+</div>

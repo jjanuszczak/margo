@@ -1,7 +1,7 @@
 <div class="slide-shell split-layout">
   {{ template "slide-header" . }}
   {{ $columns := splitBodyColumns .ExpandedMarkdown .Body }}
-  <div class="slide-body two-column-slide prose-body">
+  <div class="slide-body two-column-slide">
     <div class="column">
       {{ if $columns }}{{ index $columns 0 }}{{ else }}{{ .Body }}{{ end }}
     </div>

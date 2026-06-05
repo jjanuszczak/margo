@@ -1,0 +1,23 @@
+name: arca-institutional-refined
+version: 0.1.0
+description: ArCa institutional light theme with refactored partial structure
+config_options:
+  - name: typography
+    type: string
+    description: Typography preset for deck tone
+    default: institutional
+    values:
+      - institutional
+      - editorial
+  - name: accent_color
+    type: string
+    description: Accent color used for emphasis
+    default: "#b88b2d"
+  - name: frame_color
+    type: string
+    description: Frame and rule color
+    default: "#d7ccb6"
+  - name: paper_tone
+    type: string
+    description: Outer paper tone
+    default: "#efe8dc"

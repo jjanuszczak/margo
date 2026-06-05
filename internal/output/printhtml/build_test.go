@@ -79,12 +79,11 @@ func TestReferenceDeckPrintBuildFlow(t *testing.T) {
 		`class="shortcode-chart"`,
 		`class="shortcode-chart-canvas"`,
 		`themes/default/assets/chart.umd.min.js`,
+		`themes/default/assets/theme.css`,
 		`"type": "doughnut"`,
 		`Reference-deck Chart.js smoke test`,
 		`Deck-level asset rendered through the figure shortcode.`,
 		`Source: shared deck assets`,
-		`size: 13.333in 7.5in`,
-		`page-break-after: always;`,
 		`window.__margoFixture`,
 	} {
 		if !strings.Contains(out, needle) {
@@ -114,6 +113,15 @@ func TestReferenceDeckPrintBuildFlow(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "themes", "default", "assets", "chart.umd.min.js")); err != nil {
 		t.Fatalf("expected staged print theme asset to exist: %v", err)
+	}
+	themeCSS, err := os.ReadFile(filepath.Join(projectRoot, OutputDir, "themes", "default", "assets", "theme.css"))
+	if err != nil {
+		t.Fatalf("read staged theme css: %v", err)
+	}
+	for _, needle := range []string{`size: 13.333in 7.5in`, `page-break-after: always;`, `display: block !important`} {
+		if !strings.Contains(string(themeCSS), needle) {
+			t.Fatalf("expected staged theme css to contain %q", needle)
+		}
 	}
 }
 

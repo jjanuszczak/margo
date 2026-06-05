@@ -20,16 +20,16 @@ func resolveAssetReference(projectRoot string, slide deck.Slide, ref string, con
 	return render.ResolveAssetReference(projectRoot, slide, ref, context)
 }
 
-func renderBodyColumns(slide deck.Slide, expandedMarkdown string, body template.HTML) []template.HTML {
-	return render.RenderBodyColumns(slide, expandedMarkdown, body)
+func splitBodyColumns(expandedMarkdown string, body template.HTML) []template.HTML {
+	return render.SplitBodyColumns(expandedMarkdown, body)
 }
 
-func renderLeadMedia(slide deck.Slide, body template.HTML) template.HTML {
-	return render.RenderLeadMedia(slide, body)
+func leadingImage(body template.HTML) template.HTML {
+	return render.LeadingImage(body)
 }
 
-func renderLeadContent(slide deck.Slide, body template.HTML) template.HTML {
-	return render.RenderLeadContent(slide, body)
+func withoutLeadingImage(body template.HTML) template.HTML {
+	return render.WithoutLeadingImage(body)
 }
 
 func resolveDeckLogo(projectRoot string, value string) (render.RenderedLogo, diagnostics.Report) {

@@ -1,6 +1,5 @@
 <div class="slide-shell title-slide">
-  {{ if .SectionTitle }}<div class="section-meta">{{ .SectionTitle }}</div>{{ end }}
-  <div class="slide-meta">{{ .Slide.Title }}</div>
+  {{ template "slide-header" . }}
   <div class="slide-body title-stack">
     {{ .Body }}
   </div>
