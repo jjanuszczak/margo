@@ -11,15 +11,8 @@ import (
 	"margo/internal/output/render"
 )
 
-func TestRenderBodyColumnsForTwoColumnLayout(t *testing.T) {
-	slide := deck.Slide{
-		FrontMatter: deck.FrontMatter{
-			Layout: "two-column",
-		},
-		BodyMarkdown: "Left side\n\n<!-- column-break -->\n\nRight side",
-	}
-
-	columns := renderBodyColumns(slide, slide.BodyMarkdown, template.HTML("<p>ignored</p>"))
+func TestSplitBodyColumns(t *testing.T) {
+	columns := splitBodyColumns("Left side\n\n<!-- column-break -->\n\nRight side", template.HTML("<p>ignored</p>"))
 	if got, want := len(columns), 2; got != want {
 		t.Fatalf("expected %d columns, got %d", want, got)
 	}
@@ -30,14 +23,7 @@ func TestRenderBodyColumnsForTwoColumnLayout(t *testing.T) {
 
 func TestRenderBodyColumnsFallsBackWhenNoMarker(t *testing.T) {
 	body := template.HTML("<p>Whole body</p>")
-	slide := deck.Slide{
-		FrontMatter: deck.FrontMatter{
-			Layout: "two-column",
-		},
-		BodyMarkdown: "Whole body",
-	}
-
-	columns := renderBodyColumns(slide, slide.BodyMarkdown, body)
+	columns := splitBodyColumns("Whole body", body)
 	if got, want := len(columns), 1; got != want {
 		t.Fatalf("expected %d fallback column, got %d", want, got)
 	}
@@ -46,16 +32,9 @@ func TestRenderBodyColumnsFallsBackWhenNoMarker(t *testing.T) {
 	}
 }
 
-func TestRenderBodyColumnsUsesExpandedMarkdown(t *testing.T) {
-	slide := deck.Slide{
-		FrontMatter: deck.FrontMatter{
-			Layout: "two-column",
-		},
-		BodyMarkdown: "{{< stat value=\"$1\" label=\"Raw\" />}}\n\n<!-- column-break -->\n\nRight side",
-	}
-
+func TestSplitBodyColumnsUsesExpandedMarkdown(t *testing.T) {
 	expanded := "<div class=\"shortcode-stat\"><div class=\"shortcode-stat-value\">$1</div></div>\n\n<!-- column-break -->\n\nRight side"
-	columns := renderBodyColumns(slide, expanded, template.HTML("<p>ignored</p>"))
+	columns := splitBodyColumns(expanded, template.HTML("<p>ignored</p>"))
 	if got, want := len(columns), 2; got != want {
 		t.Fatalf("expected %d columns, got %d", want, got)
 	}
@@ -105,16 +84,11 @@ func TestResolveAssetReferenceWarnsForMissingLocalAsset(t *testing.T) {
 	}
 }
 
-func TestRenderLeadMediaAndContentForMediaLayouts(t *testing.T) {
-	slide := deck.Slide{
-		FrontMatter: deck.FrontMatter{
-			Layout: "media-right",
-		},
-	}
+func TestLeadingImageAndWithoutLeadingImage(t *testing.T) {
 	body := template.HTML("<h2>Why this exists</h2><p><img src=\"slides/02-why/diagram.svg\" alt=\"flow\"></p><ul><li>Point</li></ul>")
 
-	media := renderLeadMedia(slide, body)
-	content := renderLeadContent(slide, body)
+	media := leadingImage(body)
+	content := withoutLeadingImage(body)
 
 	if string(media) == "" || !strings.Contains(string(media), "<img") {
 		t.Fatalf("expected extracted media html, got %q", media)

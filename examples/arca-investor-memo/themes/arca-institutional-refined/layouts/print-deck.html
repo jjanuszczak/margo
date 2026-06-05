@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="margo-print {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}color-mode-dark{{ else }}color-mode-light{{ end }}">
+<html lang="en" class="margo-print">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,33 +8,39 @@
   <link rel="stylesheet" href="themes/{{ .Theme.Name }}/assets/theme.css">
   <style>
     :root {
-      color-scheme: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}dark{{ else }}light{{ end }};
-      --accent: {{ themeOption .ThemeOptions "accent_color" "#8f6f33" }};
-      --bg: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}#131617{{ else }}#f4f1ea{{ end }};
-      --fg: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}#f3efe8{{ else }}#1c1a17{{ end }};
-      --muted: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}#a9b0ac{{ else }}#6d655c{{ end }};
-      --card: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}#1c2123{{ else }}#fffdf9{{ end }};
-      --shadow: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}rgba(0, 0, 0, 0.28){{ else }}rgba(28, 26, 23, 0.12){{ end }};
-      --font-body: {{ if eq (themeOption .ThemeOptions "typography" "editorial") "executive" }}"Avenir Next", "Helvetica Neue", sans-serif{{ else }}"Iowan Old Style", Georgia, serif{{ end }};
+      --accent: {{ themeOption .ThemeOptions "accent_color" "#b88b2d" }};
+      --frame: {{ themeOption .ThemeOptions "frame_color" "#d7ccb6" }};
+      --paper: {{ themeOption .ThemeOptions "paper_tone" "#efe8dc" }};
+      --panel: #fbf7ef;
+      --ink: #1b1916;
+      --muted: #6f6658;
+      --rule: rgba(121, 104, 77, 0.28);
+      --shadow: rgba(64, 52, 30, 0.10);
+      --title-font: {{ if eq (themeOption .ThemeOptions "typography" "institutional") "editorial" }}"Iowan Old Style", Georgia, serif{{ else }}"Georgia", "Times New Roman", serif{{ end }};
+      --body-font: {{ if eq (themeOption .ThemeOptions "typography" "institutional") "editorial" }}"Iowan Old Style", Georgia, serif{{ else }}"Avenir Next", "Helvetica Neue", Arial, sans-serif{{ end }};
+      --sans-font: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
     }
   </style>
 </head>
 <body>
   <main>
     <div class="deck">
-      {{ $root := . }}
       {{ range $slide := .Slides }}
-      <section class="slide{{ if $slide.ImageHintClass }} {{ $slide.ImageHintClass }}{{ end }}"{{ if $slide.StyleAttr }} style="{{ $slide.StyleAttr }}"{{ end }}>
-        {{ if $slide.IsDraft }}<div class="draft-badge">Draft</div>{{ end }}
-        {{ template "deck-logo" (dict "Root" $root "Slide" $slide) }}
-        {{ $slide.Body }}
-        {{ template "slide-annotations" $slide }}
-        {{ template "deck-footer" (dict "Root" $root "Slide" $slide) }}
+      <section class="slide {{ $slide.Layout }} {{ $slide.ImageHintClass }}" style="{{ $slide.StyleAttr }}" data-index="{{ $slide.Index }}">
+        <div class="slide-frame">
+          {{ template "deck-frame-top" (dict "Root" $ "Slide" $slide) }}
+          <div class="frame-main">
+            {{ if $slide.IsDraft }}<div class="draft-badge">Draft</div>{{ end }}
+            {{ $slide.Body }}
+            {{ template "slide-annotations" $slide }}
+          </div>
+          {{ template "deck-frame-bottom" (dict "Root" $ "Slide" $slide) }}
+        </div>
       </section>
       {{ end }}
     </div>
   </main>
-  {{ if .HasCharts }}<script src="themes/{{ .Theme.Name }}/assets/chart.umd.min.js"></script>{{ end }}
+  <script src="themes/{{ .Theme.Name }}/assets/chart.umd.min.js"></script>
   <script type="module">
     const diagrams = Array.from(document.querySelectorAll('.shortcode-mermaid'));
     if (diagrams.length) {
@@ -42,12 +48,18 @@
         const mermaidModule = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
         const mermaid = mermaidModule.default;
         const mermaidTheme = getComputedStyle(document.documentElement).colorScheme === 'dark' ? 'dark' : 'default';
-        mermaid.initialize({ startOnLoad: false, securityLevel: 'loose', theme: mermaidTheme });
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: 'loose',
+          theme: mermaidTheme,
+          fontSize: 14,
+          flowchart: { wrappingWidth: 110, useMaxWidth: false, htmlLabels: true }
+        });
         for (const [diagramIndex, diagram] of diagrams.entries()) {
           const definition = diagram.querySelector('.shortcode-mermaid-definition')?.textContent?.trim();
           const target = diagram.querySelector('.shortcode-mermaid-render');
           if (!definition || !target) continue;
-          const { svg } = await mermaid.render(`margo-print-mermaid-${diagramIndex}`, definition);
+          const { svg } = await mermaid.render(`arca-print-mermaid-${diagramIndex}`, definition);
           target.innerHTML = svg;
           diagram.classList.add('is-rendered');
         }
@@ -56,7 +68,7 @@
       }
     }
   </script>
-  {{ if .HasCharts }}<script>
+  <script>
     const charts = Array.from(document.querySelectorAll('.shortcode-chart'));
     if (window.Chart && charts.length) {
       for (const chart of charts) {
@@ -72,7 +84,7 @@
         }
       }
     }
-  </script>{{ end }}
+  </script>
   {{ .Snippets.BodyEnd }}
 </body>
 </html>

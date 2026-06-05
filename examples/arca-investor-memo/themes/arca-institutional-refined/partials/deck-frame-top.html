@@ -1,0 +1,4 @@
+<div class="frame-top">
+  {{ template "deck-brand" . }}
+  {{ if ne .Slide.Layout "fancy-title" }}<div class="frame-kicker">{{ .Root.Deck.Description }}</div>{{ else }}<div></div>{{ end }}
+</div>

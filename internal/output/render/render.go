@@ -92,30 +92,35 @@ func RenderSlides(projectRoot string, deckMeta deck.DeckMetadata, slides []deck.
 
 func executeSlideLayout(projectRoot string, activeTheme theme.Metadata, layoutPath string, slide deck.Slide, index int, expandedMarkdown string, body template.HTML, sectionID string, sectionTitle string, deckFooter string, report *diagnostics.Report) (RenderedSlide, error) {
 	tmpl, err := theme.ParseTemplateWithPartials(projectRoot, activeTheme, layoutPath, template.FuncMap{
-		"markdownToHTML": MarkdownToHTML,
+		"markdownToHTML":      MarkdownToHTML,
+		"splitBodyColumns":    SplitBodyColumns,
+		"leadingImage":        LeadingImage,
+		"withoutLeadingImage": WithoutLeadingImage,
 	})
 	if err != nil {
 		return RenderedSlide{}, fmt.Errorf("parse slide layout %q: %w", layoutPath, err)
 	}
 
 	data := struct {
-		Index        int
-		Slide        deck.Slide
-		Body         template.HTML
-		BodyColumns  []template.HTML
-		LeadMedia    template.HTML
-		LeadContent  template.HTML
-		SectionID    string
-		SectionTitle string
+		Index            int
+		Slide            deck.Slide
+		Body             template.HTML
+		BodyColumns      []template.HTML
+		LeadMedia        template.HTML
+		LeadContent      template.HTML
+		ExpandedMarkdown string
+		SectionID        string
+		SectionTitle     string
 	}{
-		Index:        index,
-		Slide:        slide,
-		Body:         body,
-		BodyColumns:  RenderBodyColumns(slide, expandedMarkdown, body),
-		LeadMedia:    RenderLeadMedia(slide, body),
-		LeadContent:  RenderLeadContent(slide, body),
-		SectionID:    sectionID,
-		SectionTitle: sectionTitle,
+		Index:            index,
+		Slide:            slide,
+		Body:             body,
+		BodyColumns:      SplitBodyColumns(expandedMarkdown, body),
+		LeadMedia:        LeadingImage(body),
+		LeadContent:      WithoutLeadingImage(body),
+		ExpandedMarkdown: expandedMarkdown,
+		SectionID:        sectionID,
+		SectionTitle:     sectionTitle,
 	}
 
 	var buf bytes.Buffer
@@ -236,11 +241,7 @@ func looksLikeImageURL(value string) bool {
 	return false
 }
 
-func RenderBodyColumns(slide deck.Slide, expandedMarkdown string, body template.HTML) []template.HTML {
-	if ResolveLayoutName(slide) != "two-column" {
-		return nil
-	}
-
+func SplitBodyColumns(expandedMarkdown string, body template.HTML) []template.HTML {
 	parts := strings.Split(expandedMarkdown, columnBreakMarker)
 	if len(parts) < 2 {
 		return []template.HTML{body}
@@ -258,22 +259,12 @@ func RenderBodyColumns(slide deck.Slide, expandedMarkdown string, body template.
 	return columns
 }
 
-func RenderLeadMedia(slide deck.Slide, body template.HTML) template.HTML {
-	layout := ResolveLayoutName(slide)
-	if layout != "media-left" && layout != "media-right" {
-		return ""
-	}
-
+func LeadingImage(body template.HTML) template.HTML {
 	match := leadImagePattern.FindString(string(body))
 	return template.HTML(match)
 }
 
-func RenderLeadContent(slide deck.Slide, body template.HTML) template.HTML {
-	layout := ResolveLayoutName(slide)
-	if layout != "media-left" && layout != "media-right" {
-		return body
-	}
-
+func WithoutLeadingImage(body template.HTML) template.HTML {
 	match := leadImagePattern.FindString(string(body))
 	if match == "" {
 		return body

@@ -1,0 +1,12 @@
+{{ if not .Slide.HideLogo }}
+<div class="brand-lockup">
+  {{ if .Root.DeckLogo.IsImage }}
+  <img src="{{ .Root.DeckLogo.ImageSrc }}" alt="Deck logo">
+  {{ else }}
+  <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+  <div class="brand-word">{{ if .Root.DeckLogo.Text }}{{ .Root.DeckLogo.Text }}{{ else }}{{ .Root.Deck.Title }}{{ end }}</div>
+  {{ end }}
+</div>
+{{ else }}
+<div></div>
+{{ end }}
