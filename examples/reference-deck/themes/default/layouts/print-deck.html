@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ .Deck.Title }}</title>
   {{ .Snippets.Head }}
+  <link rel="stylesheet" href="themes/{{ .Theme.Name }}/assets/katex.min.css">
   <link rel="stylesheet" href="themes/{{ .Theme.Name }}/assets/theme.css">
   <style>
     :root {
@@ -34,6 +35,7 @@
       {{ end }}
     </div>
   </main>
+  <script src="themes/{{ .Theme.Name }}/assets/katex.min.js"></script>
   {{ if .HasCharts }}<script src="themes/{{ .Theme.Name }}/assets/chart.umd.min.js"></script>{{ end }}
   <script type="module">
     const diagrams = Array.from(document.querySelectorAll('.shortcode-mermaid'));
@@ -53,6 +55,22 @@
         }
       } catch (error) {
         console.warn('Mermaid render failed', error);
+      }
+    }
+  </script>
+  <script>
+    const mathBlocks = Array.from(document.querySelectorAll('.shortcode-math'));
+    if (window.katex && mathBlocks.length) {
+      for (const block of mathBlocks) {
+        const source = block.querySelector('.shortcode-math-source')?.textContent?.trim();
+        const target = block.querySelector('.shortcode-math-render');
+        if (!source || !target) continue;
+        try {
+          window.katex.render(source, target, { displayMode: true, throwOnError: false, strict: 'warn' });
+          block.classList.add('is-rendered');
+        } catch (error) {
+          console.warn('Math render failed', error);
+        }
       }
     }
   </script>

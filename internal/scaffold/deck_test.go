@@ -15,8 +15,23 @@ func TestThemeFilesIncludeRefinedThemeStructure(t *testing.T) {
 	if _, ok := files[filepath.Join("themes", "default", "partials", "slide-annotations.html")]; !ok {
 		t.Fatal("expected scaffolded theme to include slide-annotations partial")
 	}
+	if _, ok := files[filepath.Join("themes", "default", "shortcodes", "math.html")]; !ok {
+		t.Fatal("expected scaffolded theme to include math shortcode")
+	}
+	if _, ok := files[filepath.Join("themes", "default", "assets", "katex.min.css")]; !ok {
+		t.Fatal("expected scaffolded theme to include KaTeX css asset")
+	}
+	if _, ok := files[filepath.Join("themes", "default", "assets", "katex.min.js")]; !ok {
+		t.Fatal("expected scaffolded theme to include KaTeX js asset")
+	}
+	if _, ok := files[filepath.Join("themes", "default", "assets", "fonts", "KaTeX_Main-Regular.woff2")]; !ok {
+		t.Fatal("expected scaffolded theme to include KaTeX font assets")
+	}
 
 	deckLayout := files[filepath.Join("themes", "default", "layouts", "deck.html")]
+	if !strings.Contains(deckLayout, `href="themes/{{ .Theme.Name }}/assets/katex.min.css"`) {
+		t.Fatal("expected scaffolded deck layout to link katex.min.css")
+	}
 	if !strings.Contains(deckLayout, `href="themes/{{ .Theme.Name }}/assets/theme.css"`) {
 		t.Fatal("expected scaffolded deck layout to link theme.css")
 	}

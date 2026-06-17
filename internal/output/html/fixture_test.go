@@ -29,16 +29,16 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("discover slides: %v", err)
 	}
-	if got, want := len(slides), 8; got != want {
+	if got, want := len(slides), 9; got != want {
 		t.Fatalf("expected %d slide bundles, got %d", want, got)
 	}
 
 	filtered := deck.FilterSlides(slides, deck.FilterOptions{})
-	if got, want := len(filtered), 6; got != want {
+	if got, want := len(filtered), 7; got != want {
 		t.Fatalf("expected %d build-visible slides, got %d", want, got)
 	}
 	shaped := deck.ApplySectionDividers(filtered)
-	if got, want := len(shaped), 7; got != want {
+	if got, want := len(shaped), 8; got != want {
 		t.Fatalf("expected %d build-rendered slides, got %d", want, got)
 	}
 
@@ -93,7 +93,7 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 	}
 	out := string(rendered)
 
-	for _, needle := range []string{"Margo Reference Deck", "Strategy", "Why Margo", "Customer Story", "Architecture View", "Mermaid QA", "Chart QA", "Export PDF", "MARGO", "Product Strategy", "Customer Momentum", "Diagram Regression Check", "Chart Regression Check", "Authoring and output model overview", "image-fit-contain", "#4db6ac", "color-scheme: dark", "\"Avenir Next\", \"Helvetica Neue\", sans-serif", "class=\"slide-shell content-slide\"", "class=\"slide-shell title-slide\"", "class=\"slide-shell section-slide\"", "class=\"slide-shell split-layout\"", "class=\"slide-body section-stack\"", "slides/02-why/diagram.svg", "slides/02-why/backdrop.svg", "slides/05-customer-story/spotlight.svg", "assets/shared-grid.svg", "assets/video-poster.svg", "https://example.com/demo.mp4", "class=\"callout", "class=\"shortcode-columns\"", "class=\"shortcode-stat\"", "class=\"shortcode-video\"", "class=\"shortcode-figure shortcode-figure-fit-contain\"", "class=\"shortcode-figure-caption\"", "class=\"shortcode-github-repo\"", "class=\"shortcode-github-repo-card\"", "https://github.com/jjanuszczak/margo", "Static repo card shortcode for product and engineering decks.", "class=\"shortcode-mermaid shortcode-mermaid-align-center\"", "class=\"shortcode-mermaid-definition\"", "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs", "flowchart LR", "A[Markdown] --> B[Build]", "Authoring-to-output flow", "flowchart TD", "A[\"Author writes Markdown\"] --> B[\"Shortcode expands in HTML\"]", "Reference-deck Mermaid smoke test", "class=\"shortcode-chart\"", "class=\"shortcode-chart-canvas\"", "class=\"shortcode-chart-config\"", "themes/default/assets/chart.umd.min.js", "themes/default/assets/theme.css", "\"type\": \"doughnut\"", "\"label\": \"Margo outputs\"", "Reference-deck Chart.js smoke test", "class=\"nav-hint\"", "class=\"slide-dots\"", "data-slide-dot=\"0\"", "window.matchMedia('(max-width: 900px)')", "scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' })", "Source: shared deck assets", "Deck-level asset rendered through the figure shortcode.", "media-split-slide media-right", "media-split-slide media-left", "A reasonably sized deck should still feel fast.", "Shortcodes can carry shared deck assets cleanly.", "Why this exists", "Markdown", "Front matter", "Archetypes", "HTML first", "PDF next", "PPTX later", "<meta name=\"margo-fixture\" content=\"reference-deck\">", "window.__margoFixture = \"reference-deck\""} {
+	for _, needle := range []string{"Margo Reference Deck", "Strategy", "Why Margo", "Customer Story", "Architecture View", "Mermaid QA", "Chart QA", "Math QA", "Export PDF", "MARGO", "Product Strategy", "Customer Momentum", "Diagram Regression Check", "Chart Regression Check", "Math Regression Check", "Authoring and output model overview", "image-fit-contain", "#4db6ac", "color-scheme: dark", "\"Avenir Next\", \"Helvetica Neue\", sans-serif", "class=\"slide-shell content-slide\"", "class=\"slide-shell title-slide\"", "class=\"slide-shell section-slide\"", "class=\"slide-shell split-layout\"", "class=\"slide-body section-stack\"", "slides/02-why/diagram.svg", "slides/02-why/backdrop.svg", "slides/05-customer-story/spotlight.svg", "assets/shared-grid.svg", "assets/video-poster.svg", "https://example.com/demo.mp4", "class=\"callout", "class=\"shortcode-columns\"", "class=\"shortcode-stat\"", "class=\"shortcode-video\"", "class=\"shortcode-figure shortcode-figure-fit-contain\"", "class=\"shortcode-figure-caption\"", "class=\"shortcode-github-repo\"", "class=\"shortcode-github-repo-card\"", "https://github.com/jjanuszczak/margo", "Static repo card shortcode for product and engineering decks.", "class=\"shortcode-mermaid shortcode-mermaid-align-center\"", "class=\"shortcode-mermaid-definition\"", "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs", "flowchart LR", "A[Markdown] --> B[Build]", "Authoring-to-output flow", "flowchart TD", "A[\"Author writes Markdown\"] --> B[\"Shortcode expands in HTML\"]", "Reference-deck Mermaid smoke test", "class=\"shortcode-chart\"", "class=\"shortcode-chart-canvas\"", "class=\"shortcode-chart-config\"", "themes/default/assets/chart.umd.min.js", "themes/default/assets/katex.min.css", "themes/default/assets/katex.min.js", "themes/default/assets/theme.css", "\"type\": \"doughnut\"", "\"label\": \"Margo outputs\"", "Reference-deck Chart.js smoke test", "class=\"shortcode-math\"", "class=\"shortcode-math-render\"", "class=\"shortcode-math-source\"", "\\operatorname{Var}(X)", "Reference-deck KaTeX smoke test", "window.katex.render(source, target", "class=\"nav-hint\"", "class=\"slide-dots\"", "data-slide-dot=\"0\"", "window.matchMedia('(max-width: 900px)')", "scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' })", "Source: shared deck assets", "Deck-level asset rendered through the figure shortcode.", "media-split-slide media-right", "media-split-slide media-left", "A reasonably sized deck should still feel fast.", "Shortcodes can carry shared deck assets cleanly.", "Why this exists", "Markdown", "Front matter", "Archetypes", "HTML first", "PDF next", "PPTX later", "<meta name=\"margo-fixture\" content=\"reference-deck\">", "window.__margoFixture = \"reference-deck\""} {
 		if !strings.Contains(out, needle) {
 			t.Fatalf("expected rendered output to contain %q", needle)
 		}
@@ -121,6 +121,15 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "themes", "default", "assets", "chart.umd.min.js")); err != nil {
 		t.Fatalf("expected staged theme chart asset to exist: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "themes", "default", "assets", "katex.min.css")); err != nil {
+		t.Fatalf("expected staged theme katex css asset to exist: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "themes", "default", "assets", "katex.min.js")); err != nil {
+		t.Fatalf("expected staged theme katex js asset to exist: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "themes", "default", "assets", "fonts", "KaTeX_Main-Regular.woff2")); err != nil {
+		t.Fatalf("expected staged theme katex font asset to exist: %v", err)
 	}
 	themeCSS, err := os.ReadFile(filepath.Join(projectRoot, OutputDir, "themes", "default", "assets", "theme.css"))
 	if err != nil {
@@ -153,11 +162,11 @@ func TestReferenceDeckServeFilteringIncludesDrafts(t *testing.T) {
 	}
 
 	filtered := deck.FilterSlides(slides, deck.FilterOptions{IncludeDrafts: true})
-	if got, want := len(filtered), 7; got != want {
+	if got, want := len(filtered), 8; got != want {
 		t.Fatalf("expected %d serve-visible slides, got %d", want, got)
 	}
 	shaped := deck.ApplySectionDividers(filtered)
-	if got, want := len(shaped), 8; got != want {
+	if got, want := len(shaped), 9; got != want {
 		t.Fatalf("expected %d serve-rendered slides, got %d", want, got)
 	}
 

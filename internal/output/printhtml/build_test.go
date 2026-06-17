@@ -79,9 +79,15 @@ func TestReferenceDeckPrintBuildFlow(t *testing.T) {
 		`class="shortcode-chart"`,
 		`class="shortcode-chart-canvas"`,
 		`themes/default/assets/chart.umd.min.js`,
+		`themes/default/assets/katex.min.css`,
+		`themes/default/assets/katex.min.js`,
 		`themes/default/assets/theme.css`,
 		`"type": "doughnut"`,
 		`Reference-deck Chart.js smoke test`,
+		`class="shortcode-math"`,
+		`class="shortcode-math-render"`,
+		`\operatorname{Var}(X)`,
+		`Reference-deck KaTeX smoke test`,
 		`Deck-level asset rendered through the figure shortcode.`,
 		`Source: shared deck assets`,
 		`window.__margoFixture`,
@@ -113,6 +119,15 @@ func TestReferenceDeckPrintBuildFlow(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "themes", "default", "assets", "chart.umd.min.js")); err != nil {
 		t.Fatalf("expected staged print theme asset to exist: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "themes", "default", "assets", "katex.min.css")); err != nil {
+		t.Fatalf("expected staged print katex css asset to exist: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "themes", "default", "assets", "katex.min.js")); err != nil {
+		t.Fatalf("expected staged print katex js asset to exist: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, OutputDir, "themes", "default", "assets", "fonts", "KaTeX_Main-Regular.woff2")); err != nil {
+		t.Fatalf("expected staged print katex font asset to exist: %v", err)
 	}
 	themeCSS, err := os.ReadFile(filepath.Join(projectRoot, OutputDir, "themes", "default", "assets", "theme.css"))
 	if err != nil {
@@ -174,8 +189,6 @@ func TestThemePrintDeckTemplateOverridesFallback(t *testing.T) {
 		`class="slide-frame"`,
 		`class="slide-shell fancy-title-slide"`,
 		`class="slide-shell content-layout"`,
-		`background: var(--margo-background-overlay, transparent);`,
-		`font-family: var(--body-font);`,
 		`class="brand-mark"`,
 		`Confidential - For Internal Use Only`,
 	} {
@@ -192,6 +205,19 @@ func TestThemePrintDeckTemplateOverridesFallback(t *testing.T) {
 	} {
 		if strings.Contains(out, forbidden) {
 			t.Fatalf("expected theme print html to exclude %q", forbidden)
+		}
+	}
+
+	themeCSS, err := os.ReadFile(filepath.Join(projectRoot, OutputDir, "themes", "arca-institutional-refined", "assets", "theme.css"))
+	if err != nil {
+		t.Fatalf("read staged theme css: %v", err)
+	}
+	for _, needle := range []string{
+		`background: var(--margo-background-overlay, transparent);`,
+		`font-family: var(--body-font);`,
+	} {
+		if !strings.Contains(string(themeCSS), needle) {
+			t.Fatalf("expected staged theme css to contain %q", needle)
 		}
 	}
 }

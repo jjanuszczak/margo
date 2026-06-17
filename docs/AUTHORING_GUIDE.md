@@ -523,6 +523,20 @@ Current `chart` behavior:
 - supported chart types in the first version are `bar`, `line`, `pie`, `doughnut`, and `radar`
 - generated HTML renders a readable configuration fallback first, then upgrades it to a Chart.js canvas in the browser when the Chart.js runtime loads
 
+### Math
+
+```md
+{{< math caption="Variance identity" >}}
+\operatorname{Var}(X) = \mathbb{E}[X^2] - \left(\mathbb{E}[X]\right)^2
+{{< /math >}}
+```
+
+Current `math` behavior:
+- block math lives in the shortcode inner content as TeX
+- `caption` and `class` are optional shortcode params
+- the first version supports block math only, not inline math inside prose
+- generated HTML renders a readable TeX fallback first, then upgrades it to KaTeX output in the browser when the local KaTeX runtime loads
+
 ### GitHub Repo
 
 ```md
