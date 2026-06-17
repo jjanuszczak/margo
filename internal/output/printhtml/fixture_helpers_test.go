@@ -127,6 +127,7 @@ func allowedFixturePrefixes(deckName string) []string {
 			"slides/06-architecture-view",
 			"slides/07-mermaid-qa",
 			"slides/08-chart-qa",
+			"slides/09-math-qa",
 			"themes/default",
 			"margo.yaml",
 		}

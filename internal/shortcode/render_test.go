@@ -353,6 +353,57 @@ data:
 	}
 }
 
+func TestRenderMathShortcodeRequiresInnerContentAndRendersBlockWrapper(t *testing.T) {
+	projectRoot := t.TempDir()
+	themeRoot := filepath.Join(projectRoot, "themes", "default")
+	if err := os.MkdirAll(filepath.Join(themeRoot, "shortcodes"), 0o755); err != nil {
+		t.Fatalf("create theme shortcode dir: %v", err)
+	}
+
+	math := `{{ requiredInner .Name .Inner }}{{ validateParams .Name .Params "caption" "class" }}{{ $caption := optionalParam .Params "caption" }}{{ $extraClass := optionalParam .Params "class" }}<figure class="shortcode-math{{ if $extraClass }} {{ $extraClass }}{{ end }}"><div class="shortcode-math-render"></div><pre class="shortcode-math-source">{{ .Inner }}</pre>{{ if $caption }}<figcaption class="shortcode-math-caption">{{ $caption }}</figcaption>{{ end }}</figure>`
+	if err := os.WriteFile(filepath.Join(themeRoot, "shortcodes", "math.html"), []byte(math), 0o644); err != nil {
+		t.Fatalf("write math shortcode: %v", err)
+	}
+
+	rendered, err := Render(`{{< math caption="Variance identity" class="compact-equation" >}}
+\operatorname{Var}(X) = \mathbb{E}[X^2] - \left(\mathbb{E}[X]\right)^2
+{{< /math >}}`, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+	})
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+
+	for _, needle := range []string{
+		`class="shortcode-math compact-equation"`,
+		`class="shortcode-math-render"`,
+		`class="shortcode-math-source"`,
+		`\operatorname{Var}(X)`,
+		`Variance identity`,
+	} {
+		if !strings.Contains(rendered, needle) {
+			t.Fatalf("expected rendered math shortcode to contain %q, got %q", needle, rendered)
+		}
+	}
+
+	_, err = Render(`{{< math />}}`, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+	})
+	if err == nil || !strings.Contains(err.Error(), `requires inner content`) {
+		t.Fatalf("expected missing inner content error, got %v", err)
+	}
+
+	_, err = Render(`{{< math align="center" >}}x^2{{< /math >}}`, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+	})
+	if err == nil || !strings.Contains(err.Error(), `does not support parameter "align"`) {
+		t.Fatalf("expected unsupported parameter error, got %v", err)
+	}
+}
+
 func TestRenderRejectsUnknownOrMalformedShortcodes(t *testing.T) {
 	projectRoot := t.TempDir()
 

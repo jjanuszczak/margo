@@ -3,6 +3,7 @@ package scaffold
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -379,6 +380,7 @@ func ThemeFiles(themeName string, includeStyles bool) map[string]string {
 		filepath.Join("themes", themeName, "shortcodes", "figure.html"):          defaultThemeFigureShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "github-repo.html"):     defaultThemeGitHubRepoShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "chart.html"):           defaultThemeChartShortcode(),
+		filepath.Join("themes", themeName, "shortcodes", "math.html"):            defaultThemeMathShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "mermaid.html"):         defaultThemeMermaidShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "stat.html"):            defaultThemeStatShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "video.html"):           defaultThemeVideoShortcode(),
@@ -386,8 +388,33 @@ func ThemeFiles(themeName string, includeStyles bool) map[string]string {
 	if includeStyles {
 		files[filepath.Join("themes", themeName, "assets", "theme.css")] = defaultThemeStyles()
 		files[filepath.Join("themes", themeName, "assets", "chart.umd.min.js")] = defaultThemeChartJSAsset
+		addEmbeddedThemeAssets(files, filepath.Join("themes", themeName, "assets"), defaultThemeMathAssets, "assets/katex")
 	}
 	return files
+}
+
+func addEmbeddedThemeAssets(files map[string]string, targetRoot string, assets fs.FS, sourceRoot string) {
+	if err := fs.WalkDir(assets, sourceRoot, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+
+		contents, err := fs.ReadFile(assets, path)
+		if err != nil {
+			return err
+		}
+		relPath, err := filepath.Rel(sourceRoot, path)
+		if err != nil {
+			return err
+		}
+		files[filepath.Join(targetRoot, relPath)] = string(contents)
+		return nil
+	}); err != nil {
+		panic(fmt.Sprintf("embed theme assets from %q: %v", sourceRoot, err))
+	}
 }
 
 func defaultThemeMetadataWithName(themeName string) string {
@@ -505,6 +532,11 @@ func defaultThemeChartShortcode() string {
 `
 }
 
+func defaultThemeMathShortcode() string {
+	return `{{ requiredInner .Name .Inner }}{{ validateParams .Name .Params "caption" "class" }}{{ $caption := optionalParam .Params "caption" }}{{ $extraClass := optionalParam .Params "class" }}<figure class="shortcode-math{{ if $extraClass }} {{ $extraClass }}{{ end }}"><div class="shortcode-math-render"></div><pre class="shortcode-math-source">{{ .Inner }}</pre>{{ if $caption }}<figcaption class="shortcode-math-caption">{{ $caption }}</figcaption>{{ end }}</figure>
+`
+}
+
 func defaultThemeVideoShortcode() string {
 	return `<figure class="shortcode-video">
   <video controls preload="metadata"{{ with index .Params "poster" }} poster="{{ assetRef . }}"{{ end }}>
@@ -544,6 +576,7 @@ func defaultThemeDeckLayoutSlim() string {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ .Deck.Title }}</title>
   {{ .Snippets.Head }}
+  <link rel="stylesheet" href="themes/{{ .Theme.Name }}/assets/katex.min.css">
   <link rel="stylesheet" href="themes/{{ .Theme.Name }}/assets/theme.css">
   <style>
     :root {
@@ -583,6 +616,7 @@ func defaultThemeDeckLayoutSlim() string {
       </div>
     </div>
   </main>
+  <script src="themes/{{ .Theme.Name }}/assets/katex.min.js"></script>
   {{ if .HasCharts }}<script src="themes/{{ .Theme.Name }}/assets/chart.umd.min.js"></script>{{ end }}
   <script>
     const deck = document.querySelector('.deck');
@@ -660,6 +694,22 @@ func defaultThemeDeckLayoutSlim() string {
       }
     };
     renderMermaidDiagrams();
+    const renderMathBlocks = () => {
+      if (!window.katex) return;
+      const mathBlocks = Array.from(document.querySelectorAll('.shortcode-math'));
+      for (const block of mathBlocks) {
+        const source = block.querySelector('.shortcode-math-source')?.textContent?.trim();
+        const target = block.querySelector('.shortcode-math-render');
+        if (!source || !target) continue;
+        try {
+          window.katex.render(source, target, { displayMode: true, throwOnError: false, strict: 'warn' });
+          block.classList.add('is-rendered');
+        } catch (error) {
+          console.warn('Math render failed', error);
+        }
+      }
+    };
+    renderMathBlocks();
     const renderCharts = () => {
       if (!window.Chart) return;
       const charts = Array.from(document.querySelectorAll('.shortcode-chart'));
@@ -723,6 +773,7 @@ func defaultThemePrintDeckLayoutSlim() string {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ .Deck.Title }}</title>
   {{ .Snippets.Head }}
+  <link rel="stylesheet" href="themes/{{ .Theme.Name }}/assets/katex.min.css">
   <link rel="stylesheet" href="themes/{{ .Theme.Name }}/assets/theme.css">
   <style>
     :root {
@@ -752,6 +803,7 @@ func defaultThemePrintDeckLayoutSlim() string {
       {{ end }}
     </div>
   </main>
+  <script src="themes/{{ .Theme.Name }}/assets/katex.min.js"></script>
   {{ if .HasCharts }}<script src="themes/{{ .Theme.Name }}/assets/chart.umd.min.js"></script>{{ end }}
   <script type="module">
     const diagrams = Array.from(document.querySelectorAll('.shortcode-mermaid'));
@@ -771,6 +823,22 @@ func defaultThemePrintDeckLayoutSlim() string {
         }
       } catch (error) {
         console.warn('Mermaid render failed', error);
+      }
+    }
+  </script>
+  <script>
+    const mathBlocks = Array.from(document.querySelectorAll('.shortcode-math'));
+    if (window.katex && mathBlocks.length) {
+      for (const block of mathBlocks) {
+        const source = block.querySelector('.shortcode-math-source')?.textContent?.trim();
+        const target = block.querySelector('.shortcode-math-render');
+        if (!source || !target) continue;
+        try {
+          window.katex.render(source, target, { displayMode: true, throwOnError: false, strict: 'warn' });
+          block.classList.add('is-rendered');
+        } catch (error) {
+          console.warn('Math render failed', error);
+        }
       }
     }
   </script>
@@ -1543,6 +1611,53 @@ main {
 }
 
 .shortcode-chart-caption {
+  font: 12px/1.3 sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.shortcode-math {
+  margin: 28px 0;
+  display: grid;
+  gap: 12px;
+  width: min(100%, 860px);
+}
+
+.shortcode-math-render {
+  display: none;
+  padding: 20px 24px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--card) 95%, transparent);
+  box-shadow: 0 20px 48px var(--shadow);
+  overflow-x: auto;
+}
+
+.shortcode-math.is-rendered .shortcode-math-render {
+  display: block;
+}
+
+.shortcode-math-render .katex-display {
+  margin: 0;
+}
+
+.shortcode-math-source {
+  margin: 0;
+  padding: 18px 20px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--fg);
+  font: 15px/1.5 "SFMono-Regular", "Menlo", "Consolas", monospace;
+  white-space: pre-wrap;
+  overflow: auto;
+}
+
+.shortcode-math.is-rendered .shortcode-math-source {
+  display: none;
+}
+
+.shortcode-math-caption {
   font: 12px/1.3 sans-serif;
   letter-spacing: 0.08em;
   text-transform: uppercase;
