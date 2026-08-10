@@ -35,6 +35,9 @@
       </section>
       {{ end }}
       <div class="controls">
+        <button class="slide-nav" type="button" data-slide-previous aria-label="Previous slide">Previous</button>
+        <button class="slide-nav" type="button" data-slide-next aria-label="Next slide">Next</button>
+        {{ if .NotesEnabled }}<button class="slide-nav" type="button" data-notes-toggle aria-expanded="false">Notes</button>{{ end }}
         {{ if .PDFEnabled }}<button class="pdf-export" type="button" id="export-pdf">Export PDF</button>{{ end }}
         <span class="nav-hint">Use left/right arrow keys</span>
       </div>
@@ -44,6 +47,24 @@
         {{ end }}
       </div>
     </div>
+    {{ if .NotesEnabled }}
+    <section class="slide-notes" aria-label="Slide notes" hidden>
+      {{ range $i, $slide := .Slides }}
+      {{ if $slide.Notes }}
+      <div class="slide-notes-item" data-slide-notes="{{ $i }}" hidden>
+        <div class="slide-notes-tabs" role="tablist" aria-label="Notes for {{ if $slide.Title }}{{ $slide.Title }}{{ else }}this slide{{ end }}">
+          {{ range $noteIndex, $note := $slide.Notes }}
+          <button class="slide-notes-tab" type="button" role="tab" id="slide-note-tab-{{ $i }}-{{ $noteIndex }}" data-note-tab="{{ $noteIndex }}" aria-controls="slide-note-panel-{{ $i }}-{{ $noteIndex }}" aria-selected="{{ if eq $noteIndex 0 }}true{{ else }}false{{ end }}">{{ $note.Name }}</button>
+          {{ end }}
+        </div>
+        {{ range $noteIndex, $note := $slide.Notes }}
+        <article class="slide-note-panel" role="tabpanel" id="slide-note-panel-{{ $i }}-{{ $noteIndex }}" aria-labelledby="slide-note-tab-{{ $i }}-{{ $noteIndex }}" data-note-panel="{{ $noteIndex }}"{{ if ne $noteIndex 0 }} hidden{{ end }}>{{ $note.Body }}</article>
+        {{ end }}
+      </div>
+      {{ end }}
+      {{ end }}
+    </section>
+    {{ end }}
   </main>
   <script src="themes/{{ .Theme.Name }}/assets/katex.min.js"></script>
   {{ if .HasCharts }}<script src="themes/{{ .Theme.Name }}/assets/chart.umd.min.js"></script>{{ end }}
@@ -51,8 +72,14 @@
     const deck = document.querySelector('.deck');
     const slides = Array.from(document.querySelectorAll('.slide'));
     const dots = Array.from(document.querySelectorAll('[data-slide-dot]'));
+    const previousButton = document.querySelector('[data-slide-previous]');
+    const nextButton = document.querySelector('[data-slide-next]');
+    const notesToggle = document.querySelector('[data-notes-toggle]');
+    const notes = document.querySelector('.slide-notes');
+    const noteItems = Array.from(document.querySelectorAll('[data-slide-notes]'));
     const mobileQuery = window.matchMedia('(max-width: 900px)');
     let index = 0;
+    let notesOpen = false;
     const syncDots = () => {
       dots.forEach((dot, i) => {
         if (i === index) {
@@ -61,10 +88,24 @@
           dot.removeAttribute('aria-current');
         }
       });
+      previousButton.disabled = index === 0;
+      nextButton.disabled = index === slides.length - 1;
+      let hasNotes = false;
+      noteItems.forEach((item) => {
+        const isCurrent = Number(item.dataset.slideNotes) === index;
+        item.hidden = !isCurrent;
+        hasNotes ||= isCurrent;
+      });
+      if (notes) notes.hidden = !notesOpen || !hasNotes;
+      if (notesToggle) {
+        notesToggle.hidden = !hasNotes;
+        notesToggle.setAttribute('aria-expanded', String(notesOpen && hasNotes));
+      }
     };
     const show = (nextIndex) => {
       if (!slides.length) return;
       index = Math.max(0, Math.min(nextIndex, slides.length - 1));
+      notesOpen = false;
       slides.forEach((slide, i) => slide.classList.toggle('active', i === index));
       syncDots();
       if (mobileQuery.matches) {
@@ -87,6 +128,24 @@
     });
     dots.forEach((dot, dotIndex) => {
       dot.addEventListener('click', () => show(dotIndex));
+    });
+    previousButton?.addEventListener('click', () => show(index - 1));
+    nextButton?.addEventListener('click', () => show(index + 1));
+    notesToggle?.addEventListener('click', () => {
+      notesOpen = !notesOpen;
+      syncDots();
+    });
+    document.querySelectorAll('[data-note-tab]').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const noteItem = tab.closest('[data-slide-notes]');
+        const noteIndex = tab.dataset.noteTab;
+        noteItem.querySelectorAll('[data-note-tab]').forEach((candidate) => {
+          candidate.setAttribute('aria-selected', String(candidate === tab));
+        });
+        noteItem.querySelectorAll('[data-note-panel]').forEach((panel) => {
+          panel.hidden = panel.dataset.notePanel !== noteIndex;
+        });
+      });
     });
     if (deck) {
       deck.addEventListener('scroll', syncIndexFromScroll, { passive: true });

@@ -117,6 +117,71 @@ main {
   background: #fffdf9;
 }
 
+.slide-nav {
+  border: 1px solid color-mix(in srgb, var(--muted) 35%, transparent);
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  color: var(--fg);
+  padding: 8px 12px;
+  border-radius: 999px;
+  font: 12px/1 sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.slide-nav:hover,
+.slide-nav:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.slide-nav:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.slide-notes {
+  width: min(1200px, 100%);
+  margin: 18px auto 0;
+  padding: 24px 28px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: 0 18px 48px var(--shadow);
+}
+
+.slide-notes-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.slide-notes-tab {
+  border: 1px solid color-mix(in srgb, var(--muted) 35%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg);
+  padding: 7px 11px;
+  font: 12px/1 sans-serif;
+  cursor: pointer;
+}
+
+.slide-notes-tab[aria-selected="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #10211e;
+}
+
+.slide-note-panel > :first-child { margin-top: 0; }
+.slide-note-panel > :last-child { margin-bottom: 0; }
+
+.slide-note-panel p,
+.slide-note-panel li {
+  font-size: 17px;
+  line-height: 1.5;
+}
+
 .slide-dots {
   position: absolute;
   left: 50%;
@@ -1052,7 +1117,8 @@ html.margo-print,
 }
 
 @media print {
-  .controls {
+  .controls,
+  .slide-notes {
     display: none !important;
   }
 }

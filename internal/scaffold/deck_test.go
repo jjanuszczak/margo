@@ -38,6 +38,12 @@ func TestThemeFilesIncludeRefinedThemeStructure(t *testing.T) {
 	if !strings.Contains(deckLayout, `{{ template "slide-annotations" $slide }}`) {
 		t.Fatal("expected scaffolded deck layout to render slide-annotations partial")
 	}
+	if !strings.Contains(deckLayout, `data-slide-previous`) || !strings.Contains(deckLayout, `data-slide-next`) {
+		t.Fatal("expected scaffolded deck layout to include previous and next navigation")
+	}
+	if !strings.Contains(deckLayout, `data-notes-toggle`) || !strings.Contains(deckLayout, `data-slide-notes`) {
+		t.Fatal("expected scaffolded deck layout to support optional slide notes")
+	}
 
 	twoColumnLayout := files[filepath.Join("themes", "default", "layouts", "slide-two-column.html")]
 	if !strings.Contains(twoColumnLayout, `splitBodyColumns .ExpandedMarkdown .Body`) {

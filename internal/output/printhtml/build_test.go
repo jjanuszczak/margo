@@ -105,6 +105,8 @@ func TestReferenceDeckPrintBuildFlow(t *testing.T) {
 		`/assets/margo.js`,
 		`window.location.search`,
 		`fetch('/__margo/export/pdf'`,
+		`Open by describing the friction in browser-based slide tools`,
+		`The authoring workflow is based on a Hugo-like project model`,
 	} {
 		if strings.Contains(out, forbidden) {
 			t.Fatalf("expected print html to exclude %q", forbidden)

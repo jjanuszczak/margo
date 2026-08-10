@@ -70,6 +70,11 @@ func Parse(raw RawConfig) (ParseResult, error) {
 			PDF  bool `yaml:"pdf"`
 			PPTX bool `yaml:"pptx"`
 		} `yaml:"outputs"`
+		Presentation struct {
+			Navigation struct {
+				Notes bool `yaml:"notes"`
+			} `yaml:"navigation"`
+		} `yaml:"presentation"`
 		Snippets struct {
 			Head    string `yaml:"head"`
 			BodyEnd string `yaml:"body_end"`
@@ -109,6 +114,9 @@ func Parse(raw RawConfig) (ParseResult, error) {
 				HTML: parsed.Outputs.HTML,
 				PDF:  parsed.Outputs.PDF,
 				PPTX: parsed.Outputs.PPTX,
+			},
+			Presentation: deck.PresentationSettings{
+				Navigation: deck.NavigationSettings{Notes: parsed.Presentation.Navigation.Notes},
 			},
 			Snippets: deck.SnippetSettings{
 				Head:    parsed.Snippets.Head,

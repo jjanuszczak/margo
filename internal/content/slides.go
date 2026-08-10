@@ -13,6 +13,7 @@ import (
 )
 
 const slidesDirName = "slides"
+const notesDirName = "notes"
 
 func DiscoverSlides(projectRoot string) ([]deck.Slide, error) {
 	slidesRoot := filepath.Join(projectRoot, slidesDirName)
@@ -100,6 +101,11 @@ func parseSlide(projectRoot, indexPath, bundlePath, source string, ignored ignor
 		return deck.Slide{}, err
 	}
 	slide.BodyMarkdown = strings.TrimSpace(resolvedBody)
+	fileNotes, err := discoverBundleNotes(projectRoot, bundlePath, ignored)
+	if err != nil {
+		return deck.Slide{}, fmt.Errorf("%s: discover slide notes: %w", indexPath, err)
+	}
+	slide.Notes = append(slide.Notes, fileNotes...)
 
 	if slide.Title == "" {
 		slide.Title = humanize(filepath.Base(bundlePath))
@@ -117,7 +123,7 @@ func humanize(s string) string {
 	return strings.ToUpper(s[:1]) + s[1:]
 }
 
-func normalizeNotes(value any) []string {
+func normalizeNotes(value any) []deck.Note {
 	switch v := value.(type) {
 	case nil:
 		return nil
@@ -126,24 +132,27 @@ func normalizeNotes(value any) []string {
 		if trimmed == "" {
 			return nil
 		}
-		return []string{trimmed}
+		return []deck.Note{{Name: "Notes", Markdown: trimmed}}
 	case []any:
-		notes := make([]string, 0, len(v))
+		values := make([]string, 0, len(v))
 		for _, item := range v {
 			if s, ok := item.(string); ok {
 				trimmed := strings.TrimSpace(s)
 				if trimmed != "" {
-					notes = append(notes, trimmed)
+					values = append(values, trimmed)
 				}
 			}
 		}
-		return notes
+		if len(values) == 0 {
+			return nil
+		}
+		return []deck.Note{{Name: "Notes", Markdown: strings.Join(values, "\n\n")}}
 	default:
 		return nil
 	}
 }
 
-func extractBodyNotes(body string, notes []string) (string, []string) {
+func extractBodyNotes(body string, notes []deck.Note) (string, []deck.Note) {
 	lines := strings.Split(body, "\n")
 	start := -1
 	for i, line := range lines {
@@ -165,10 +174,61 @@ func extractBodyNotes(body string, notes []string) (string, []string) {
 
 	noteText := strings.TrimSpace(strings.Join(noteLines, "\n"))
 	if noteText != "" {
-		notes = append(notes, noteText)
+		for i := range notes {
+			if notes[i].Name == "Notes" {
+				notes[i].Markdown = strings.TrimSpace(notes[i].Markdown + "\n\n" + noteText)
+				return bodyLines, notes
+			}
+		}
+		notes = append(notes, deck.Note{Name: "Notes", Markdown: noteText})
 	}
 
 	return bodyLines, notes
+}
+
+func discoverBundleNotes(projectRoot, bundlePath string, ignored ignore.Matcher) ([]deck.Note, error) {
+	notesPath := filepath.Join(bundlePath, notesDirName)
+	entries, err := os.ReadDir(notesPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("read notes directory %q: %w", notesPath, err)
+	}
+
+	notes := make([]deck.Note, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.EqualFold(filepath.Ext(entry.Name()), ".md") {
+			continue
+		}
+		path := filepath.Join(notesPath, entry.Name())
+		relToProject, err := filepath.Rel(projectRoot, path)
+		if err != nil {
+			return nil, err
+		}
+		if ignored.ShouldIgnore(relToProject, false) {
+			continue
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("read note file %q: %w", path, err)
+		}
+		markdown, err := resolveIncludes(projectRoot, path, string(data))
+		if err != nil {
+			return nil, err
+		}
+		markdown = strings.TrimSpace(markdown)
+		if markdown == "" {
+			continue
+		}
+		notes = append(notes, deck.Note{
+			Name:     humanize(strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))),
+			Path:     filepath.ToSlash(filepath.Join(notesDirName, entry.Name())),
+			Markdown: markdown,
+		})
+	}
+	sort.Slice(notes, func(i, j int) bool { return notes[i].Path < notes[j].Path })
+	return notes, nil
 }
 
 func discoverBundleAssets(projectRoot string, bundlePath string, ignored ignore.Matcher) ([]string, error) {
@@ -179,6 +239,9 @@ func discoverBundleAssets(projectRoot string, bundlePath string, ignored ignore.
 			return err
 		}
 		if d.IsDir() {
+			if path == filepath.Join(bundlePath, notesDirName) {
+				return filepath.SkipDir
+			}
 			relToProject, relErr := filepath.Rel(projectRoot, path)
 			if relErr == nil && relToProject != "." && ignored.ShouldIgnore(relToProject, true) {
 				return filepath.SkipDir

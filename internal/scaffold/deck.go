@@ -606,6 +606,9 @@ func defaultThemeDeckLayoutSlim() string {
       </section>
       {{ end }}
       <div class="controls">
+        <button class="slide-nav" type="button" data-slide-previous aria-label="Previous slide">Previous</button>
+        <button class="slide-nav" type="button" data-slide-next aria-label="Next slide">Next</button>
+        {{ if .NotesEnabled }}<button class="slide-nav" type="button" data-notes-toggle aria-expanded="false">Notes</button>{{ end }}
         {{ if .PDFEnabled }}<button class="pdf-export" type="button" id="export-pdf">Export PDF</button>{{ end }}
         <span class="nav-hint">Use left/right arrow keys</span>
       </div>
@@ -615,6 +618,24 @@ func defaultThemeDeckLayoutSlim() string {
         {{ end }}
       </div>
     </div>
+    {{ if .NotesEnabled }}
+    <section class="slide-notes" aria-label="Slide notes" hidden>
+      {{ range $i, $slide := .Slides }}
+      {{ if $slide.Notes }}
+      <div class="slide-notes-item" data-slide-notes="{{ $i }}" hidden>
+        <div class="slide-notes-tabs" role="tablist" aria-label="Notes for {{ if $slide.Title }}{{ $slide.Title }}{{ else }}this slide{{ end }}">
+          {{ range $noteIndex, $note := $slide.Notes }}
+          <button class="slide-notes-tab" type="button" role="tab" id="slide-note-tab-{{ $i }}-{{ $noteIndex }}" data-note-tab="{{ $noteIndex }}" aria-controls="slide-note-panel-{{ $i }}-{{ $noteIndex }}" aria-selected="{{ if eq $noteIndex 0 }}true{{ else }}false{{ end }}">{{ $note.Name }}</button>
+          {{ end }}
+        </div>
+        {{ range $noteIndex, $note := $slide.Notes }}
+        <article class="slide-note-panel" role="tabpanel" id="slide-note-panel-{{ $i }}-{{ $noteIndex }}" aria-labelledby="slide-note-tab-{{ $i }}-{{ $noteIndex }}" data-note-panel="{{ $noteIndex }}"{{ if ne $noteIndex 0 }} hidden{{ end }}>{{ $note.Body }}</article>
+        {{ end }}
+      </div>
+      {{ end }}
+      {{ end }}
+    </section>
+    {{ end }}
   </main>
   <script src="themes/{{ .Theme.Name }}/assets/katex.min.js"></script>
   {{ if .HasCharts }}<script src="themes/{{ .Theme.Name }}/assets/chart.umd.min.js"></script>{{ end }}
@@ -622,8 +643,14 @@ func defaultThemeDeckLayoutSlim() string {
     const deck = document.querySelector('.deck');
     const slides = Array.from(document.querySelectorAll('.slide'));
     const dots = Array.from(document.querySelectorAll('[data-slide-dot]'));
+    const previousButton = document.querySelector('[data-slide-previous]');
+    const nextButton = document.querySelector('[data-slide-next]');
+    const notesToggle = document.querySelector('[data-notes-toggle]');
+    const notes = document.querySelector('.slide-notes');
+    const noteItems = Array.from(document.querySelectorAll('[data-slide-notes]'));
     const mobileQuery = window.matchMedia('(max-width: 900px)');
     let index = 0;
+    let notesOpen = false;
     const syncDots = () => {
       dots.forEach((dot, i) => {
         if (i === index) {
@@ -632,10 +659,24 @@ func defaultThemeDeckLayoutSlim() string {
           dot.removeAttribute('aria-current');
         }
       });
+      previousButton.disabled = index === 0;
+      nextButton.disabled = index === slides.length - 1;
+      let hasNotes = false;
+      noteItems.forEach((item) => {
+        const isCurrent = Number(item.dataset.slideNotes) === index;
+        item.hidden = !isCurrent;
+        hasNotes ||= isCurrent;
+      });
+      if (notes) notes.hidden = !notesOpen || !hasNotes;
+      if (notesToggle) {
+        notesToggle.hidden = !hasNotes;
+        notesToggle.setAttribute('aria-expanded', String(notesOpen && hasNotes));
+      }
     };
     const show = (nextIndex) => {
       if (!slides.length) return;
       index = Math.max(0, Math.min(nextIndex, slides.length - 1));
+      notesOpen = false;
       slides.forEach((slide, i) => slide.classList.toggle('active', i === index));
       syncDots();
       if (mobileQuery.matches) {
@@ -658,6 +699,24 @@ func defaultThemeDeckLayoutSlim() string {
     });
     dots.forEach((dot, dotIndex) => {
       dot.addEventListener('click', () => show(dotIndex));
+    });
+    previousButton?.addEventListener('click', () => show(index - 1));
+    nextButton?.addEventListener('click', () => show(index + 1));
+    notesToggle?.addEventListener('click', () => {
+      notesOpen = !notesOpen;
+      syncDots();
+    });
+    document.querySelectorAll('[data-note-tab]').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const noteItem = tab.closest('[data-slide-notes]');
+        const noteIndex = tab.dataset.noteTab;
+        noteItem.querySelectorAll('[data-note-tab]').forEach((candidate) => {
+          candidate.setAttribute('aria-selected', String(candidate === tab));
+        });
+        noteItem.querySelectorAll('[data-note-panel]').forEach((panel) => {
+          panel.hidden = panel.dataset.notePanel !== noteIndex;
+        });
+      });
     });
     if (deck) {
       deck.addEventListener('scroll', syncIndexFromScroll, { passive: true });
@@ -1116,6 +1175,71 @@ main {
 
 .pdf-export:hover {
   background: #fffdf9;
+}
+
+.slide-nav {
+  border: 1px solid color-mix(in srgb, var(--muted) 35%, transparent);
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  color: var(--fg);
+  padding: 8px 12px;
+  border-radius: 999px;
+  font: 12px/1 sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.slide-nav:hover,
+.slide-nav:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.slide-nav:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.slide-notes {
+  width: min(1200px, 100%);
+  margin: 18px auto 0;
+  padding: 24px 28px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: 0 18px 48px var(--shadow);
+}
+
+.slide-notes-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.slide-notes-tab {
+  border: 1px solid color-mix(in srgb, var(--muted) 35%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg);
+  padding: 7px 11px;
+  font: 12px/1 sans-serif;
+  cursor: pointer;
+}
+
+.slide-notes-tab[aria-selected="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #10211e;
+}
+
+.slide-note-panel > :first-child { margin-top: 0; }
+.slide-note-panel > :last-child { margin-bottom: 0; }
+
+.slide-note-panel p,
+.slide-note-panel li {
+  font-size: 17px;
+  line-height: 1.5;
 }
 
 .slide-dots {

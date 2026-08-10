@@ -164,10 +164,10 @@ Expected top-level structure:
 
 ### Notes
 - Speaker notes are part of the core content model.
-- Notes may be authored in front matter or in a dedicated Markdown body section.
-- Notes are excluded from normal rendered slide HTML in v1.
+- Notes may be authored as named Markdown files under a slide bundle's `notes/` directory. Legacy front matter and body note sections remain supported as the default `Notes` bucket.
+- Interactive HTML can reveal a selected note beneath the active slide when `presentation.navigation.notes` is enabled.
 - Notes must survive parsing and build pipelines for future presenter/export usage.
-- Notes are not exported in v1.
+- Notes are excluded from print HTML and PDF output by default.
 
 ### Reuse
 - Author-side shared Markdown reuse is supported through explicit include-style insertion only.

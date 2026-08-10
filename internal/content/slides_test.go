@@ -39,18 +39,52 @@ Remember to mention future PPTX export intent.
 		t.Fatalf("parseSlide returned error: %v", err)
 	}
 
-	if got, want := len(slide.Notes), 3; got != want {
+	if got, want := len(slide.Notes), 1; got != want {
 		t.Fatalf("expected %d notes, got %d: %#v", want, got, slide.Notes)
 	}
 
 	for _, note := range slide.Notes {
-		if note == "" {
+		if note.Name != "Notes" || note.Markdown == "" {
 			t.Fatal("expected non-empty notes")
 		}
 	}
 
 	if strings.Contains(slide.BodyMarkdown, "Remember to mention future PPTX export intent.") {
 		t.Fatalf("body markdown still contains notes section: %q", slide.BodyMarkdown)
+	}
+}
+
+func TestDiscoverSlidesLoadsNamedBundleNotesAndExcludesThemFromAssets(t *testing.T) {
+	projectRoot := t.TempDir()
+	bundlePath := filepath.Join(projectRoot, "slides", "01-title")
+	if err := os.MkdirAll(filepath.Join(bundlePath, "notes"), 0o755); err != nil {
+		t.Fatalf("create notes directory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(bundlePath, "index.md"), []byte("---\ntitle: Title\n---\nSlide body"), 0o644); err != nil {
+		t.Fatalf("write slide: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(bundlePath, "notes", "speaker-script.md"), []byte("Say this first."), 0o644); err != nil {
+		t.Fatalf("write speaker note: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(bundlePath, "notes", "sources.md"), []byte("- [Source](https://example.com)"), 0o644); err != nil {
+		t.Fatalf("write sources note: %v", err)
+	}
+
+	slides, err := DiscoverSlides(projectRoot)
+	if err != nil {
+		t.Fatalf("DiscoverSlides returned error: %v", err)
+	}
+	if got, want := len(slides), 1; got != want {
+		t.Fatalf("expected %d slide, got %d", want, got)
+	}
+	if got, want := len(slides[0].Notes), 2; got != want {
+		t.Fatalf("expected %d note files, got %#v", want, slides[0].Notes)
+	}
+	if slides[0].Notes[0].Name != "Sources" || slides[0].Notes[1].Name != "Speaker script" {
+		t.Fatalf("unexpected note labels: %#v", slides[0].Notes)
+	}
+	if len(slides[0].Assets) != 0 {
+		t.Fatalf("notes must not be staged as slide assets: %#v", slides[0].Assets)
 	}
 }
 

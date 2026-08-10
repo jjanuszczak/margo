@@ -22,6 +22,7 @@ type pageData struct {
 	Deck         deck.DeckMetadata
 	DeckLogo     render.RenderedLogo
 	PDFEnabled   bool
+	NotesEnabled bool
 	HasCharts    bool
 	Theme        theme.Metadata
 	ThemeOptions map[string]any
@@ -63,6 +64,7 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) (di
 		Deck:         model.Config.Deck,
 		DeckLogo:     logo,
 		PDFEnabled:   model.Config.Outputs.PDF,
+		NotesEnabled: model.Config.Presentation.Navigation.Notes,
 		HasCharts:    hasCharts(slides),
 		Theme:        activeTheme,
 		ThemeOptions: model.Config.Theme.Options,

@@ -1,11 +1,12 @@
 package deck
 
 type ProjectConfig struct {
-	Version string
-	Deck    DeckMetadata
-	Theme   ThemeSelection
-	Outputs OutputSettings
-	Snippets SnippetSettings
+	Version      string
+	Deck         DeckMetadata
+	Theme        ThemeSelection
+	Outputs      OutputSettings
+	Presentation PresentationSettings
+	Snippets     SnippetSettings
 }
 
 type DeckMetadata struct {
@@ -32,6 +33,14 @@ type OutputSettings struct {
 	PPTX bool
 }
 
+type PresentationSettings struct {
+	Navigation NavigationSettings
+}
+
+type NavigationSettings struct {
+	Notes bool
+}
+
 type SnippetSettings struct {
 	Head    string
 	BodyEnd string
@@ -55,8 +64,17 @@ type Slide struct {
 	Synthetic  bool
 	FrontMatter
 	BodyMarkdown string
-	Notes        []string
+	Notes        []Note
 	Assets       []string
+}
+
+// Note is Markdown material associated with a slide but separate from its
+// visible slide content. Name is derived from its bundle filename, while the
+// legacy inline note field uses the stable "Notes" name.
+type Note struct {
+	Name     string
+	Path     string
+	Markdown string
 }
 
 type FrontMatter struct {
