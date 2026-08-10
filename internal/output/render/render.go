@@ -40,8 +40,15 @@ type RenderedSlide struct {
 }
 
 type RenderedNote struct {
-	Name string
-	Body template.HTML
+	ID       string
+	Name     string
+	Path     string
+	Order    int
+	Draft    bool
+	Kind     string
+	Tags     []string
+	Language string
+	Body     template.HTML
 }
 
 const columnBreakMarker = "<!-- column-break -->"
@@ -109,7 +116,17 @@ func renderNotes(notes []deck.Note) []RenderedNote {
 		if name == "" {
 			name = "Notes"
 		}
-		result = append(result, RenderedNote{Name: name, Body: MarkdownToHTML(note.Markdown)})
+		result = append(result, RenderedNote{
+			ID:       note.ID,
+			Name:     name,
+			Path:     note.Path,
+			Order:    note.Order,
+			Draft:    note.Draft,
+			Kind:     note.Kind,
+			Tags:     note.Tags,
+			Language: note.Language,
+			Body:     MarkdownToHTML(note.Markdown),
+		})
 	}
 	return result
 }

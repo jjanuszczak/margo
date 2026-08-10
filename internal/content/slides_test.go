@@ -88,6 +88,99 @@ func TestDiscoverSlidesLoadsNamedBundleNotesAndExcludesThemFromAssets(t *testing
 	}
 }
 
+func TestDiscoverSlidesLoadsNoteFrontMatterAndKeepsImplicitNotes(t *testing.T) {
+	projectRoot := t.TempDir()
+	bundlePath := filepath.Join(projectRoot, "slides", "01-title")
+	if err := os.MkdirAll(filepath.Join(bundlePath, "notes"), 0o755); err != nil {
+		t.Fatalf("create notes directory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(bundlePath, "index.md"), []byte("---\ntitle: Title\n---\nSlide body"), 0o644); err != nil {
+		t.Fatalf("write slide: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(bundlePath, "notes", "research.md"), []byte("Plain legacy note."), 0o644); err != nil {
+		t.Fatalf("write implicit note: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(bundlePath, "notes", "speaker.md"), []byte(`---
+id: keynote-script
+title: Keynote script
+order: -1
+visibility: visible
+draft: true
+kind: speaker_script
+tags: [internal, rehearsal]
+language: en
+---
+Open with the customer story.`), 0o644); err != nil {
+		t.Fatalf("write explicit note: %v", err)
+	}
+
+	slides, err := DiscoverSlides(projectRoot)
+	if err != nil {
+		t.Fatalf("DiscoverSlides returned error: %v", err)
+	}
+	notes := slides[0].Notes
+	if got, want := len(notes), 2; got != want {
+		t.Fatalf("expected %d notes, got %#v", want, notes)
+	}
+	if got := notes[0]; got.ID != "keynote-script" || got.Name != "Keynote script" || got.Order != -1 || !got.Draft || got.Kind != "speaker_script" || got.Language != "en" || len(got.Tags) != 2 {
+		t.Fatalf("unexpected explicit note: %#v", got)
+	}
+	if got := notes[1]; got.ID != "research" || got.Name != "Research" || got.Markdown != "Plain legacy note." || got.Visibility != "" {
+		t.Fatalf("unexpected implicit note: %#v", got)
+	}
+}
+
+func TestDiscoverSlidesLoadsNotesForSlideWithoutFrontMatter(t *testing.T) {
+	projectRoot := t.TempDir()
+	bundlePath := filepath.Join(projectRoot, "slides", "01-title")
+	if err := os.MkdirAll(filepath.Join(bundlePath, "notes"), 0o755); err != nil {
+		t.Fatalf("create notes directory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(bundlePath, "index.md"), []byte("# Plain slide"), 0o644); err != nil {
+		t.Fatalf("write plain slide: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(bundlePath, "notes", "speaker.md"), []byte("Plain note."), 0o644); err != nil {
+		t.Fatalf("write note: %v", err)
+	}
+
+	slides, err := DiscoverSlides(projectRoot)
+	if err != nil {
+		t.Fatalf("DiscoverSlides returned error: %v", err)
+	}
+	if got, want := len(slides[0].Notes), 1; got != want || slides[0].Notes[0].Name != "Speaker" {
+		t.Fatalf("expected implicit note on plain slide, got %#v", slides[0].Notes)
+	}
+}
+
+func TestDiscoverSlidesRejectsDuplicateNoteIDsAndInvalidVisibility(t *testing.T) {
+	projectRoot := t.TempDir()
+	bundlePath := filepath.Join(projectRoot, "slides", "01-title")
+	if err := os.MkdirAll(filepath.Join(bundlePath, "notes"), 0o755); err != nil {
+		t.Fatalf("create notes directory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(bundlePath, "index.md"), []byte("---\ntitle: Title\n---\nSlide body"), 0o644); err != nil {
+		t.Fatalf("write slide: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(bundlePath, "notes", "one.md"), []byte("---\nid: shared\n---\nFirst"), 0o644); err != nil {
+		t.Fatalf("write first note: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(bundlePath, "notes", "two.md"), []byte("---\nid: shared\n---\nSecond"), 0o644); err != nil {
+		t.Fatalf("write duplicate note: %v", err)
+	}
+	if _, err := DiscoverSlides(projectRoot); err == nil || !strings.Contains(err.Error(), "duplicates note id") {
+		t.Fatalf("expected duplicate ID error, got %v", err)
+	}
+	if err := os.Remove(filepath.Join(bundlePath, "notes", "two.md")); err != nil {
+		t.Fatalf("remove duplicate note: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(bundlePath, "notes", "invalid.md"), []byte("---\nvisibility: skipped\n---\nInvalid"), 0o644); err != nil {
+		t.Fatalf("write invalid note: %v", err)
+	}
+	if _, err := DiscoverSlides(projectRoot); err == nil || !strings.Contains(err.Error(), "invalid visibility") {
+		t.Fatalf("expected visibility error, got %v", err)
+	}
+}
+
 func TestParseSlideResolvesNestedIncludes(t *testing.T) {
 	projectRoot := t.TempDir()
 	bundlePath := filepath.Join(projectRoot, "slides", "01-title")

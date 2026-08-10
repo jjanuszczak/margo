@@ -295,3 +295,30 @@ func TestCreateSlideMediaLeftArchetype(t *testing.T) {
 		}
 	}
 }
+
+func TestCreateNote(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := CreateDeck(DeckOptions{Name: "test-deck", TargetDir: projectRoot}); err != nil {
+		t.Fatalf("create deck: %v", err)
+	}
+
+	path, err := CreateNote(NoteOptions{ProjectRoot: projectRoot, Slide: "02-why", Name: "Speaker Script"})
+	if err != nil {
+		t.Fatalf("CreateNote returned error: %v", err)
+	}
+	if want := filepath.Join(projectRoot, "slides", "02-why", "notes", "speaker-script.md"); path != want {
+		t.Fatalf("expected note path %q, got %q", want, path)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read note: %v", err)
+	}
+	for _, needle := range []string{"id: speaker-script", "title: Speaker script", "visibility: visible", "kind: note", "Add notes here."} {
+		if !strings.Contains(string(raw), needle) {
+			t.Fatalf("expected note scaffold to contain %q, got:\n%s", needle, raw)
+		}
+	}
+	if _, err := CreateNote(NoteOptions{ProjectRoot: projectRoot, Slide: "missing", Name: "Research"}); err == nil {
+		t.Fatal("expected missing slide bundle to fail")
+	}
+}

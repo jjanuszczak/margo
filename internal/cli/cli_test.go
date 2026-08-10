@@ -63,6 +63,42 @@ func TestParseNewSlideArgs(t *testing.T) {
 	}
 }
 
+func TestParseNewNoteArgs(t *testing.T) {
+	name, slide, err := parseNewNoteArgs([]string{"speaker-script", "--slide", "02-why"})
+	if err != nil {
+		t.Fatalf("parseNewNoteArgs returned error: %v", err)
+	}
+	if name != "speaker-script" || slide != "02-why" {
+		t.Fatalf("unexpected note args: name=%q slide=%q", name, slide)
+	}
+	if _, _, err := parseNewNoteArgs([]string{"speaker-script"}); err != nil {
+		t.Fatalf("parseNewNoteArgs should leave missing slide validation to command, got %v", err)
+	}
+}
+
+func TestRunNewNoteCreatesFrontMatterScaffold(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := scaffold.CreateDeck(scaffold.DeckOptions{Name: "deck", TargetDir: projectRoot}); err != nil {
+		t.Fatalf("create deck: %v", err)
+	}
+	restoreWD := withWorkingDir(t, projectRoot)
+	defer restoreWD()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	if code := Run([]string{"new", "note", "Speaker Script", "--slide", "02-why"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("expected new note to succeed, stderr=%q", stderr.String())
+	}
+	path := filepath.Join(projectRoot, "slides", "02-why", "notes", "speaker-script.md")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read created note: %v", err)
+	}
+	if !strings.Contains(string(raw), "id: speaker-script") || !strings.Contains(stdout.String(), "created note at") {
+		t.Fatalf("unexpected new note result: stdout=%q note=%q", stdout.String(), raw)
+	}
+}
+
 func TestChooseSlideArchetypeInteractive(t *testing.T) {
 	projectRoot := t.TempDir()
 	writeArchetype(t, projectRoot, "default", "Default slide")

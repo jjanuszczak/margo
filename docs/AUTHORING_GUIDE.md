@@ -2,7 +2,7 @@
 
 This guide explains how to use the current `margo` prototype to:
 - create a new deck
-- create new slides
+- create new slides and notes
 - choose a theme
 - pick layouts and archetypes
 - embed images, shared assets, and video
@@ -278,7 +278,35 @@ slides/02-why/
     sources.md
 ```
 
-Each Markdown filename becomes a selectable note label in the HTML deck. For example, `speaker-script.md` becomes “Speaker script.” Enable note controls explicitly in `margo.yaml`:
+Notes may remain plain Markdown for backward compatibility. In that case, Margo derives the note ID and selectable HTML label from its filename. For example, `speaker-script.md` becomes `speaker-script` and “Speaker script.”
+
+Use optional front matter when the note needs a stable ID, display title, explicit ordering, or lifecycle metadata:
+
+```md
+---
+id: speaker-script
+title: Speaker script
+order: 10
+visibility: visible
+draft: false
+kind: speaker_script
+tags:
+  - internal
+language: en
+---
+
+Open with the customer story.
+```
+
+Supported fields are `id`, `title`, `order`, `visibility` (`visible` or `hidden`), `draft`, `kind`, `tags`, and `language`. IDs must be unique within a slide bundle. Hidden notes are omitted from generated HTML; draft notes appear in `serve` but are excluded from a normal `build`.
+
+Create a note scaffold with:
+
+```bash
+margo new note speaker-script --slide 02-why
+```
+
+Enable note controls explicitly in `margo.yaml`:
 
 ```yaml
 presentation:
