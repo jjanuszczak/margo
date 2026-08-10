@@ -438,6 +438,33 @@ func TestRunNewDeckThenBuildStarterDeck(t *testing.T) {
 	}
 }
 
+func TestRunPackAndUnpack(t *testing.T) {
+	parent := t.TempDir()
+	projectRoot := filepath.Join(parent, "deck")
+	if err := scaffold.CreateDeck(scaffold.DeckOptions{Name: "deck", TargetDir: projectRoot}); err != nil {
+		t.Fatalf("create deck: %v", err)
+	}
+	var stdout bytes.Buffer
+	if err := runPack([]string{projectRoot}, &stdout); err != nil {
+		t.Fatalf("runPack returned error: %v", err)
+	}
+	archivePath := filepath.Join(parent, "deck.margo")
+	if _, err := os.Stat(archivePath); err != nil {
+		t.Fatalf("expected archive at %s: %v", archivePath, err)
+	}
+	if !strings.Contains(stdout.String(), "packed project archive") {
+		t.Fatalf("unexpected pack output: %q", stdout.String())
+	}
+
+	stdout.Reset()
+	if err := runUnpack([]string{archivePath, filepath.Join(parent, "restored")}, &stdout); err != nil {
+		t.Fatalf("runUnpack returned error: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(parent, "restored", "margo.yaml")); err != nil {
+		t.Fatalf("expected restored project config: %v", err)
+	}
+}
+
 func TestRunThemeAddInstallsVendoredTheme(t *testing.T) {
 	projectRoot := filepath.Join(t.TempDir(), "deck")
 	if err := scaffold.CreateDeck(scaffold.DeckOptions{

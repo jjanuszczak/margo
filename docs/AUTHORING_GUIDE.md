@@ -180,6 +180,21 @@ Current output locations:
 - `dist/html/index.html`
 - `dist/pdf/deck.pdf` when PDF is enabled and local Chrome works
 
+### Portable project archives
+
+Use a `.margo` archive to hand an editable deck to another Margo user. It contains the deck source, vendored themes, assets, archetypes, and shortcodes, but excludes generated output, Git data, caches, and backups.
+
+```bash
+margo pack /path/to/my-deck
+# writes /path/to/my-deck.margo
+
+margo unpack /path/to/my-deck.margo restored-deck
+
+margo /path/to/my-deck.margo --port 1414
+```
+
+The last command extracts to a temporary workspace for the current run, builds, and serves the deck. Changes made there are discarded when the server stops, so use `unpack` before editing. Margo rejects unsafe archive paths, symlinks, oversized archives, and non-empty unpack destinations. Do not open `.margo` files from untrusted sources: local theme templates and shortcodes execute trusted project logic.
+
 ## 5. Create New Slides
 
 From inside a deck:

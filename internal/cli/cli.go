@@ -21,6 +21,7 @@ import (
 	"margo/internal/output/pdf"
 	"margo/internal/output/printhtml"
 	"margo/internal/project"
+	"margo/internal/projectarchive"
 	"margo/internal/scaffold"
 	"margo/internal/serve"
 	"margo/internal/theme"
@@ -74,6 +75,10 @@ func dispatch(args []string, stdout io.Writer, stderr io.Writer) error {
 		return runBuildLikeCommand("build", args[1:], stdout)
 	case "serve":
 		return runBuildLikeCommand("serve", args[1:], stdout)
+	case "pack":
+		return runPack(args[1:], stdout)
+	case "unpack":
+		return runUnpack(args[1:], stdout)
 	case "new":
 		return runNestedNew(args[1:], stdout, stderr)
 	case "theme":
@@ -83,8 +88,85 @@ func dispatch(args []string, stdout io.Writer, stderr io.Writer) error {
 	case "clean":
 		return runClean(stdout)
 	default:
+		if strings.HasSuffix(strings.ToLower(args[0]), projectarchive.Extension) {
+			return runArchiveOpen(args, stdout)
+		}
 		return fmt.Errorf("unknown command %q", args[0])
 	}
+}
+
+func runPack(args []string, stdout io.Writer) error {
+	if len(args) != 1 {
+		return fmt.Errorf("pack requires exactly one deck directory")
+	}
+	root, err := project.Discover(args[0])
+	if err != nil {
+		return fmt.Errorf("pack requires a Margo project directory: %w", err)
+	}
+	outputPath := filepath.Join(filepath.Dir(root.Dir), filepath.Base(root.Dir)+projectarchive.Extension)
+	if err := projectarchive.Pack(root.Dir, outputPath, version.Version); err != nil {
+		return fmt.Errorf("pack project archive: %w", err)
+	}
+	fmt.Fprintf(stdout, "packed project archive at %s\n", outputPath)
+	return nil
+}
+
+func runUnpack(args []string, stdout io.Writer) error {
+	if len(args) < 1 || len(args) > 2 {
+		return fmt.Errorf("unpack requires an archive and optional destination")
+	}
+	archivePath, err := filepath.Abs(args[0])
+	if err != nil {
+		return fmt.Errorf("resolve archive path: %w", err)
+	}
+	destination := ""
+	if len(args) == 2 {
+		destination = args[1]
+	} else {
+		wd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("get working directory: %w", err)
+		}
+		destination = filepath.Join(wd, strings.TrimSuffix(filepath.Base(archivePath), filepath.Ext(archivePath)))
+	}
+	if !filepath.IsAbs(destination) {
+		wd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("get working directory: %w", err)
+		}
+		destination = filepath.Join(wd, destination)
+	}
+	manifest, err := projectarchive.Unpack(archivePath, destination)
+	if err != nil {
+		return fmt.Errorf("unpack project archive: %w", err)
+	}
+	fmt.Fprintf(stdout, "unpacked %s project at %s\n", manifest.ProjectName, destination)
+	return nil
+}
+
+func runArchiveOpen(args []string, stdout io.Writer) error {
+	archivePath, err := filepath.Abs(args[0])
+	if err != nil {
+		return fmt.Errorf("resolve archive path: %w", err)
+	}
+	tempDir, err := os.MkdirTemp("", "margo-archive-")
+	if err != nil {
+		return fmt.Errorf("create temporary archive workspace: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+	if _, err := projectarchive.Unpack(archivePath, tempDir); err != nil {
+		return fmt.Errorf("open project archive: %w", err)
+	}
+	previousDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working directory: %w", err)
+	}
+	if err := os.Chdir(tempDir); err != nil {
+		return fmt.Errorf("enter temporary archive workspace: %w", err)
+	}
+	defer os.Chdir(previousDir)
+	fmt.Fprintf(stdout, "opened archive in temporary workspace %s\n", tempDir)
+	return runBuildLikeCommand("serve", args[1:], stdout)
 }
 
 func runNestedNew(args []string, stdout io.Writer, stderr io.Writer) error {
@@ -778,6 +860,8 @@ func writeHelp(w io.Writer) {
 	fmt.Fprintln(w, "Commands:")
 	fmt.Fprintln(w, "  build        Build all configured outputs for the current deck")
 	fmt.Fprintln(w, "  serve        Serve the current deck locally")
+	fmt.Fprintln(w, "  pack         Package a deck project as a portable .margo archive")
+	fmt.Fprintln(w, "  unpack       Restore a portable .margo archive to a project folder")
 	fmt.Fprintln(w, "  theme        Install or inspect vendored themes")
 	fmt.Fprintln(w, "  new          Create a deck, slide, or theme scaffold")
 	fmt.Fprintln(w, "  init         Initialize a deck in the current directory")
@@ -787,6 +871,9 @@ func writeHelp(w io.Writer) {
 	fmt.Fprintln(w, "Common options:")
 	fmt.Fprintln(w, "  margo build --include-drafts")
 	fmt.Fprintln(w, "  margo serve [--include-drafts] [--no-open] [--port <port>]")
+	fmt.Fprintln(w, "  margo pack <deck-dir>")
+	fmt.Fprintln(w, "  margo unpack <archive.margo> [destination]")
+	fmt.Fprintln(w, "  margo <archive.margo> [--include-drafts] [--no-open] [--port <port>]")
 	fmt.Fprintln(w, "  margo theme add <repo> [--ref <rev>] [--name <local-name>]")
 	fmt.Fprintln(w, "  margo theme update <name>")
 	fmt.Fprintln(w, "  margo theme list")
