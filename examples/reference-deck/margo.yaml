@@ -17,6 +17,10 @@ outputs:
   html: true
   pdf: true
 
+presentation:
+  navigation:
+    notes: true
+
 snippets:
   head: |
     <meta name="margo-fixture" content="reference-deck">

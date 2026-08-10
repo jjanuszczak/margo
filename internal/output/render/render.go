@@ -36,6 +36,12 @@ type RenderedSlide struct {
 	StyleAttr          template.CSS
 	ImageHintClass     string
 	ImageCaption       string
+	Notes              []RenderedNote
+}
+
+type RenderedNote struct {
+	Name string
+	Body template.HTML
 }
 
 const columnBreakMarker = "<!-- column-break -->"
@@ -55,6 +61,7 @@ func RenderSlides(projectRoot string, deckMeta deck.DeckMetadata, slides []deck.
 			return nil, diagnostics.Report{}, fmt.Errorf("expand shortcodes for slide %q: %w", slide.ID, err)
 		}
 		body := MarkdownToHTML(expanded)
+		notes := renderNotes(slide.Notes)
 		section, hasSection := deck.FindSection(sections, slide.Section)
 		sectionID := ""
 		sectionTitle := ""
@@ -76,6 +83,7 @@ func RenderSlides(projectRoot string, deckMeta deck.DeckMetadata, slides []deck.
 				StyleAttr:          ResolveSlideStyle(projectRoot, slide, &report),
 				ImageHintClass:     ResolveImageHintClass(slide.ImageHints),
 				ImageCaption:       ResolveImageCaption(slide.ImageHints),
+				Notes:              notes,
 			})
 			continue
 		}
@@ -85,9 +93,25 @@ func RenderSlides(projectRoot string, deckMeta deck.DeckMetadata, slides []deck.
 		if err != nil {
 			return nil, diagnostics.Report{}, err
 		}
+		rendered.Notes = notes
 		result = append(result, rendered)
 	}
 	return result, report, nil
+}
+
+func renderNotes(notes []deck.Note) []RenderedNote {
+	result := make([]RenderedNote, 0, len(notes))
+	for _, note := range notes {
+		if strings.TrimSpace(note.Markdown) == "" {
+			continue
+		}
+		name := strings.TrimSpace(note.Name)
+		if name == "" {
+			name = "Notes"
+		}
+		result = append(result, RenderedNote{Name: name, Body: MarkdownToHTML(note.Markdown)})
+	}
+	return result
 }
 
 func executeSlideLayout(projectRoot string, activeTheme theme.Metadata, layoutPath string, slide deck.Slide, index int, expandedMarkdown string, body template.HTML, sectionID string, sectionTitle string, deckFooter string, report *diagnostics.Report) (RenderedSlide, error) {

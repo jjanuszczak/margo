@@ -42,7 +42,7 @@ Implemented in the content model:
 - draft filtering
 - hidden/skip filtering
 - section context
-- notes preservation without rendering notes into normal slide HTML
+- bundle-based Markdown notes, including speaker scripts and research, with optional interactive HTML viewing
 
 Not finished:
 - PDF export

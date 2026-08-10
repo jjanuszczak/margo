@@ -267,7 +267,28 @@ Current behavior:
 
 ### Notes
 
-Notes can live in front matter:
+Put named note files in a slide bundle's `notes/` directory:
+
+```text
+slides/02-why/
+  index.md
+  notes/
+    research.md
+    speaker-script.md
+    sources.md
+```
+
+Each Markdown filename becomes a selectable note label in the HTML deck. For example, `speaker-script.md` becomes “Speaker script.” Enable note controls explicitly in `margo.yaml`:
+
+```yaml
+presentation:
+  navigation:
+    notes: true
+```
+
+The HTML deck always includes Previous and Next controls. When notes are enabled, the current slide shows a Notes button only when it has note files or legacy notes. Clicking it reveals the selected note beneath the slide. Notes are excluded from print HTML and PDF output.
+
+Margo also preserves legacy notes in front matter:
 
 ```yaml
 notes:
@@ -283,7 +304,7 @@ Or in a body section:
 Mention the Hugo mental model.
 ```
 
-Notes are preserved in the model but excluded from normal slide HTML.
+Legacy notes and body note sections become the default “Notes” bucket. They remain excluded from normal slide content.
 
 ## 7. Choose a Layout or Archetype
 
