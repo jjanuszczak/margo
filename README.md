@@ -25,6 +25,8 @@ Working today:
 - `margo init`
 - `margo build`
 - `margo serve`
+- `margo pack <deck-dir>`
+- `margo unpack <archive.margo> [destination]`
 - `margo theme add <repo>`
 - `margo theme list`
 - `margo clean`
