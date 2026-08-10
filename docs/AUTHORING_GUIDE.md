@@ -288,6 +288,14 @@ presentation:
 
 The HTML deck always includes Previous and Next controls. When notes are enabled, the current slide shows a Notes button only when it has note files or legacy notes. Clicking it reveals the selected note beneath the slide. Notes are excluded from print HTML and PDF output.
 
+For an unmodified deck made with the earlier default scaffold, run this migration from a checkout of the current Margo repository:
+
+```bash
+python3 scripts/migrate-default-theme-notes.py /path/to/your/deck
+```
+
+It backs up `margo.yaml`, `themes/default/layouts/deck.html`, and `themes/default/assets/theme.css` under `.margo-backups/`. It deliberately refuses custom or modified themes, which need a manual merge of the current default-theme controls.
+
 Margo also preserves legacy notes in front matter:
 
 ```yaml
