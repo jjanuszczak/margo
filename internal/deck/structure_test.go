@@ -46,3 +46,23 @@ func TestApplySectionDividersSkipsExplicitSectionSlide(t *testing.T) {
 		}
 	}
 }
+
+func TestFilterSlidesFiltersHiddenAndDraftNotes(t *testing.T) {
+	slides := []Slide{{
+		ID: "title",
+		Notes: []Note{
+			{ID: "visible"},
+			{ID: "hidden", Visibility: "hidden"},
+			{ID: "draft", Draft: true},
+		},
+	}}
+
+	buildNotes := FilterSlides(slides, FilterOptions{})[0].Notes
+	if got, want := len(buildNotes), 1; got != want || buildNotes[0].ID != "visible" {
+		t.Fatalf("expected only visible note in build, got %#v", buildNotes)
+	}
+	serveNotes := FilterSlides(slides, FilterOptions{IncludeDrafts: true})[0].Notes
+	if got, want := len(serveNotes), 2; got != want || serveNotes[1].ID != "draft" {
+		t.Fatalf("expected visible and draft notes in serve, got %#v", serveNotes)
+	}
+}

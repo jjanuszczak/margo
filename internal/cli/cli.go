@@ -95,6 +95,9 @@ func runNestedNew(args []string, stdout io.Writer, stderr io.Writer) error {
 	if args[0] == "slide" {
 		return runNewSlide(args[1:], stdout)
 	}
+	if args[0] == "note" {
+		return runNewNote(args[1:], stdout)
+	}
 	if args[0] == "theme" {
 		return runNewTheme(args[1:], stdout)
 	}
@@ -213,6 +216,49 @@ func runNewSlide(args []string, stdout io.Writer) error {
 	}
 
 	fmt.Fprintf(stdout, "created slide at %s\n", indexPath)
+	return nil
+}
+
+func runNewNote(args []string, stdout io.Writer) error {
+	noteName, slideID, err := parseNewNoteArgs(args)
+	if err != nil {
+		return err
+	}
+	if noteName == "" {
+		return fmt.Errorf("new note requires a note name")
+	}
+	if slideID == "" {
+		return fmt.Errorf("new note requires --slide <slide-bundle>")
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working directory: %w", err)
+	}
+	root, err := project.Discover(wd)
+	if err != nil {
+		report := diagnostics.Report{}
+		report.Add(diagnostics.Diagnostic{
+			Severity: diagnostics.SeverityError,
+			Code:     "project_not_found",
+			Message:  err.Error(),
+			Path:     wd,
+		})
+		return commandError{
+			message: "new note requires a Margo project root",
+			report:  report,
+		}
+	}
+
+	path, err := scaffold.CreateNote(scaffold.NoteOptions{
+		ProjectRoot: root.Dir,
+		Slide:       slideID,
+		Name:        noteName,
+	})
+	if err != nil {
+		return fmt.Errorf("create note scaffold: %w", err)
+	}
+	fmt.Fprintf(stdout, "created note at %s\n", path)
 	return nil
 }
 
@@ -745,6 +791,7 @@ func writeHelp(w io.Writer) {
 	fmt.Fprintln(w, "  margo theme update <name>")
 	fmt.Fprintln(w, "  margo theme list")
 	fmt.Fprintln(w, "  margo new slide <name> [--archetype <name>]")
+	fmt.Fprintln(w, "  margo new note <name> --slide <slide-bundle>")
 	fmt.Fprintln(w, "  margo new theme <name> [--blank]")
 }
 
@@ -812,6 +859,32 @@ func parseNewSlideArgs(args []string) (string, string, error) {
 	}
 
 	return slideName, archetypeName, nil
+}
+
+func parseNewNoteArgs(args []string) (string, string, error) {
+	var noteName string
+	var slideID string
+
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--slide":
+			if i+1 >= len(args) {
+				return "", "", fmt.Errorf("new note requires a value for --slide")
+			}
+			slideID = strings.TrimSpace(args[i+1])
+			i++
+		default:
+			if strings.HasPrefix(args[i], "--") {
+				return "", "", fmt.Errorf("unknown new note option %q", args[i])
+			}
+			if noteName != "" {
+				return "", "", fmt.Errorf("new note accepts exactly one note name")
+			}
+			noteName = args[i]
+		}
+	}
+
+	return noteName, slideID, nil
 }
 
 func chooseSlideArchetype(projectRoot string, stdin *os.File, stdout io.Writer) (string, error) {

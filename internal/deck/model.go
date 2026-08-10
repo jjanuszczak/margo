@@ -69,12 +69,20 @@ type Slide struct {
 }
 
 // Note is Markdown material associated with a slide but separate from its
-// visible slide content. Name is derived from its bundle filename, while the
-// legacy inline note field uses the stable "Notes" name.
+// visible slide content. Name is derived from its bundle filename when a note
+// file does not declare front matter, while the legacy inline note field uses
+// the stable "Notes" name.
 type Note struct {
-	Name     string
-	Path     string
-	Markdown string
+	ID         string
+	Name       string
+	Path       string
+	Markdown   string
+	Order      int
+	Visibility string
+	Draft      bool
+	Kind       string
+	Tags       []string
+	Language   string
 }
 
 type FrontMatter struct {
