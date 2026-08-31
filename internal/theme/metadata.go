@@ -5,6 +5,7 @@ type Metadata struct {
 	Version         string         `yaml:"version"`
 	Description     string         `yaml:"description"`
 	ConfigOptions   []ConfigOption `yaml:"config_options"`
+	PPTX            *PPTXMetadata  `yaml:"pptx,omitempty"`
 	Source          *Source        `yaml:"source,omitempty"`
 	RequiredLayout  []string
 	RootDir         string
@@ -13,6 +14,30 @@ type Metadata struct {
 	PrintDeckLayout string
 	SlideLayouts    map[string]string
 	Partials        map[string]string
+}
+
+type PPTXMetadata struct {
+	SlideSize string                `yaml:"slide_size"`
+	Fonts     PPTXFonts             `yaml:"fonts"`
+	Colors    map[string]string     `yaml:"colors"`
+	Assets    map[string]string     `yaml:"assets"`
+	Layouts   map[string]PPTXLayout `yaml:"layouts"`
+}
+
+type PPTXFonts struct {
+	Heading string `yaml:"heading"`
+	Body    string `yaml:"body"`
+}
+
+type PPTXLayout struct {
+	Name          string  `yaml:"name"`
+	ImagePosition string  `yaml:"image_position"`
+	BodyX         float64 `yaml:"body_x"`
+	BodyY         float64 `yaml:"body_y"`
+	BodyWidth     float64 `yaml:"body_width"`
+	BodyHeight    float64 `yaml:"body_height"`
+	ImageWidth    float64 `yaml:"image_width"`
+	ImageHeight   float64 `yaml:"image_height"`
 }
 
 type Source struct {

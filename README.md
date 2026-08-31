@@ -47,8 +47,7 @@ Implemented in the content model:
 - bundle-based Markdown notes, including speaker scripts and research, with optional interactive HTML viewing
 
 Not finished:
-- PDF export
-- PPTX export
+- advanced PPTX theme recipes and full shortcode parity
 - manifest-driven sequencing beyond the current loader path
 - presenter mode
 - browser-refresh injection outside the scaffolded default theme

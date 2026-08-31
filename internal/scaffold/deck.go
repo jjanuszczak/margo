@@ -129,6 +129,7 @@ theme:
 outputs:
   html: true
   pdf: true
+  pptx: false
 `, yamlString(deckName))
 }
 
@@ -158,7 +159,7 @@ layout: content
 
 - Markdown-first authoring
 - Hugo-like project structure
-- HTML-first output with PDF next
+- HTML-first output with PDF and editable PPTX export
 
 {{< callout tone="info" >}}
 Theme-provided shortcodes make expressive slides possible without abandoning Markdown.
@@ -177,7 +178,7 @@ Theme-provided shortcodes make expressive slides possible without abandoning Mar
 
 - HTML first
 - PDF next
-- PPTX later
+- Editable PPTX export
 {{< /column >}}
 {{< /columns >}}
 
@@ -351,6 +352,41 @@ config_options:
     type: string
     description: Accent color used for emphasis
     default: "#8f6f33"
+pptx:
+  slide_size: widescreen
+  fonts:
+    heading: Aptos Display
+    body: Aptos
+  colors:
+    background: "#FFFFFF"
+    foreground: "#1F2937"
+    accent: "#8F6F33"
+  layouts:
+    title:
+      name: title
+      body_y: 2.1
+      body_height: 4.7
+    section:
+      name: section
+      body_y: 2.0
+      body_height: 4.8
+    content:
+      name: content
+      body_y: 1.55
+      body_height: 5.2
+    image:
+      name: image
+      image_position: center
+      image_width: 11.2
+      image_height: 4.1
+    media-left:
+      name: media-left
+      image_position: left
+      image_width: 5.5
+    media-right:
+      name: media-right
+      image_position: right
+      image_width: 5.5
 `
 }
 
@@ -440,6 +476,41 @@ config_options:
     type: string
     description: Accent color used for emphasis
     default: "#8f6f33"
+pptx:
+  slide_size: widescreen
+  fonts:
+    heading: Aptos Display
+    body: Aptos
+  colors:
+    background: "#FFFFFF"
+    foreground: "#1F2937"
+    accent: "#8F6F33"
+  layouts:
+    title:
+      name: title
+      body_y: 2.1
+      body_height: 4.7
+    section:
+      name: section
+      body_y: 2.0
+      body_height: 4.8
+    content:
+      name: content
+      body_y: 1.55
+      body_height: 5.2
+    image:
+      name: image
+      image_position: center
+      image_width: 11.2
+      image_height: 4.1
+    media-left:
+      name: media-left
+      image_position: left
+      image_width: 5.5
+    media-right:
+      name: media-right
+      image_position: right
+      image_width: 5.5
 `, yamlString(themeName))
 }
 
