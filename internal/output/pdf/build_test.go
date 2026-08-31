@@ -1,6 +1,8 @@
 package pdf
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -114,5 +116,40 @@ func TestPDFTimeoutDefaultsAndOverride(t *testing.T) {
 	t.Setenv(timeoutEnvVar, "bad")
 	if got := pdfTimeout(); got != 120*time.Second {
 		t.Fatalf("invalid timeout fallback = %s, want %s", got, 120*time.Second)
+	}
+}
+
+func TestRunBrowserSucceedsWhenProcessStaysAliveAfterPDFIsReady(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("test helper uses a POSIX shell")
+	}
+
+	pdfPath := filepath.Join(t.TempDir(), "deck.pdf")
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	started := time.Now()
+	output, err := runBrowser(ctx, BrowserInfo{Path: "/bin/sh"}, []string{"-c", "printf '%s\\n' '%PDF-1.7' '1 0 obj' 'endobj' '%%EOF' > \"$1\"; while :; do :; done", "fake-chrome", pdfPath}, pdfPath)
+	if err != nil {
+		t.Fatalf("runBrowser returned error: %v (output: %s)", err, output)
+	}
+	if elapsed := time.Since(started); elapsed > time.Second {
+		t.Fatalf("runBrowser took %s after PDF became ready", elapsed)
+	}
+	if !pdfReady(pdfPath, time.Time{}) {
+		t.Fatal("expected generated PDF to be ready")
+	}
+}
+
+func TestRunBrowserTimesOutWithoutPDF(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("test helper uses a POSIX shell")
+	}
+
+	pdfPath := filepath.Join(t.TempDir(), "deck.pdf")
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	_, err := runBrowser(ctx, BrowserInfo{Path: "/bin/sh"}, []string{"-c", "while :; do :; done", "fake-chrome"}, pdfPath)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("runBrowser error = %v, want deadline exceeded", err)
 	}
 }
