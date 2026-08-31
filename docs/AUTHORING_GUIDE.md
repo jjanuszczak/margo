@@ -88,6 +88,7 @@ theme:
 outputs:
   html: true
   pdf: true
+  pptx: false
 ```
 
 ### Current default-theme options
@@ -179,6 +180,33 @@ Useful variants:
 Current output locations:
 - `dist/html/index.html`
 - `dist/pdf/deck.pdf` when PDF is enabled and local Chrome works
+- `dist/pptx/deck.pptx` when PPTX is enabled
+
+PPTX export produces editable text, headings, lists, images, and speaker notes. Shortcodes and other web-native content that cannot map cleanly to PowerPoint are omitted with a build diagnostic. HTML and PDF output remain unchanged.
+
+To bootstrap or inspect a theme’s PPTX contract:
+
+```bash
+../bin/margo theme pptx init default
+../bin/margo theme pptx inspect default
+../bin/margo theme pptx validate default
+```
+
+The optional contract lives at `themes/<name>/pptx/theme.yaml`. It declares PowerPoint-specific fonts, colors, assets, and layout metadata while the HTML theme remains unchanged.
+
+Layout geometry is expressed in inches. For example:
+
+```yaml
+layouts:
+  media-right:
+    name: media-right
+    image_position: right
+    image_width: 5.5
+    image_height: 3.2
+    body_x: 0.8
+    body_y: 1.7
+    body_width: 6.2
+```
 
 ### Portable project archives
 
@@ -516,7 +544,7 @@ Theme-provided shortcodes make expressive slides possible without abandoning Mar
 
 - HTML first
 - PDF next
-- PPTX later
+- Editable PPTX export
 {{< /column >}}
 {{< /columns >}}
 ```
@@ -882,7 +910,7 @@ For `media-left` or `media-right`, author the slide with the lead image first an
 This guide reflects the current prototype. Important limitations:
 
 - PDF depends on a local Chrome/Chromium-compatible browser and may fail in restricted remote environments
-- PPTX export is not implemented
+- PPTX export supports the core editable content model; advanced web-native shortcodes may require fallback handling
 - presenter mode is not implemented
 - theme APIs and project conventions may still evolve
 - browser auto-refresh is currently wired through the scaffolded default theme

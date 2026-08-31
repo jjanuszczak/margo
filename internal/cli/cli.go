@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -19,6 +20,7 @@ import (
 	"margo/internal/manifest"
 	"margo/internal/output/html"
 	"margo/internal/output/pdf"
+	"margo/internal/output/pptx"
 	"margo/internal/output/printhtml"
 	"margo/internal/project"
 	"margo/internal/projectarchive"
@@ -202,9 +204,110 @@ func runThemeCommand(args []string, stdout io.Writer) error {
 		return runThemeUpdate(args[1:], stdout)
 	case "list":
 		return runThemeList(stdout)
+	case "pptx":
+		return runThemePPTX(args[1:], stdout)
 	default:
 		return fmt.Errorf("unknown theme subcommand %q", args[0])
 	}
+}
+
+func runThemePPTX(args []string, stdout io.Writer) error {
+	if len(args) < 1 || len(args) > 2 {
+		return fmt.Errorf("theme pptx requires init, inspect, or validate and a theme name")
+	}
+	action, themeName := args[0], ""
+	if len(args) == 2 {
+		themeName = args[1]
+	}
+	if themeName == "" {
+		return fmt.Errorf("theme pptx %s requires a theme name", action)
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working directory: %w", err)
+	}
+	root, err := project.Discover(wd)
+	if err != nil {
+		return fmt.Errorf("theme pptx %s requires a Margo project root: %w", action, err)
+	}
+	active, err := theme.Load(root.Dir, themeName)
+	if err != nil {
+		return err
+	}
+	switch action {
+	case "validate":
+		fmt.Fprintf(stdout, "validated PPTX contract for theme %s\n", active.Name)
+		if active.PPTX == nil {
+			fmt.Fprintln(stdout, "PPTX contract: generic fallback")
+		}
+		return nil
+	case "inspect":
+		fmt.Fprintf(stdout, "theme: %s\n", active.Name)
+		fmt.Fprintf(stdout, "html layouts: %d\n", len(active.SlideLayouts))
+		if active.PPTX == nil {
+			fmt.Fprintln(stdout, "PPTX contract: not configured (generic fallback will be used)")
+			inspectThemeCandidates(active, stdout)
+			return nil
+		}
+		fmt.Fprintf(stdout, "PPTX slide size: %s\n", active.PPTX.SlideSize)
+		fmt.Fprintf(stdout, "PPTX layouts: %d\n", len(active.PPTX.Layouts))
+		fmt.Fprintf(stdout, "PPTX assets: %d\n", len(active.PPTX.Assets))
+		return nil
+	case "init":
+		return initThemePPTX(active, stdout)
+	default:
+		return fmt.Errorf("unknown theme pptx action %q", action)
+	}
+}
+
+func inspectThemeCandidates(active theme.Metadata, stdout io.Writer) {
+	cssPath := filepath.Join(active.RootDir, "assets", "theme.css")
+	css, err := os.ReadFile(cssPath)
+	if err == nil {
+		fonts := regexp.MustCompile(`(?i)font-family\s*:\s*([^;}{]+)`).FindStringSubmatch(string(css))
+		if len(fonts) == 2 {
+			fmt.Fprintf(stdout, "candidate body font: %s\n", strings.TrimSpace(fonts[1]))
+		}
+		colors := regexp.MustCompile(`#(?:[0-9a-fA-F]{6})`).FindAllString(string(css), 6)
+		if len(colors) > 0 {
+			fmt.Fprintf(stdout, "candidate CSS colors: %s\n", strings.Join(colors, ", "))
+		}
+	}
+	if entries, err := os.ReadDir(filepath.Join(active.RootDir, "assets")); err == nil {
+		var assets []string
+		for _, entry := range entries {
+			ext := strings.ToLower(filepath.Ext(entry.Name()))
+			if !entry.IsDir() && (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".svg") {
+				assets = append(assets, entry.Name())
+			}
+		}
+		if len(assets) > 0 {
+			fmt.Fprintf(stdout, "candidate image assets: %s\n", strings.Join(assets, ", "))
+		}
+	}
+}
+
+func initThemePPTX(active theme.Metadata, stdout io.Writer) error {
+	if active.PPTX != nil {
+		fmt.Fprintf(stdout, "PPTX theme contract already configured in %s\n", filepath.Join(active.RootDir, theme.ThemeMetadataFile))
+		return nil
+	}
+	contractDir := filepath.Join(active.RootDir, "pptx")
+	contractPath := filepath.Join(contractDir, "theme.yaml")
+	if _, err := os.Stat(contractPath); err == nil {
+		return fmt.Errorf("PPTX theme contract already exists: %s", contractPath)
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("stat PPTX theme contract: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Join(contractDir, "layouts"), 0o755); err != nil {
+		return fmt.Errorf("create PPTX theme directory: %w", err)
+	}
+	contract := "slide_size: widescreen\nfonts:\n  heading: Aptos Display\n  body: Aptos\ncolors:\n  background: \"#FFFFFF\"\n  foreground: \"#1F2937\"\n  accent: \"#8F6F33\"\nassets: {}\nlayouts: {}\n"
+	if err := os.WriteFile(contractPath, []byte(contract), 0o644); err != nil {
+		return fmt.Errorf("write PPTX theme contract: %w", err)
+	}
+	fmt.Fprintf(stdout, "created PPTX theme contract at %s\n", contractPath)
+	return nil
 }
 
 func runNewDeck(target string, stdout io.Writer) error {
@@ -738,6 +841,7 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			Slides:   slides,
 		}
 		renderPDF := name == "build" && parsed.Config.Outputs.PDF
+		renderPPTX := name == "build" && parsed.Config.Outputs.PPTX
 		if parsed.Config.Outputs.HTML {
 			report, err := html.Write(root.Dir, model, activeTheme)
 			if err != nil {
@@ -761,10 +865,19 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 				return err
 			}
 		}
+		if renderPPTX {
+			report, err := pptx.Write(root.Dir, model, activeTheme)
+			if err != nil {
+				return err
+			}
+			if len(report.Items) > 0 {
+				diagnostics.WriteReport(stdout, report)
+			}
+		}
 		return nil
 	}
 
-	if name == "build" && (parsed.Config.Outputs.HTML || parsed.Config.Outputs.PDF) {
+	if name == "build" && (parsed.Config.Outputs.HTML || parsed.Config.Outputs.PDF || parsed.Config.Outputs.PPTX) {
 		if err := rebuild(); err != nil {
 			return fmt.Errorf("build outputs: %w", err)
 		}
@@ -783,6 +896,9 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 				fmt.Fprintf(stdout, "%s: pdf browser %s (%s)\n", name, browser.Path, browser.Source)
 			}
 			fmt.Fprintf(stdout, "%s: wrote %s\n", name, pdf.OutputFile)
+		}
+		if parsed.Config.Outputs.PPTX {
+			fmt.Fprintf(stdout, "%s: wrote %s\n", name, pptx.OutputFile)
 		}
 		return nil
 	}
@@ -877,6 +993,7 @@ func writeHelp(w io.Writer) {
 	fmt.Fprintln(w, "  margo theme add <repo> [--ref <rev>] [--name <local-name>]")
 	fmt.Fprintln(w, "  margo theme update <name>")
 	fmt.Fprintln(w, "  margo theme list")
+	fmt.Fprintln(w, "  margo theme pptx init|inspect|validate <name>")
 	fmt.Fprintln(w, "  margo new slide <name> [--archetype <name>]")
 	fmt.Fprintln(w, "  margo new note <name> --slide <slide-bundle>")
 	fmt.Fprintln(w, "  margo new theme <name> [--blank]")

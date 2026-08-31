@@ -47,6 +47,21 @@ func loadFromRootDir(rootDir, themeName string) (Metadata, error) {
 	if err != nil {
 		return Metadata{}, err
 	}
+	if meta.PPTX == nil {
+		contractPath := filepath.Join(rootDir, "pptx", "theme.yaml")
+		if contractRaw, contractErr := os.ReadFile(contractPath); contractErr == nil {
+			var contract PPTXMetadata
+			if err := yaml.Unmarshal(contractRaw, &contract); err != nil {
+				return Metadata{}, &Error{Path: contractPath, Message: fmt.Sprintf("parse PPTX theme contract: %v", err)}
+			}
+			if err := validatePPTXMetadata(&contract, contractPath); err != nil {
+				return Metadata{}, err
+			}
+			meta.PPTX = &contract
+		} else if !os.IsNotExist(contractErr) {
+			return Metadata{}, &Error{Path: contractPath, Message: fmt.Sprintf("read PPTX theme contract: %v", contractErr)}
+		}
+	}
 	meta.RootDir = rootDir
 	meta.SlideLayouts = map[string]string{}
 	meta.Partials = map[string]string{}
@@ -165,6 +180,9 @@ func parseMetadata(source, path string) (Metadata, error) {
 }
 
 func validateMetadata(meta Metadata, path string) error {
+	if err := validatePPTXMetadata(meta.PPTX, path); err != nil {
+		return err
+	}
 	seen := map[string]struct{}{}
 	for _, option := range meta.ConfigOptions {
 		name := strings.TrimSpace(option.Name)
@@ -223,6 +241,34 @@ func validateMetadata(meta Metadata, path string) error {
 					Message: fmt.Sprintf("theme config option %q default: %v", name, err),
 				}
 			}
+		}
+	}
+	return nil
+}
+
+func validatePPTXMetadata(pptx *PPTXMetadata, path string) error {
+	if pptx == nil {
+		return nil
+	}
+	switch strings.TrimSpace(pptx.SlideSize) {
+	case "", "widescreen", "standard":
+	default:
+		return &Error{Path: path, Message: fmt.Sprintf("theme PPTX slide_size %q is unsupported; use widescreen or standard", pptx.SlideSize)}
+	}
+	for name, value := range pptx.Colors {
+		value = strings.TrimPrefix(strings.TrimSpace(value), "#")
+		if len(value) != 6 {
+			return &Error{Path: path, Message: fmt.Sprintf("theme PPTX color %q must be a six-digit hex value", name)}
+		}
+		for _, char := range value {
+			if !((char >= '0' && char <= '9') || (char >= 'a' && char <= 'f') || (char >= 'A' && char <= 'F')) {
+				return &Error{Path: path, Message: fmt.Sprintf("theme PPTX color %q must be a six-digit hex value", name)}
+			}
+		}
+	}
+	for name := range pptx.Layouts {
+		if strings.TrimSpace(name) == "" {
+			return &Error{Path: path, Message: "theme PPTX layout names are required"}
 		}
 	}
 	return nil

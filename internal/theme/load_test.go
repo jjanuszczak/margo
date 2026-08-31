@@ -120,3 +120,48 @@ config_options:
 		t.Fatalf("unexpected error message %q", themeErr.Message)
 	}
 }
+
+func TestLoadReadsNestedPPTXThemeContract(t *testing.T) {
+	projectRoot := t.TempDir()
+	themeDir := filepath.Join(projectRoot, ThemesDirName, "custom")
+	if err := os.MkdirAll(filepath.Join(themeDir, "layouts"), 0o755); err != nil {
+		t.Fatalf("mkdir theme dirs: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(themeDir, "pptx"), 0o755); err != nil {
+		t.Fatalf("mkdir PPTX theme dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(themeDir, ThemeMetadataFile), []byte("name: custom\n"), 0o644); err != nil {
+		t.Fatalf("write metadata: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(themeDir, "pptx", "theme.yaml"), []byte("slide_size: widescreen\ncolors:\n  accent: '#123456'\n"), 0o644); err != nil {
+		t.Fatalf("write PPTX contract: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(themeDir, "layouts", "default.html"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("write default layout: %v", err)
+	}
+
+	meta, err := Load(projectRoot, "custom")
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if meta.PPTX == nil || meta.PPTX.Colors["accent"] != "#123456" {
+		t.Fatalf("expected nested PPTX contract, got %#v", meta.PPTX)
+	}
+}
+
+func TestLoadRejectsInvalidPPTXColor(t *testing.T) {
+	projectRoot := t.TempDir()
+	themeDir := filepath.Join(projectRoot, ThemesDirName, "custom")
+	if err := os.MkdirAll(filepath.Join(themeDir, "layouts"), 0o755); err != nil {
+		t.Fatalf("mkdir theme dirs: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(themeDir, ThemeMetadataFile), []byte("name: custom\npptx:\n  colors:\n    accent: nope\n"), 0o644); err != nil {
+		t.Fatalf("write metadata: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(themeDir, "layouts", "default.html"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("write default layout: %v", err)
+	}
+	if _, err := Load(projectRoot, "custom"); err == nil || !strings.Contains(err.Error(), "six-digit hex") {
+		t.Fatalf("expected invalid PPTX color error, got %v", err)
+	}
+}

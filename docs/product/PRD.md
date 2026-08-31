@@ -11,7 +11,7 @@ Margo
 ### Product summary
 Margo is a local CLI tool for building beautiful slide decks from Markdown using a Hugo-inspired workflow. It is optimized for authors who are comfortable with Git, Markdown, configuration files, and code-driven theming, and who want polished branded decks without depending on browser-based editors or design tools.
 
-Margo v1 is a slide-deck system, not a general publishing system. It uses a strict project structure, slide bundles, themes, archetypes, layouts, shortcodes, and deck-wide configuration to generate presentation artifacts. The canonical render target is HTML. PDF export is included as a practical derivative of the HTML rendering path. PPTX is a later output target and is not part of the initial release.
+Margo v1 is a slide-deck system, not a general publishing system. It uses a strict project structure, slide bundles, themes, archetypes, layouts, shortcodes, and deck-wide configuration to generate presentation artifacts. The canonical render target is HTML. PDF export is included as a practical derivative of the HTML rendering path. Editable PPTX export is an additional native output target with explicit capability limits.
 
 ## 2. Goals
 
@@ -23,7 +23,7 @@ Enable a small number of users to create polished, real-world, branded presentat
 - Make branded deck authoring simple for deck writers, even when themes are moderately sophisticated.
 - Provide one strong default theme with clear customization pathways.
 - Support a fast local authoring workflow with `margo serve`.
-- Preserve enough semantic structure to support future editable PPTX export.
+- Preserve enough semantic structure to support editable PPTX export while keeping HTML canonical.
 
 ### v1 success criteria
 - A user can run `margo new <deck-name>` or `margo init`, then `margo serve`, and immediately get a polished working deck without modifying theme internals.
@@ -217,6 +217,7 @@ Expected top-level structure:
 
 ### Theme implementation model
 - Themes define layouts using HTML templates plus CSS, JS, reusable partials, and shortcodes.
+- Themes may also declare an optional `pptx/theme.yaml` contract for PowerPoint-specific fonts, colors, assets, and layout metadata; this contract is additive and does not replace HTML templates.
 - Theme JavaScript should remain minimal in v1 and mainly support navigation and small presentation behaviors.
 - Built-in layout types such as agenda or metric remain theme conventions, not core Margo concepts.
 
@@ -321,13 +322,13 @@ Themes may choose how fully specific layouts honor those settings.
 ### Canonical output model
 - HTML is the canonical rendering model in v1.
 - PDF is produced from the HTML rendering path.
-- PPTX is out of scope for v1, but the content model should preserve semantic structure that makes later editable export feasible.
+- PPTX export uses a native editable pipeline where the content model supports it. Unsupported web-native elements use explicit fallback diagnostics rather than altering HTML or PDF output.
 
 ### Output directories
 Output paths are fixed by convention in v1:
 - `dist/html`
 - `dist/pdf`
-- `dist/pptx` reserved for later
+- `dist/pptx`
 
 ### Output artifacts
 - HTML entrypoint is `dist/html/index.html`.

@@ -8,7 +8,7 @@ It is optimized for:
 - proving the core product quickly
 - sequencing work so the CLI is usable early
 - controlling scope around theming, authoring, and export
-- preserving room for later PDF hardening and eventual PPTX work
+- preserving room for PDF hardening and native editable PPTX output
 
 The implementation plan assumes `Go` as the primary implementation language, while keeping product requirements anchored in [PRD.md](./PRD.md).
 
@@ -54,7 +54,8 @@ If that loop is not solid, the rest is premature.
 6. Render Markdown plus shortcodes into structured slide content.
 7. Apply theme layouts, partials, and deck-level theme options.
 8. Emit HTML artifact and asset tree.
-9. Optionally invoke PDF generation from HTML output.
+9. Optionally invoke PDF generation from print HTML output.
+10. Optionally emit a native editable PPTX package from the semantic deck model.
 
 ## 4. Repository And Package Shape
 
@@ -74,6 +75,7 @@ Exact package names can change, but the codebase should likely separate into the
 - `internal/render`
 - `internal/output/html`
 - `internal/output/pdf`
+- `internal/output/pptx`
 - `internal/serve`
 - `internal/watch`
 - `internal/diagnostics`
@@ -158,7 +160,7 @@ Owns:
 - runtime flags such as draft marker visibility
 
 ### Important design constraint
-Preserve semantic structure in the deck model rather than flatten everything directly into HTML too early. This is necessary for future PDF hardening and especially later PPTX export.
+Preserve semantic structure in the deck model rather than flatten everything directly into HTML too early. The native PPTX exporter consumes that model independently; existing HTML and print-PDF renderers remain unchanged.
 
 ## 6. File And Content Resolution Rules
 
