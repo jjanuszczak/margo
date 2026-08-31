@@ -1,8 +1,11 @@
 package pdf
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -47,6 +50,9 @@ func Write(projectRoot string) error {
 	if err != nil {
 		return fmt.Errorf("resolve pdf path: %w", err)
 	}
+	if err := os.Remove(absPDF); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("remove previous pdf output %q: %w", absPDF, err)
+	}
 	userDataDir, err := os.MkdirTemp("", "margo-chrome-profile-*")
 	if err != nil {
 		return fmt.Errorf("create temporary chrome profile: %w", err)
@@ -57,13 +63,12 @@ func Write(projectRoot string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, browser.Path, buildPrintArgs(absHTML, absPDF, userDataDir)...)
-	output, err := cmd.CombinedOutput()
+	output, err := runBrowser(ctx, browser, buildPrintArgs(absHTML, absPDF, userDataDir), absPDF)
 	if err != nil {
-		if ctx.Err() == context.DeadlineExceeded {
+		if errors.Is(err, context.DeadlineExceeded) {
 			return fmt.Errorf("pdf export timed out after %s using %s (%s)", timeout, browser.Path, browser.Source)
 		}
-		message := strings.TrimSpace(string(output))
+		message := strings.TrimSpace(output)
 		hint := ""
 		if message == "" {
 			hint = " headless Chrome may be blocked in this environment; verify the browser can run headless locally or set " + browserEnvVar + " to a compatible binary."
@@ -78,6 +83,80 @@ func Write(projectRoot string) error {
 		return fmt.Errorf("expected pdf output %q was not created: %w", absPDF, err)
 	}
 	return nil
+}
+
+// runBrowser waits for a completed PDF rather than relying on Chrome to exit
+// after --print-to-pdf. Some Chrome installations leave the headless process
+// alive after writing the artifact, which used to make margo wait for the
+// export timeout even though the PDF was ready.
+func runBrowser(ctx context.Context, browser BrowserInfo, args []string, pdfPath string) (string, error) {
+	cmd := exec.Command(browser.Path, args...)
+	startedAt := time.Now()
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+	if err := cmd.Start(); err != nil {
+		return output.String(), err
+	}
+
+	waitCh := make(chan error, 1)
+	go func() { waitCh <- cmd.Wait() }()
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case err := <-waitCh:
+			if pdfReady(pdfPath, startedAt) {
+				return output.String(), nil
+			}
+			return output.String(), err
+		case <-ticker.C:
+			if pdfReady(pdfPath, startedAt) {
+				stopProcess(cmd, waitCh)
+				return output.String(), nil
+			}
+		case <-ctx.Done():
+			stopProcess(cmd, waitCh)
+			return output.String(), ctx.Err()
+		}
+	}
+}
+
+func stopProcess(cmd *exec.Cmd, waitCh <-chan error) {
+	if cmd.Process != nil {
+		_ = cmd.Process.Kill()
+	}
+	<-waitCh
+}
+
+func pdfReady(path string, startedAt time.Time) bool {
+	file, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil || info.Size() < 10 || info.ModTime().Before(startedAt) {
+		return false
+	}
+	header := make([]byte, 5)
+	if _, err := io.ReadFull(file, header); err != nil || string(header) != "%PDF-" {
+		return false
+	}
+	if _, err := file.Seek(-minInt64(info.Size(), 32), io.SeekEnd); err != nil {
+		return false
+	}
+	tail, err := io.ReadAll(file)
+	return err == nil && bytes.Contains(tail, []byte("%%EOF"))
+}
+
+func minInt64(left, right int64) int64 {
+	if left < right {
+		return left
+	}
+	return right
 }
 
 func buildPrintArgs(absHTML string, absPDF string, userDataDir string) []string {
