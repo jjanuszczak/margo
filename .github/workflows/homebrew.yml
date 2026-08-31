@@ -13,21 +13,23 @@ jobs:
     # Configure HOMEBREW_TAP_TOKEN with contents:write and pull-requests:write
     # access before enabling cross-repository formula updates.
     if: ${{ github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'v') && !contains(github.event.workflow_run.head_branch, '-') }}
+    env:
+      TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        if: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
+        if: ${{ env.TAP_TOKEN != '' }}
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
       - name: Check out Homebrew tap
-        if: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
+        if: ${{ env.TAP_TOKEN != '' }}
         uses: actions/checkout@v4
         with:
           repository: jjanuszczak/homebrew-margo
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          token: ${{ env.TAP_TOKEN }}
           path: homebrew-margo
       - name: Update formula
-        if: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
+        if: ${{ env.TAP_TOKEN != '' }}
         env:
           VERSION: ${{ github.event.workflow_run.head_branch }}
           TAP_DIR: homebrew-margo
@@ -41,7 +43,7 @@ jobs:
           git -C "$TAP_DIR" diff --check
           git -C "$TAP_DIR" diff -- "$FORMULA"
       - name: Open formula update pull request
-        if: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
+        if: ${{ env.TAP_TOKEN != '' }}
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           VERSION: ${{ github.event.workflow_run.head_branch }}
