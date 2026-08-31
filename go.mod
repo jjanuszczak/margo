@@ -1,4 +1,4 @@
-module margo
+module github.com/jjanuszczak/margo
 
 go 1.22
 

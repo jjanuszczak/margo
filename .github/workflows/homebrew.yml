@@ -1,0 +1,52 @@
+name: Update Homebrew tap
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  formula:
+    # Configure HOMEBREW_TAP_TOKEN with contents:write and pull-requests:write
+    # access before enabling cross-repository formula updates.
+    if: ${{ secrets.HOMEBREW_TAP_TOKEN != '' && !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out Homebrew tap
+        uses: actions/checkout@v4
+        with:
+          repository: jjanuszczak/homebrew-margo
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-margo
+      - name: Update formula
+        env:
+          VERSION: ${{ github.event.release.tag_name }}
+          TAP_DIR: homebrew-margo
+        run: |
+          VERSION="${VERSION#v}"
+          URL="https://github.com/jjanuszczak/margo/archive/refs/tags/v${VERSION}.tar.gz"
+          SHA256=$(curl --fail --location --silent --show-error "$URL" | sha256sum | awk '{print $1}')
+          FORMULA="$TAP_DIR/Formula/margo.rb"
+          sed -i "s#archive/refs/tags/v[^\"]*\.tar\.gz#archive/refs/tags/v${VERSION}.tar.gz#" "$FORMULA"
+          sed -i "s/sha256 \"[0-9a-fA-F]*\"/sha256 \"${SHA256}\"/" "$FORMULA"
+          git -C "$TAP_DIR" diff --check
+          git -C "$TAP_DIR" diff -- "$FORMULA"
+      - name: Open formula update pull request
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ github.event.release.tag_name }}
+          TAP_DIR: homebrew-margo
+        run: |
+          BRANCH="update-margo-${VERSION#v}"
+          git -C "$TAP_DIR" config user.name github-actions[bot]
+          git -C "$TAP_DIR" config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git -C "$TAP_DIR" checkout -b "$BRANCH"
+          git -C "$TAP_DIR" add Formula/margo.rb
+          git -C "$TAP_DIR" commit -m "margo ${VERSION}"
+          git -C "$TAP_DIR" push --set-upstream origin "$BRANCH"
+          gh pr create --repo jjanuszczak/homebrew-margo --head "$BRANCH" \
+            --title "margo ${VERSION}" \
+            --body "Update margo to ${VERSION}. Verify with brew test and brew audit."

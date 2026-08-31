@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"margo/internal/cli"
+	"github.com/jjanuszczak/margo/internal/cli"
 )
 
 func main() {

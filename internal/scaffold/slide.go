@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"margo/internal/archetype"
-	"margo/internal/content"
+	"github.com/jjanuszczak/margo/internal/archetype"
+	"github.com/jjanuszczak/margo/internal/content"
 )
 
 type SlideOptions struct {

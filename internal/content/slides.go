@@ -7,9 +7,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/jjanuszczak/margo/internal/deck"
+	"github.com/jjanuszczak/margo/internal/ignore"
 	"gopkg.in/yaml.v3"
-	"margo/internal/deck"
-	"margo/internal/ignore"
 )
 
 const slidesDirName = "slides"

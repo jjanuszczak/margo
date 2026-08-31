@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"margo/internal/ignore"
+	"github.com/jjanuszczak/margo/internal/ignore"
 )
 
 func TestSnapshotProjectHonorsIgnoreFile(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"margo/internal/deck"
+	"github.com/jjanuszczak/margo/internal/deck"
 )
 
 func TestRenderNotesPreservesMetadata(t *testing.T) {

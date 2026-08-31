@@ -4,19 +4,21 @@ This document is for maintainers setting up and shipping Homebrew support for `m
 
 ## Recommended v1 Approach
 
-For the first Homebrew implementation, prefer:
+For the current Homebrew implementation, use:
 
 - a personal tap, not `homebrew-core`
 - source builds from a tagged GitHub release tarball
-- a small manual release loop before adding automation
+- a formula update pull request after each tagged GitHub release
 
-This matches the current state of the project better than introducing bottles, GoReleaser, or cross-repo automation immediately.
+GitHub Releases are the canonical source for versioned binaries and source
+archives. Homebrew is a convenience installation path, not the release
+system itself.
 
 Why:
 
-- `margo` is still evolving and does not need `homebrew-core` review overhead yet
+- `margo` does not need `homebrew-core` review overhead yet
 - Homebrew can build the CLI directly from source with the existing Go toolchain
-- the repo already has basic version stamping and release archive generation
+- tagged releases provide stable source URLs and checksums
 
 ## Packaging Shape
 

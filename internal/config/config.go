@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/jjanuszczak/margo/internal/deck"
 	"gopkg.in/yaml.v3"
-	"margo/internal/deck"
 )
 
 const DefaultFilename = "margo.yaml"

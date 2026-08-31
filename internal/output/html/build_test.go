@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"margo/internal/deck"
-	"margo/internal/output/render"
+	"github.com/jjanuszczak/margo/internal/deck"
+	"github.com/jjanuszczak/margo/internal/output/render"
 )
 
 func TestSplitBodyColumns(t *testing.T) {

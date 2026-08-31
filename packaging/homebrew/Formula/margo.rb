@@ -8,7 +8,7 @@ class Margo < Formula
   depends_on "go" => :build
 
   def install
-    ldflags = "-s -w -X margo/internal/version.Version=#{version}"
+    ldflags = "-s -w -X github.com/jjanuszczak/margo/internal/version.Version=#{version}"
     system "go", "build", *std_go_args(ldflags: ldflags), "./cmd/margo"
   end
 

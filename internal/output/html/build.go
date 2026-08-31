@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"margo/internal/deck"
-	"margo/internal/diagnostics"
-	"margo/internal/output/render"
-	"margo/internal/theme"
+	"github.com/jjanuszczak/margo/internal/deck"
+	"github.com/jjanuszczak/margo/internal/diagnostics"
+	"github.com/jjanuszczak/margo/internal/output/render"
+	"github.com/jjanuszczak/margo/internal/theme"
 )
 
 const (

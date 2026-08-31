@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"margo/internal/ignore"
+	"github.com/jjanuszczak/margo/internal/ignore"
 )
 
 func TestParseSlideExtractsFrontMatterAndBodyNotes(t *testing.T) {

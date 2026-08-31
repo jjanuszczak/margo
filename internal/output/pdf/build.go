@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"margo/internal/output/printhtml"
+	"github.com/jjanuszczak/margo/internal/output/printhtml"
 )
 
 const (

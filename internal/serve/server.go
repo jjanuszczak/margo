@@ -15,7 +15,7 @@ import (
 	"syscall"
 	"time"
 
-	"margo/internal/watch"
+	"github.com/jjanuszczak/margo/internal/watch"
 )
 
 const DefaultPort = "1313"
