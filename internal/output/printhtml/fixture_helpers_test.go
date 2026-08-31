@@ -18,7 +18,7 @@ func fixtureProjectRoot(tb testing.TB, deckName string) string {
 	}
 
 	projectRoot := filepath.Join(tb.TempDir(), deckName)
-	if _, err := os.Stat(sourceRoot); err != nil {
+	if _, err := os.Stat(filepath.Join(sourceRoot, "margo.yaml")); err != nil {
 		if os.IsNotExist(err) && deckName == "arca-investor-memo" {
 			tb.Skipf("optional dogfood fixture %q is not present", sourceRoot)
 		}
