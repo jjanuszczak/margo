@@ -18,6 +18,12 @@ func fixtureProjectRoot(tb testing.TB, deckName string) string {
 	}
 
 	projectRoot := filepath.Join(tb.TempDir(), deckName)
+	if _, err := os.Stat(sourceRoot); err != nil {
+		if os.IsNotExist(err) && deckName == "arca-investor-memo" {
+			tb.Skipf("optional dogfood fixture %q is not present", sourceRoot)
+		}
+		tb.Fatalf("stat fixture project root: %v", err)
+	}
 	if err := copyFixtureDeck(sourceRoot, projectRoot, allowedFixturePrefixes(deckName)); err != nil {
 		tb.Fatalf("copy fixture project root: %v", err)
 	}
