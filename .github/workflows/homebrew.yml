@@ -1,8 +1,9 @@
 name: Update Homebrew tap
 
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
 
 permissions:
   contents: read
@@ -11,10 +12,12 @@ jobs:
   formula:
     # Configure HOMEBREW_TAP_TOKEN with contents:write and pull-requests:write
     # access before enabling cross-repository formula updates.
-    if: ${{ secrets.HOMEBREW_TAP_TOKEN != '' && !github.event.release.prerelease }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'v') && !contains(github.event.workflow_run.head_branch, '-') && secrets.HOMEBREW_TAP_TOKEN != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
       - name: Check out Homebrew tap
         uses: actions/checkout@v4
         with:
@@ -23,7 +26,7 @@ jobs:
           path: homebrew-margo
       - name: Update formula
         env:
-          VERSION: ${{ github.event.release.tag_name }}
+          VERSION: ${{ github.event.workflow_run.head_branch }}
           TAP_DIR: homebrew-margo
         run: |
           VERSION="${VERSION#v}"
@@ -37,7 +40,7 @@ jobs:
       - name: Open formula update pull request
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          VERSION: ${{ github.event.release.tag_name }}
+          VERSION: ${{ github.event.workflow_run.head_branch }}
           TAP_DIR: homebrew-margo
         run: |
           BRANCH="update-margo-${VERSION#v}"
