@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/jjanuszczak/margo/internal/deck"
 	"gopkg.in/yaml.v3"
-	"margo/internal/deck"
 )
 
 const Filename = "manifest.yaml"

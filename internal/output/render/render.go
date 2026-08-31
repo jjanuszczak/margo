@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/jjanuszczak/margo/internal/deck"
+	"github.com/jjanuszczak/margo/internal/diagnostics"
+	"github.com/jjanuszczak/margo/internal/shortcode"
+	"github.com/jjanuszczak/margo/internal/theme"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 	rendererhtml "github.com/yuin/goldmark/renderer/html"
-	"margo/internal/deck"
-	"margo/internal/diagnostics"
-	"margo/internal/shortcode"
-	"margo/internal/theme"
 )
 
 type RenderedLogo struct {

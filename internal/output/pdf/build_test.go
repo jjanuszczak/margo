@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"margo/internal/output/printhtml"
+	"github.com/jjanuszczak/margo/internal/output/printhtml"
 )
 
 func TestBuildPrintArgs(t *testing.T) {

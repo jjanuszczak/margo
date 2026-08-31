@@ -13,9 +13,9 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/jjanuszczak/margo/internal/deck"
+	"github.com/jjanuszczak/margo/internal/theme"
 	"gopkg.in/yaml.v3"
-	"margo/internal/deck"
-	"margo/internal/theme"
 )
 
 var tagPattern = regexp.MustCompile(`\{\{<\s*(/)?\s*([a-zA-Z0-9_-]+)(.*?)>\}\}`)

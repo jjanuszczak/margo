@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"margo/internal/config"
-	"margo/internal/content"
-	"margo/internal/deck"
-	"margo/internal/theme"
+	"github.com/jjanuszczak/margo/internal/config"
+	"github.com/jjanuszczak/margo/internal/content"
+	"github.com/jjanuszczak/margo/internal/deck"
+	"github.com/jjanuszczak/margo/internal/theme"
 )
 
 func TestReferenceDeckPrintBuildFlow(t *testing.T) {

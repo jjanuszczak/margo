@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"margo/internal/manifest"
-	"margo/internal/scaffold"
+	"github.com/jjanuszczak/margo/internal/manifest"
+	"github.com/jjanuszczak/margo/internal/scaffold"
 )
 
 func TestParseBuildLikeArgs(t *testing.T) {

@@ -66,6 +66,21 @@ Run directly without installing:
 go run ./cmd/margo help
 ```
 
+Install the latest tagged version with Go:
+
+```bash
+go install github.com/jjanuszczak/margo/cmd/margo@latest
+```
+
+For prebuilt binaries, download the archive for your platform from the
+[GitHub Releases](https://github.com/jjanuszczak/margo/releases) page and
+verify it with the published `checksums.txt` file. macOS and Linux users can
+also install through the personal Homebrew tap:
+
+```bash
+brew install jjanuszczak/margo/margo
+```
+
 Build versioned release archives:
 
 ```bash
@@ -79,6 +94,9 @@ Override the default targets by passing explicit `GOOS/GOARCH` pairs:
 ```bash
 VERSION=0.1.0 ./scripts/release.sh darwin/arm64 linux/amd64
 ```
+
+Maintainer release procedures are documented in
+[docs/RELEASING.md](./docs/RELEASING.md).
 
 ## Example Workflow
 

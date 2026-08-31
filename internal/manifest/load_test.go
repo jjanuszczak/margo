@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"margo/internal/deck"
+	"github.com/jjanuszczak/margo/internal/deck"
 )
 
 func TestApplyUsesManifestOrder(t *testing.T) {

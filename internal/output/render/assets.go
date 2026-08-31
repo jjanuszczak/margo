@@ -9,10 +9,10 @@ import (
 	"regexp"
 	"strings"
 
-	"margo/internal/deck"
-	"margo/internal/diagnostics"
-	"margo/internal/ignore"
-	"margo/internal/theme"
+	"github.com/jjanuszczak/margo/internal/deck"
+	"github.com/jjanuszczak/margo/internal/diagnostics"
+	"github.com/jjanuszczak/margo/internal/ignore"
+	"github.com/jjanuszczak/margo/internal/theme"
 )
 
 var markdownAssetRefPattern = regexp.MustCompile(`\]\(([^)\s]+)([^)]*)\)`)

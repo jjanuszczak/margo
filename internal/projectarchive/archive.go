@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/jjanuszczak/margo/internal/ignore"
 	"gopkg.in/yaml.v3"
-	"margo/internal/ignore"
 )
 
 const (

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"margo/internal/deck"
-	"margo/internal/theme"
+	"github.com/jjanuszczak/margo/internal/deck"
+	"github.com/jjanuszczak/margo/internal/theme"
 )
 
 func TestRenderPrefersDeckShortcodesAndSupportsBlocks(t *testing.T) {

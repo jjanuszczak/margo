@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"margo/internal/ignore"
+	"github.com/jjanuszczak/margo/internal/ignore"
 )
 
 type Snapshot struct {

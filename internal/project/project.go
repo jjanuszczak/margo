@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"margo/internal/config"
+	"github.com/jjanuszczak/margo/internal/config"
 )
 
 type Root struct {

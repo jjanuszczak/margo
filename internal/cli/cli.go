@@ -11,23 +11,23 @@ import (
 	"strconv"
 	"strings"
 
-	"margo/internal/archetype"
-	"margo/internal/clean"
-	"margo/internal/config"
-	"margo/internal/content"
-	"margo/internal/deck"
-	"margo/internal/diagnostics"
-	"margo/internal/manifest"
-	"margo/internal/output/html"
-	"margo/internal/output/pdf"
-	"margo/internal/output/pptx"
-	"margo/internal/output/printhtml"
-	"margo/internal/project"
-	"margo/internal/projectarchive"
-	"margo/internal/scaffold"
-	"margo/internal/serve"
-	"margo/internal/theme"
-	"margo/internal/version"
+	"github.com/jjanuszczak/margo/internal/archetype"
+	"github.com/jjanuszczak/margo/internal/clean"
+	"github.com/jjanuszczak/margo/internal/config"
+	"github.com/jjanuszczak/margo/internal/content"
+	"github.com/jjanuszczak/margo/internal/deck"
+	"github.com/jjanuszczak/margo/internal/diagnostics"
+	"github.com/jjanuszczak/margo/internal/manifest"
+	"github.com/jjanuszczak/margo/internal/output/html"
+	"github.com/jjanuszczak/margo/internal/output/pdf"
+	"github.com/jjanuszczak/margo/internal/output/pptx"
+	"github.com/jjanuszczak/margo/internal/output/printhtml"
+	"github.com/jjanuszczak/margo/internal/project"
+	"github.com/jjanuszczak/margo/internal/projectarchive"
+	"github.com/jjanuszczak/margo/internal/scaffold"
+	"github.com/jjanuszczak/margo/internal/serve"
+	"github.com/jjanuszczak/margo/internal/theme"
+	"github.com/jjanuszczak/margo/internal/version"
 )
 
 type commandError struct {
@@ -71,7 +71,7 @@ func dispatch(args []string, stdout io.Writer, stderr io.Writer) error {
 		writeHelp(stdout)
 		return nil
 	case "version":
-		fmt.Fprintf(stdout, "%s %s\n", version.Name, version.Version)
+		fmt.Fprintf(stdout, "%s %s\n", version.Name, version.Current())
 		return nil
 	case "build":
 		return runBuildLikeCommand("build", args[1:], stdout)
@@ -106,7 +106,7 @@ func runPack(args []string, stdout io.Writer) error {
 		return fmt.Errorf("pack requires a Margo project directory: %w", err)
 	}
 	outputPath := filepath.Join(filepath.Dir(root.Dir), filepath.Base(root.Dir)+projectarchive.Extension)
-	if err := projectarchive.Pack(root.Dir, outputPath, version.Version); err != nil {
+	if err := projectarchive.Pack(root.Dir, outputPath, version.Current()); err != nil {
 		return fmt.Errorf("pack project archive: %w", err)
 	}
 	fmt.Fprintf(stdout, "packed project archive at %s\n", outputPath)
@@ -969,7 +969,7 @@ func notImplemented(name string) error {
 }
 
 func writeHelp(w io.Writer) {
-	fmt.Fprintf(w, "%s %s\n\n", version.Name, version.Version)
+	fmt.Fprintf(w, "%s %s\n\n", version.Name, version.Current())
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  margo <command> [arguments]")
 	fmt.Fprintln(w, "")
