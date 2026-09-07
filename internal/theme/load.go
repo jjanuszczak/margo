@@ -26,6 +26,12 @@ func Load(projectRoot, themeName string) (Metadata, error) {
 	}
 
 	rootDir := filepath.Join(projectRoot, ThemesDirName, themeName)
+	return ValidateRoot(rootDir, themeName)
+}
+
+// ValidateRoot loads a theme from an explicit directory. It is useful for
+// install workflows that validate a staged theme before making it visible.
+func ValidateRoot(rootDir, themeName string) (Metadata, error) {
 	return loadFromRootDir(rootDir, themeName)
 }
 

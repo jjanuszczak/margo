@@ -58,6 +58,9 @@ func Update(projectRoot, themeName string) (InstalledTheme, error) {
 	if meta.Source == nil {
 		return InstalledTheme{}, fmt.Errorf("theme %q has no recorded source metadata", themeName)
 	}
+	if meta.Source.Type == "archive" {
+		return InstalledTheme{}, fmt.Errorf("theme %q was installed from a .margot archive; re-import a newer archive or reinstall it from Git", themeName)
+	}
 	if meta.Source.Type != "git" {
 		return InstalledTheme{}, fmt.Errorf("theme %q source type %q is not updatable", themeName, meta.Source.Type)
 	}
@@ -296,9 +299,7 @@ func writeSourceMetadata(metadataPath string, source *Source, fallbackName strin
 		return fmt.Errorf("parse theme metadata %q: %w", metadataPath, err)
 	}
 	if strings.TrimSpace(fallbackName) != "" {
-		if _, ok := doc["name"]; !ok {
-			doc["name"] = fallbackName
-		}
+		doc["name"] = fallbackName
 	}
 	doc["source"] = source
 

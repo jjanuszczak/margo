@@ -27,6 +27,7 @@ import (
 	"github.com/jjanuszczak/margo/internal/scaffold"
 	"github.com/jjanuszczak/margo/internal/serve"
 	"github.com/jjanuszczak/margo/internal/theme"
+	"github.com/jjanuszczak/margo/internal/themearchive"
 	"github.com/jjanuszczak/margo/internal/version"
 )
 
@@ -200,6 +201,10 @@ func runThemeCommand(args []string, stdout io.Writer) error {
 	switch args[0] {
 	case "add":
 		return runThemeAdd(args[1:], stdout)
+	case "pack":
+		return runThemePack(args[1:], stdout)
+	case "import":
+		return runThemeImport(args[1:], stdout)
 	case "update":
 		return runThemeUpdate(args[1:], stdout)
 	case "list":
@@ -542,6 +547,78 @@ func runThemeAdd(args []string, stdout io.Writer) error {
 	return nil
 }
 
+func runThemePack(args []string, stdout io.Writer) error {
+	selected, outputPath, err := parseThemePackArgs(args)
+	if err != nil {
+		return err
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working directory: %w", err)
+	}
+	root, err := project.Discover(wd)
+	if err != nil {
+		return fmt.Errorf("theme pack requires a Margo project root: %w", err)
+	}
+	if selected == "" {
+		selected, err = chooseThemeForPack(root.Dir, os.Stdin, stdout, isInteractiveStdin(os.Stdin))
+		if err != nil {
+			return err
+		}
+	}
+	if outputPath == "" {
+		outputPath = filepath.Join(filepath.Dir(root.Dir), selected+themearchive.Extension)
+	} else if !filepath.IsAbs(outputPath) {
+		outputPath = filepath.Join(wd, outputPath)
+	}
+	outputPath, err = filepath.Abs(outputPath)
+	if err != nil {
+		return fmt.Errorf("resolve theme archive output: %w", err)
+	}
+	manifest, err := themearchive.Pack(root.Dir, selected, outputPath, version.Current())
+	if err != nil {
+		return fmt.Errorf("pack theme archive: %w", err)
+	}
+	fmt.Fprintf(stdout, "packed theme %s %s at %s\n", manifest.ThemeName, manifest.ThemeVersion, outputPath)
+	return nil
+}
+
+func runThemeImport(args []string, stdout io.Writer) error {
+	archivePath, localName, activate, err := parseThemeImportArgs(args)
+	if err != nil {
+		return err
+	}
+	if archivePath == "" {
+		return fmt.Errorf("theme import requires a .margot archive")
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working directory: %w", err)
+	}
+	root, err := project.Discover(wd)
+	if err != nil {
+		return fmt.Errorf("theme import requires a Margo project root: %w", err)
+	}
+	if !filepath.IsAbs(archivePath) {
+		archivePath = filepath.Join(wd, archivePath)
+	}
+	installed, err := themearchive.Import(root.Dir, archivePath, localName, version.Current())
+	if err != nil {
+		return fmt.Errorf("import theme archive: %w", err)
+	}
+	if activate {
+		if err := config.SetThemeName(root.ConfigPath, installed.Name); err != nil {
+			_ = os.RemoveAll(filepath.Join(root.Dir, theme.ThemesDirName, installed.Name))
+			return fmt.Errorf("activate imported theme: %w", err)
+		}
+	}
+	fmt.Fprintf(stdout, "imported theme %s at %s\n", installed.Name, filepath.Join(root.Dir, theme.ThemesDirName, installed.Name))
+	if activate {
+		fmt.Fprintf(stdout, "activated theme %s\n", installed.Name)
+	}
+	return nil
+}
+
 func runThemeList(stdout io.Writer) error {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -571,6 +648,17 @@ func runThemeList(stdout io.Writer) error {
 		return nil
 	}
 	for _, installed := range themes {
+		if installed.Source != nil && installed.Source.Type == "archive" {
+			label := "archive"
+			if installed.Source.ImportedThemeVersion != "" {
+				label += " " + installed.Source.ImportedThemeVersion
+			}
+			if installed.Source.ArchiveSHA256 != "" {
+				label += " @ " + installed.Source.ArchiveSHA256[:min(12, len(installed.Source.ArchiveSHA256))]
+			}
+			fmt.Fprintf(stdout, "%s - %s\n", installed.Name, label)
+			continue
+		}
 		if installed.Source != nil && strings.TrimSpace(installed.Source.Repo) != "" {
 			suffix := installed.Source.Repo
 			if strings.TrimSpace(installed.Source.ResolvedRef) != "" {
@@ -991,6 +1079,8 @@ func writeHelp(w io.Writer) {
 	fmt.Fprintln(w, "  margo unpack <archive.margo> [destination]")
 	fmt.Fprintln(w, "  margo <archive.margo> [--include-drafts] [--no-open] [--port <port>]")
 	fmt.Fprintln(w, "  margo theme add <repo> [--ref <rev>] [--name <local-name>]")
+	fmt.Fprintln(w, "  margo theme pack [<theme-name> | --theme <name>] [--output <archive.margot>]")
+	fmt.Fprintln(w, "  margo theme import <archive.margot> [--name <local-name>] [--activate]")
 	fmt.Fprintln(w, "  margo theme update <name>")
 	fmt.Fprintln(w, "  margo theme list")
 	fmt.Fprintln(w, "  margo theme pptx init|inspect|validate <name>")
@@ -1218,6 +1308,112 @@ func parseThemeAddArgs(args []string) (string, string, string, error) {
 	}
 
 	return repo, ref, name, nil
+}
+
+func parseThemePackArgs(args []string) (string, string, error) {
+	var name, output string
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--theme":
+			if i+1 >= len(args) {
+				return "", "", fmt.Errorf("theme pack requires a value for --theme")
+			}
+			candidate := strings.TrimSpace(args[i+1])
+			if name != "" && name != candidate {
+				return "", "", fmt.Errorf("theme pack selector conflicts with --theme")
+			}
+			name = candidate
+			i++
+		case "--output":
+			if i+1 >= len(args) {
+				return "", "", fmt.Errorf("theme pack requires a value for --output")
+			}
+			output = strings.TrimSpace(args[i+1])
+			i++
+		default:
+			if strings.HasPrefix(args[i], "--") {
+				return "", "", fmt.Errorf("unknown theme pack option %q", args[i])
+			}
+			if name != "" {
+				return "", "", fmt.Errorf("theme pack accepts exactly one theme name")
+			}
+			name = strings.TrimSpace(args[i])
+		}
+	}
+	return name, output, nil
+}
+
+func parseThemeImportArgs(args []string) (string, string, bool, error) {
+	var archivePath, name string
+	activate := false
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--name":
+			if i+1 >= len(args) {
+				return "", "", false, fmt.Errorf("theme import requires a value for --name")
+			}
+			name = strings.TrimSpace(args[i+1])
+			i++
+		case "--activate":
+			activate = true
+		default:
+			if strings.HasPrefix(args[i], "--") {
+				return "", "", false, fmt.Errorf("unknown theme import option %q", args[i])
+			}
+			if archivePath != "" {
+				return "", "", false, fmt.Errorf("theme import accepts exactly one archive")
+			}
+			archivePath = args[i]
+		}
+	}
+	return archivePath, name, activate, nil
+}
+
+func chooseThemeForPack(projectRoot string, input io.Reader, stdout io.Writer, interactive bool) (string, error) {
+	available, err := theme.List(projectRoot)
+	if err != nil {
+		return "", fmt.Errorf("list themes: %w", err)
+	}
+	if len(available) == 0 {
+		return "", errors.New("theme pack found no installed themes")
+	}
+	if !interactive {
+		var names []string
+		for _, installed := range available {
+			names = append(names, installed.Name)
+		}
+		return "", fmt.Errorf("theme pack requires a theme name; available themes: %s", strings.Join(names, ", "))
+	}
+	fmt.Fprintln(stdout, "choose a theme to package:")
+	activeName := ""
+	if raw, loadErr := config.LoadRaw(filepath.Join(projectRoot, config.DefaultFilename)); loadErr == nil {
+		if parsed, parseErr := config.Parse(raw); parseErr == nil {
+			activeName = parsed.Config.Theme.Name
+		}
+	}
+	for i, installed := range available {
+		label := installed.Name
+		if installed.Name == activeName {
+			label += " (active)"
+		}
+		fmt.Fprintf(stdout, "  %d. %s\n", i+1, label)
+	}
+	reader := bufio.NewReader(input)
+	for {
+		fmt.Fprint(stdout, "select theme: ")
+		line, readErr := reader.ReadString('\n')
+		if readErr != nil && !errors.Is(readErr, io.EOF) {
+			return "", fmt.Errorf("read theme selection: %w", readErr)
+		}
+		choice, convErr := strconv.Atoi(strings.TrimSpace(line))
+		if convErr == nil && choice >= 1 && choice <= len(available) {
+			return available[choice-1].Name, nil
+		}
+		if errors.Is(readErr, io.EOF) {
+			return "", fmt.Errorf("invalid theme selection %q", strings.TrimSpace(line))
+		}
+		fmt.Fprintln(stdout, "invalid selection; enter a number from the list")
+	}
 }
 
 func min(a, b int) int {

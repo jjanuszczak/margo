@@ -19,6 +19,7 @@ func TestPackAndUnpackPortableProject(t *testing.T) {
 	writeArchiveFile(t, filepath.Join(projectRoot, "dist", "html", "index.html"), "generated")
 	writeArchiveFile(t, filepath.Join(projectRoot, ".git", "config"), "gitdir")
 	writeArchiveFile(t, filepath.Join(projectRoot, ".margo-backups", "old"), "backup")
+	writeArchiveFile(t, filepath.Join(projectRoot, "themes", "brand", "brand.margot"), "theme archive")
 	writeArchiveFile(t, filepath.Join(projectRoot, "assets", ".DS_Store"), "noise")
 
 	archivePath := filepath.Join(parent, "deck.margo")
@@ -40,7 +41,7 @@ func TestPackAndUnpackPortableProject(t *testing.T) {
 			t.Fatalf("expected archive to contain %q, got %#v", want, names)
 		}
 	}
-	for _, forbidden := range []string{"dist/html/index.html", ".git/config", ".margo-backups/old", "assets/.DS_Store"} {
+	for _, forbidden := range []string{"dist/html/index.html", ".git/config", ".margo-backups/old", "assets/.DS_Store", "themes/brand/brand.margot"} {
 		if contains(names, forbidden) {
 			t.Fatalf("archive must exclude %q, got %#v", forbidden, names)
 		}
