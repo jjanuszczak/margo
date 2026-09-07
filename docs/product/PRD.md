@@ -230,6 +230,7 @@ Expected top-level structure:
 ### Theme packaging
 - Local in-repo theme development is the primary v1 workflow.
 - The design should leave room for later packaged/distributed themes.
+- Standalone archive and import requirements are defined in [Theme Archive PRD](./theme-archive-prd.md).
 
 ## 11. Configuration Model
 

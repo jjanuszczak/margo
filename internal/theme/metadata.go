@@ -41,10 +41,14 @@ type PPTXLayout struct {
 }
 
 type Source struct {
-	Type        string `yaml:"type,omitempty"`
-	Repo        string `yaml:"repo,omitempty"`
-	Ref         string `yaml:"ref,omitempty"`
-	ResolvedRef string `yaml:"resolved_ref,omitempty"`
+	Type                 string `yaml:"type,omitempty"`
+	Repo                 string `yaml:"repo,omitempty"`
+	Ref                  string `yaml:"ref,omitempty"`
+	ResolvedRef          string `yaml:"resolved_ref,omitempty"`
+	ArchiveFormat        string `yaml:"archive_format,omitempty"`
+	ArchiveSHA256        string `yaml:"archive_sha256,omitempty"`
+	ImportedThemeName    string `yaml:"imported_theme_name,omitempty"`
+	ImportedThemeVersion string `yaml:"imported_theme_version,omitempty"`
 }
 
 type ConfigOption struct {

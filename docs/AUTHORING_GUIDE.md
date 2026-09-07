@@ -759,6 +759,34 @@ Useful variants:
 ../bin/margo theme list
 ```
 
+### Package and import one theme
+
+Use a `.margot` archive to hand over one theme without a Git repository or network access. A `.margot` archive contains only the chosen theme. It is not a runnable deck and is different from a `.margo` project archive.
+
+From a source deck, select the theme to package. This selection is required when the command is not interactive, even if the deck contains only one theme:
+
+```bash
+../bin/margo theme pack brand
+# writes ../brand.margot by default
+
+../bin/margo theme pack --theme brand --output /path/to/brand-v1.2.0.margot
+```
+
+If the selector is omitted in an interactive terminal, Margo lists the deck's themes and asks you to choose one. It never packages every theme in the source deck.
+
+From the receiving deck, import the archive:
+
+```bash
+../bin/margo theme import /path/to/brand-v1.2.0.margot
+../bin/margo theme import /path/to/brand-v1.2.0.margot --name client-brand --activate
+```
+
+Import installs a complete copy under `themes/<name>/` and validates it before making it available. It does not change the active theme unless you provide `--activate`. It refuses to overwrite an existing theme. Use `--name` to choose a free local name.
+
+Margo records the archive checksum and imported version in `theme.yaml`. An imported theme builds offline, even after the archive is deleted. It cannot be updated with `margo theme update`; import a newer archive or install the maintained Git theme instead.
+
+Do not import `.margot` files from untrusted sources. Theme templates, shortcodes, and JavaScript execute as trusted project logic during local builds and previews.
+
 ### Switch themes
 
 Edit `margo.yaml`:

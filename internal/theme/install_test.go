@@ -64,6 +64,13 @@ func TestInstallUsesExplicitLocalName(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(projectRoot, ThemesDirName, "brand", ThemeMetadataFile)); err != nil {
 		t.Fatalf("expected installed theme metadata: %v", err)
 	}
+	meta, err := Load(projectRoot, "brand")
+	if err != nil {
+		t.Fatalf("load renamed theme: %v", err)
+	}
+	if meta.Name != "brand" {
+		t.Fatalf("expected local metadata name %q, got %q", "brand", meta.Name)
+	}
 }
 
 func TestListIncludesSourceMetadata(t *testing.T) {
@@ -153,6 +160,26 @@ func TestUpdateRequiresGitSourceMetadata(t *testing.T) {
 	_, err := Update(projectRoot, "custom")
 	if err == nil || !strings.Contains(err.Error(), "has no recorded source metadata") {
 		t.Fatalf("expected missing source metadata error, got %v", err)
+	}
+}
+
+func TestUpdateRejectsArchiveInstalledTheme(t *testing.T) {
+	projectRoot := t.TempDir()
+	themeRoot := filepath.Join(projectRoot, ThemesDirName, "brand")
+	if err := os.MkdirAll(filepath.Join(themeRoot, "layouts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	metadata := "name: brand\nsource:\n  type: archive\n  archive_format: margot\n"
+	if err := os.WriteFile(filepath.Join(themeRoot, ThemeMetadataFile), []byte(metadata), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(themeRoot, "layouts", "default.html"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := Update(projectRoot, "brand")
+	if err == nil || !strings.Contains(err.Error(), "re-import a newer archive") {
+		t.Fatalf("expected archive update guidance, got %v", err)
 	}
 }
 

@@ -1,6 +1,11 @@
 package config
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
 
 func TestParseSnippets(t *testing.T) {
 	raw := RawConfig{
@@ -56,5 +61,25 @@ presentation:
 	}
 	if !parsed.Config.Presentation.Navigation.Notes {
 		t.Fatal("expected presentation.navigation.notes to be enabled")
+	}
+}
+
+func TestSetThemeNamePreservesThemeOptions(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "margo.yaml")
+	contents := "version: 1\ndeck:\n  title: Test\ntheme:\n  name: default\n  mode: dark\n  logo: assets/logo.svg\n"
+	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := SetThemeName(path, "client-brand"); err != nil {
+		t.Fatalf("SetThemeName returned error: %v", err)
+	}
+	updated, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{"name: client-brand", "mode: dark", "logo: assets/logo.svg"} {
+		if !strings.Contains(string(updated), expected) {
+			t.Fatalf("expected updated config to contain %q, got %s", expected, updated)
+		}
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/jjanuszczak/margo/internal/deck"
 	"gopkg.in/yaml.v3"
@@ -44,6 +45,73 @@ func LoadRaw(path string) (RawConfig, error) {
 		Path:  path,
 		Bytes: data,
 	}, nil
+}
+
+// SetThemeName updates only theme.name and writes the config atomically. It
+// preserves all other fields, including theme options.
+func SetThemeName(path, name string) error {
+	if name == "" {
+		return errors.New("theme name is required")
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read config %q: %w", path, err)
+	}
+
+	var document yaml.Node
+	if err := yaml.Unmarshal(raw, &document); err != nil {
+		return fmt.Errorf("parse yaml %q: %w", path, err)
+	}
+	if len(document.Content) == 0 || document.Content[0].Kind != yaml.MappingNode {
+		return fmt.Errorf("config %q must contain a YAML mapping", path)
+	}
+	root := document.Content[0]
+	themeNode := findMapValue(root, "theme")
+	if themeNode == nil || themeNode.Kind != yaml.MappingNode {
+		return fmt.Errorf("config %q is missing a theme mapping", path)
+	}
+	nameNode := findMapValue(themeNode, "name")
+	if nameNode == nil {
+		themeNode.Content = append(themeNode.Content,
+			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "name"},
+			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: name},
+		)
+	} else {
+		nameNode.Kind = yaml.ScalarNode
+		nameNode.Tag = "!!str"
+		nameNode.Value = name
+		nameNode.Content = nil
+	}
+
+	updated, err := yaml.Marshal(&document)
+	if err != nil {
+		return fmt.Errorf("marshal config %q: %w", path, err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("stat config %q: %w", path, err)
+	}
+	temporary, err := os.CreateTemp(filepath.Dir(path), ".margo-config-*")
+	if err != nil {
+		return fmt.Errorf("create config update: %w", err)
+	}
+	temporaryPath := temporary.Name()
+	defer os.Remove(temporaryPath)
+	if err := temporary.Chmod(info.Mode()); err != nil {
+		temporary.Close()
+		return fmt.Errorf("set config permissions: %w", err)
+	}
+	if _, err := temporary.Write(updated); err != nil {
+		temporary.Close()
+		return fmt.Errorf("write config update: %w", err)
+	}
+	if err := temporary.Close(); err != nil {
+		return fmt.Errorf("close config update: %w", err)
+	}
+	if err := os.Rename(temporaryPath, path); err != nil {
+		return fmt.Errorf("replace config %q: %w", path, err)
+	}
+	return nil
 }
 
 func Parse(raw RawConfig) (ParseResult, error) {

@@ -120,7 +120,7 @@ func shouldExclude(rel string, isDir bool) bool {
 			return true
 		}
 	}
-	return !isDir && (strings.HasSuffix(rel, Extension) || filepath.Base(rel) == ".DS_Store")
+	return !isDir && (strings.HasSuffix(rel, Extension) || strings.HasSuffix(rel, ".margot") || filepath.Base(rel) == ".DS_Store")
 }
 
 // Unpack validates every member before writing any project content to dest.

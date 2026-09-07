@@ -554,6 +554,74 @@ func TestRunThemeUpdateRefreshesInstalledTheme(t *testing.T) {
 	}
 }
 
+func TestRunThemePackAndImportActivatesArchiveTheme(t *testing.T) {
+	parent := t.TempDir()
+	sourceProject := filepath.Join(parent, "source")
+	if err := scaffold.CreateDeck(scaffold.DeckOptions{Name: "source", TargetDir: sourceProject}); err != nil {
+		t.Fatalf("create source deck: %v", err)
+	}
+	createLocalTheme(t, sourceProject, "brand")
+	archivePath := filepath.Join(parent, "brand.margot")
+
+	restoreWD := withWorkingDir(t, sourceProject)
+	var out bytes.Buffer
+	if err := runThemePack([]string{"brand", "--output", archivePath}, &out); err != nil {
+		t.Fatalf("runThemePack returned error: %v", err)
+	}
+	restoreWD()
+	if _, err := os.Stat(archivePath); err != nil {
+		t.Fatalf("expected theme archive: %v", err)
+	}
+
+	targetProject := filepath.Join(parent, "target")
+	if err := scaffold.CreateDeck(scaffold.DeckOptions{Name: "target", TargetDir: targetProject}); err != nil {
+		t.Fatalf("create target deck: %v", err)
+	}
+	restoreWD = withWorkingDir(t, targetProject)
+	defer restoreWD()
+	out.Reset()
+	if err := runThemeImport([]string{archivePath, "--name", "client-brand", "--activate"}, &out); err != nil {
+		t.Fatalf("runThemeImport returned error: %v", err)
+	}
+	if !strings.Contains(out.String(), "activated theme client-brand") {
+		t.Fatalf("expected activation output, got %q", out.String())
+	}
+	if _, err := os.Stat(filepath.Join(targetProject, "themes", "client-brand", "layouts", "default.html")); err != nil {
+		t.Fatalf("expected imported theme: %v", err)
+	}
+	configBytes, err := os.ReadFile(filepath.Join(targetProject, "margo.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(configBytes), "name: client-brand") {
+		t.Fatalf("expected active theme in config, got %s", configBytes)
+	}
+}
+
+func TestChooseThemeForPackRequiresExplicitNonInteractiveSelection(t *testing.T) {
+	projectRoot := t.TempDir()
+	createLocalTheme(t, projectRoot, "alpha")
+	createLocalTheme(t, projectRoot, "beta")
+	_, err := chooseThemeForPack(projectRoot, strings.NewReader(""), io.Discard, false)
+	if err == nil || !strings.Contains(err.Error(), "available themes: alpha, beta") {
+		t.Fatalf("expected explicit selector error, got %v", err)
+	}
+}
+
+func createLocalTheme(t *testing.T, projectRoot, name string) {
+	t.Helper()
+	root := filepath.Join(projectRoot, "themes", name)
+	if err := os.MkdirAll(filepath.Join(root, "layouts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "theme.yaml"), []byte("name: "+name+"\nversion: 1.0.0\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "layouts", "default.html"), []byte("{{ .Deck.Title }}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func writeArchetype(t *testing.T, projectRoot string, name string, description string) {
 	t.Helper()
 	dir := filepath.Join(projectRoot, "archetypes", name)

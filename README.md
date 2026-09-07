@@ -28,6 +28,8 @@ Working today:
 - `margo pack <deck-dir>`
 - `margo unpack <archive.margo> [destination]`
 - `margo theme add <repo>`
+- `margo theme pack <theme-name>`
+- `margo theme import <archive.margot>`
 - `margo theme list`
 - `margo clean`
 - `margo new slide <name>`
