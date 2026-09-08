@@ -129,6 +129,7 @@ theme:
 outputs:
   html: true
   pdf: true
+  png: false
   pptx: false
 `, yamlString(deckName))
 }

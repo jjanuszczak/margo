@@ -30,6 +30,7 @@ type ThemeSelection struct {
 type OutputSettings struct {
 	HTML bool
 	PDF  bool
+	PNG  bool
 	PPTX bool
 }
 

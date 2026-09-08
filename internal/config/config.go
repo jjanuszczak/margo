@@ -136,6 +136,7 @@ func Parse(raw RawConfig) (ParseResult, error) {
 		Outputs struct {
 			HTML bool `yaml:"html"`
 			PDF  bool `yaml:"pdf"`
+			PNG  bool `yaml:"png"`
 			PPTX bool `yaml:"pptx"`
 		} `yaml:"outputs"`
 		Presentation struct {
@@ -181,6 +182,7 @@ func Parse(raw RawConfig) (ParseResult, error) {
 			Outputs: deck.OutputSettings{
 				HTML: parsed.Outputs.HTML,
 				PDF:  parsed.Outputs.PDF,
+				PNG:  parsed.Outputs.PNG,
 				PPTX: parsed.Outputs.PPTX,
 			},
 			Presentation: deck.PresentationSettings{
@@ -196,7 +198,7 @@ func Parse(raw RawConfig) (ParseResult, error) {
 	if result.Config.Version == "" {
 		result.Config.Version = "1"
 	}
-	if !parsed.Outputs.HTML && !parsed.Outputs.PDF && !parsed.Outputs.PPTX {
+	if !parsed.Outputs.HTML && !parsed.Outputs.PDF && !parsed.Outputs.PNG && !parsed.Outputs.PPTX {
 		result.Config.Outputs.HTML = true
 	}
 
