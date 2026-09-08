@@ -20,6 +20,7 @@ import (
 	"github.com/jjanuszczak/margo/internal/manifest"
 	"github.com/jjanuszczak/margo/internal/output/html"
 	"github.com/jjanuszczak/margo/internal/output/pdf"
+	"github.com/jjanuszczak/margo/internal/output/png"
 	"github.com/jjanuszczak/margo/internal/output/pptx"
 	"github.com/jjanuszczak/margo/internal/output/printhtml"
 	"github.com/jjanuszczak/margo/internal/project"
@@ -929,6 +930,7 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			Slides:   slides,
 		}
 		renderPDF := name == "build" && parsed.Config.Outputs.PDF
+		renderPNG := name == "build" && parsed.Config.Outputs.PNG
 		renderPPTX := name == "build" && parsed.Config.Outputs.PPTX
 		if parsed.Config.Outputs.HTML {
 			report, err := html.Write(root.Dir, model, activeTheme)
@@ -939,7 +941,7 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 				diagnostics.WriteReport(stdout, report)
 			}
 		}
-		if renderPDF {
+		if renderPDF || renderPNG {
 			report, err := printhtml.Write(root.Dir, model, activeTheme)
 			if err != nil {
 				return err
@@ -950,6 +952,11 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 		}
 		if renderPDF {
 			if err := pdf.Write(root.Dir); err != nil {
+				return err
+			}
+		}
+		if renderPNG {
+			if err := png.Write(root.Dir, model.Slides); err != nil {
 				return err
 			}
 		}
@@ -965,7 +972,7 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 		return nil
 	}
 
-	if name == "build" && (parsed.Config.Outputs.HTML || parsed.Config.Outputs.PDF || parsed.Config.Outputs.PPTX) {
+	if name == "build" && (parsed.Config.Outputs.HTML || parsed.Config.Outputs.PDF || parsed.Config.Outputs.PNG || parsed.Config.Outputs.PPTX) {
 		if err := rebuild(); err != nil {
 			return fmt.Errorf("build outputs: %w", err)
 		}
@@ -984,6 +991,9 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 				fmt.Fprintf(stdout, "%s: pdf browser %s (%s)\n", name, browser.Path, browser.Source)
 			}
 			fmt.Fprintf(stdout, "%s: wrote %s\n", name, pdf.OutputFile)
+		}
+		if parsed.Config.Outputs.PNG {
+			fmt.Fprintf(stdout, "%s: wrote %s\n", name, png.OutputDir)
 		}
 		if parsed.Config.Outputs.PPTX {
 			fmt.Fprintf(stdout, "%s: wrote %s\n", name, pptx.OutputFile)

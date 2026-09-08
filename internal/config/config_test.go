@@ -64,6 +64,34 @@ presentation:
 	}
 }
 
+func TestParsePNGOutput(t *testing.T) {
+	raw := RawConfig{
+		Path: "margo.yaml",
+		Bytes: []byte(`version: 1
+
+deck:
+  title: Sample
+
+theme:
+  name: default
+
+outputs:
+  png: true
+`),
+	}
+
+	parsed, err := Parse(raw)
+	if err != nil {
+		t.Fatalf("Parse returned error: %v", err)
+	}
+	if !parsed.Config.Outputs.PNG {
+		t.Fatal("expected png output to be enabled")
+	}
+	if parsed.Config.Outputs.HTML {
+		t.Fatal("png-only configuration should not implicitly enable html output")
+	}
+}
+
 func TestSetThemeNamePreservesThemeOptions(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "margo.yaml")
 	contents := "version: 1\ndeck:\n  title: Test\ntheme:\n  name: default\n  mode: dark\n  logo: assets/logo.svg\n"

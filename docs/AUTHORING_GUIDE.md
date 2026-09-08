@@ -88,6 +88,7 @@ theme:
 outputs:
   html: true
   pdf: true
+  png: false
   pptx: false
 ```
 
@@ -180,6 +181,7 @@ Useful variants:
 Current output locations:
 - `dist/html/index.html`
 - `dist/pdf/deck.pdf` when PDF is enabled and local Chrome works
+- `dist/png/` with one 1920x1080 PNG per included slide when PNG is enabled and local Chrome works
 - `dist/pptx/deck.pptx` when PPTX is enabled
 
 PPTX export produces editable text, headings, lists, images, and speaker notes. Shortcodes and other web-native content that cannot map cleanly to PowerPoint are omitted with a build diagnostic. HTML and PDF output remain unchanged.
