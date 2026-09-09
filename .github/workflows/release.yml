@@ -6,6 +6,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   release:
@@ -33,3 +35,26 @@ jobs:
           gh release create "${GITHUB_REF_NAME}" \
             dist/release/*.tar.gz dist/release/*.zip dist/release/checksums.txt \
             --generate-notes
+      - name: Build Margo product deck
+        working-directory: examples/margo-product-deck
+        run: go run ../../cmd/margo build
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload product deck
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: examples/margo-product-deck/dist/html
+
+  deploy-product-deck:
+    needs: release
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy Margo product deck to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

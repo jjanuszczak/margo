@@ -20,6 +20,8 @@ The current repo contains:
 
 This is an early prototype, not a release-ready tool.
 
+The release-gated [Margo product deck](./examples/margo-product-deck) deploys to the repository's [GitHub Pages site](https://jjanuszczak.github.io/margo/) with each versioned release. Its source is also a working deck and a reference for users and contributors.
+
 Working today:
 - `margo new <deck-name>`
 - `margo init`

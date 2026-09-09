@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ .Deck.Title }}</title>
+  {{ .Snippets.Head }}
+  <link rel="stylesheet" href="themes/{{ .Theme.Name }}/assets/katex.min.css">
+  <link rel="stylesheet" href="themes/{{ .Theme.Name }}/assets/theme.css">
+  <style>
+    :root {
+      color-scheme: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}dark{{ else }}light{{ end }};
+      --accent: {{ themeOption .ThemeOptions "accent_color" "#8f6f33" }};
+      --bg: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}#131617{{ else }}#f4f1ea{{ end }};
+      --fg: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}#f3efe8{{ else }}#1c1a17{{ end }};
+      --muted: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}#a9b0ac{{ else }}#6d655c{{ end }};
+      --card: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}#1c2123{{ else }}#fffdf9{{ end }};
+      --shadow: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}rgba(0, 0, 0, 0.28){{ else }}rgba(28, 26, 23, 0.12){{ end }};
+      --font-body: {{ if eq (themeOption .ThemeOptions "typography" "editorial") "executive" }}"Avenir Next", "Helvetica Neue", sans-serif{{ else }}"Iowan Old Style", Georgia, serif{{ end }};
+      --page-background: {{ if eq (themeOption .ThemeOptions "color_mode" "light") "dark" }}linear-gradient(180deg, #0f1213 0%, #1a2022 100%){{ else }}linear-gradient(180deg, #ebe5d8 0%, #f7f3ea 100%){{ end }};
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="deck">
+      {{ $root := . }}
+      {{ range $i, $slide := .Slides }}
+      <section class="slide{{ if eq $i 0 }} active{{ end }}{{ if $slide.ImageHintClass }} {{ $slide.ImageHintClass }}{{ end }}"{{ if $slide.StyleAttr }} style="{{ $slide.StyleAttr }}"{{ end }}>
+        {{ if $slide.IsDraft }}<div class="draft-badge">Draft</div>{{ end }}
+        {{ template "deck-logo" (dict "Root" $root "Slide" $slide) }}
+        {{ $slide.Body }}
+        {{ template "slide-annotations" $slide }}
+        {{ template "deck-footer" (dict "Root" $root "Slide" $slide) }}
+      </section>
+      {{ end }}
+      <div class="controls">
+        <button class="slide-nav" type="button" data-slide-previous aria-label="Previous slide">Previous</button>
+        <button class="slide-nav" type="button" data-slide-next aria-label="Next slide">Next</button>
+        {{ if .NotesEnabled }}<button class="slide-nav" type="button" data-notes-toggle aria-expanded="false">Notes</button>{{ end }}
+        {{ if .PDFEnabled }}<button class="pdf-export" type="button" id="export-pdf">Export PDF</button>{{ end }}
+        <span class="nav-hint">Use left/right arrow keys</span>
+      </div>
+      <div class="slide-dots" aria-label="Slide navigation">
+        {{ range $i, $slide := .Slides }}
+        <button class="slide-dot" type="button" data-slide-dot="{{ $i }}" aria-label="{{ if $slide.Title }}Go to slide: {{ $slide.Title }}{{ else }}Go to slide{{ end }}"{{ if eq $i 0 }} aria-current="true"{{ end }}></button>
+        {{ end }}
+      </div>
+    </div>
+    {{ if .NotesEnabled }}
+    <section class="slide-notes" aria-label="Slide notes" hidden>
+      {{ range $i, $slide := .Slides }}
+      {{ if $slide.Notes }}
+      <div class="slide-notes-item" data-slide-notes="{{ $i }}" hidden>
+        <div class="slide-notes-tabs" role="tablist" aria-label="Notes for {{ if $slide.Title }}{{ $slide.Title }}{{ else }}this slide{{ end }}">
+          {{ range $noteIndex, $note := $slide.Notes }}
+          <button class="slide-notes-tab" type="button" role="tab" id="slide-note-tab-{{ $i }}-{{ $noteIndex }}" data-note-tab="{{ $noteIndex }}" aria-controls="slide-note-panel-{{ $i }}-{{ $noteIndex }}" aria-selected="{{ if eq $noteIndex 0 }}true{{ else }}false{{ end }}">{{ $note.Name }}</button>
+          {{ end }}
+        </div>
+        {{ range $noteIndex, $note := $slide.Notes }}
+        <article class="slide-note-panel" role="tabpanel" id="slide-note-panel-{{ $i }}-{{ $noteIndex }}" aria-labelledby="slide-note-tab-{{ $i }}-{{ $noteIndex }}" data-note-panel="{{ $noteIndex }}"{{ if ne $noteIndex 0 }} hidden{{ end }}>{{ $note.Body }}</article>
+        {{ end }}
+      </div>
+      {{ end }}
+      {{ end }}
+    </section>
+    {{ end }}
+  </main>
+  <script src="themes/{{ .Theme.Name }}/assets/katex.min.js"></script>
+  {{ if .HasCharts }}<script src="themes/{{ .Theme.Name }}/assets/chart.umd.min.js"></script>{{ end }}
+  <script>
+    const deck = document.querySelector('.deck');
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const dots = Array.from(document.querySelectorAll('[data-slide-dot]'));
+    const previousButton = document.querySelector('[data-slide-previous]');
+    const nextButton = document.querySelector('[data-slide-next]');
+    const notesToggle = document.querySelector('[data-notes-toggle]');
+    const notes = document.querySelector('.slide-notes');
+    const noteItems = Array.from(document.querySelectorAll('[data-slide-notes]'));
+    const mobileQuery = window.matchMedia('(max-width: 900px)');
+    let index = 0;
+    let notesOpen = false;
+    const syncDots = () => {
+      dots.forEach((dot, i) => {
+        if (i === index) {
+          dot.setAttribute('aria-current', 'true');
+        } else {
+          dot.removeAttribute('aria-current');
+        }
+      });
+      previousButton.disabled = index === 0;
+      nextButton.disabled = index === slides.length - 1;
+      let hasNotes = false;
+      noteItems.forEach((item) => {
+        const isCurrent = Number(item.dataset.slideNotes) === index;
+        item.hidden = !isCurrent;
+        hasNotes ||= isCurrent;
+      });
+      if (notes) notes.hidden = !notesOpen || !hasNotes;
+      if (notesToggle) {
+        notesToggle.hidden = !hasNotes;
+        notesToggle.setAttribute('aria-expanded', String(notesOpen && hasNotes));
+      }
+    };
+    const show = (nextIndex) => {
+      if (!slides.length) return;
+      index = Math.max(0, Math.min(nextIndex, slides.length - 1));
+      notesOpen = false;
+      slides.forEach((slide, i) => slide.classList.toggle('active', i === index));
+      syncDots();
+      if (mobileQuery.matches) {
+        slides[index].scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+      }
+    };
+    const syncIndexFromScroll = () => {
+      if (!mobileQuery.matches || !deck || !slides.length) return;
+      const nextIndex = Math.round(deck.scrollLeft / Math.max(deck.clientWidth, 1));
+      if (nextIndex !== index) {
+        index = Math.max(0, Math.min(nextIndex, slides.length - 1));
+        slides.forEach((slide, i) => slide.classList.toggle('active', i === index));
+        syncDots();
+      }
+    };
+    document.addEventListener('keydown', (event) => {
+      if (mobileQuery.matches) return;
+      if (event.key === 'ArrowRight' || event.key === 'PageDown') show(index + 1);
+      if (event.key === 'ArrowLeft' || event.key === 'PageUp') show(index - 1);
+    });
+    dots.forEach((dot, dotIndex) => {
+      dot.addEventListener('click', () => show(dotIndex));
+    });
+    previousButton?.addEventListener('click', () => show(index - 1));
+    nextButton?.addEventListener('click', () => show(index + 1));
+    notesToggle?.addEventListener('click', () => {
+      notesOpen = !notesOpen;
+      syncDots();
+    });
+    document.querySelectorAll('[data-note-tab]').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const noteItem = tab.closest('[data-slide-notes]');
+        const noteIndex = tab.dataset.noteTab;
+        noteItem.querySelectorAll('[data-note-tab]').forEach((candidate) => {
+          candidate.setAttribute('aria-selected', String(candidate === tab));
+        });
+        noteItem.querySelectorAll('[data-note-panel]').forEach((panel) => {
+          panel.hidden = panel.dataset.notePanel !== noteIndex;
+        });
+      });
+    });
+    if (deck) {
+      deck.addEventListener('scroll', syncIndexFromScroll, { passive: true });
+    }
+    mobileQuery.addEventListener('change', () => {
+      if (mobileQuery.matches) {
+        slides[index]?.scrollIntoView({ block: 'nearest', inline: 'start' });
+      } else {
+        if (deck) {
+          deck.scrollTo({ left: 0, top: 0 });
+        }
+        show(index);
+      }
+    });
+    syncDots();
+    const renderMermaidDiagrams = async () => {
+      const diagrams = Array.from(document.querySelectorAll('.shortcode-mermaid'));
+      if (!diagrams.length) return;
+      try {
+        const mermaidModule = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+        const mermaid = mermaidModule.default;
+        const mermaidTheme = getComputedStyle(document.documentElement).colorScheme === 'dark' ? 'dark' : 'default';
+        mermaid.initialize({ startOnLoad: false, securityLevel: 'loose', theme: mermaidTheme });
+        for (const [diagramIndex, diagram] of diagrams.entries()) {
+          const definition = diagram.querySelector('.shortcode-mermaid-definition')?.textContent?.trim();
+          const target = diagram.querySelector('.shortcode-mermaid-render');
+          if (!definition || !target) continue;
+          const { svg } = await mermaid.render('margo-mermaid-' + diagramIndex, definition);
+          target.innerHTML = svg;
+          diagram.classList.add('is-rendered');
+        }
+      } catch (error) {
+        console.warn('Mermaid render failed', error);
+      }
+    };
+    renderMermaidDiagrams();
+    const renderMathBlocks = () => {
+      if (!window.katex) return;
+      const mathBlocks = Array.from(document.querySelectorAll('.shortcode-math'));
+      for (const block of mathBlocks) {
+        const source = block.querySelector('.shortcode-math-source')?.textContent?.trim();
+        const target = block.querySelector('.shortcode-math-render');
+        if (!source || !target) continue;
+        try {
+          window.katex.render(source, target, { displayMode: true, throwOnError: false, strict: 'warn' });
+          block.classList.add('is-rendered');
+        } catch (error) {
+          console.warn('Math render failed', error);
+        }
+      }
+    };
+    renderMathBlocks();
+    const renderCharts = () => {
+      if (!window.Chart) return;
+      const charts = Array.from(document.querySelectorAll('.shortcode-chart'));
+      for (const chart of charts) {
+        const configNode = chart.querySelector('.shortcode-chart-config');
+        const canvas = chart.querySelector('.shortcode-chart-canvas');
+        if (!configNode || !canvas) continue;
+        try {
+          const config = JSON.parse(configNode.textContent || '{}');
+          new window.Chart(canvas, config);
+          chart.classList.add('is-rendered');
+        } catch (error) {
+          console.warn('Chart render failed', error);
+        }
+      }
+    };
+    renderCharts();
+    const exportButton = document.getElementById('export-pdf');
+    if (exportButton) {
+      exportButton.addEventListener('click', async () => {
+        try {
+          const response = await fetch('/__margo/export/pdf', { method: 'POST' });
+          const message = (await response.text()).trim();
+          if (!response.ok) {
+            throw new Error(message || 'PDF export failed');
+          }
+          window.alert(message || 'PDF export complete');
+        } catch (error) {
+          window.alert(error.message || 'PDF export failed');
+        }
+      });
+    }
+    let currentRevision = null;
+    const checkRevision = async () => {
+      try {
+        const response = await fetch('/__margo/version', { cache: 'no-store' });
+        const nextRevision = (await response.text()).trim();
+        if (currentRevision === null) {
+          currentRevision = nextRevision;
+          return;
+        }
+        if (nextRevision !== currentRevision) {
+          window.location.reload();
+        }
+      } catch (_) {}
+    };
+    setInterval(checkRevision, 1000);
+    checkRevision();
+  </script>
+  {{ .Snippets.BodyEnd }}
+</body>
+</html>

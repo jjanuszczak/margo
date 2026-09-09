@@ -1,0 +1,4 @@
+name: image
+description: Visual-first slide with supporting copy
+default_layout: image
+default_type: image
