@@ -1,7 +1,7 @@
 ---
 title: Ready for agentic workflows
 order: 9
-layout: content
+layout: agentic
 section: Workflow
 ---
 
