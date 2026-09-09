@@ -1,6 +1,6 @@
 ---
 title: A contribution model with boundaries
-order: 9
+order: 10
 layout: content
 section: Workflow
 ---
