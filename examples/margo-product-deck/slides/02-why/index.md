@@ -2,6 +2,7 @@
 title: Why Margo
 order: 2
 layout: content
+hide_footer: true
 ---
 
 {{< eyebrow label="The problem" />}}
