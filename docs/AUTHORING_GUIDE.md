@@ -41,6 +41,12 @@ The generated deck looks like this:
 
 ```text
 my-deck/
+  AGENTS.md
+  .agents/
+    README.md
+    skills/
+      margo-deck-authoring/
+      margo-theme-authoring/
   margo.yaml
   slides/
     01-title/index.md
@@ -62,6 +68,19 @@ my-deck/
   assets/
   shortcodes/
 ```
+
+### Agent guidance and deck skills
+
+New decks include `AGENTS.md` and repository-local skills under `.agents/skills/`. These files travel with a portable `.margo` deck archive, so an agent working from a handoff can use the same deck conventions and command reference.
+
+`AGENTS.md` contains the rules that always apply: keep slide content in Markdown bundles, keep presentational composition in themes, use `margo.yaml` as the configuration entry point, and do not edit generated `dist/` output.
+
+The scaffold includes two documentation-only skills:
+
+- `margo-deck-authoring` for slide content, front matter, assets, notes, builds, and complete deck packaging.
+- `margo-theme-authoring` for layouts, partials, shortcodes, theme assets, theme installation, and `.margot` theme transfer.
+
+The skills contain no executable scripts or external-service dependencies. Customize the generated guidance for deck-specific conventions, but keep the command reference aligned with the installed Margo version.
 
 ## 3. Understand `margo.yaml`
 

@@ -28,26 +28,34 @@ func CreateDeck(opts DeckOptions) error {
 	}
 
 	files := map[string]string{
-		"margo.yaml": scaffoldConfig(opts.Name),
-		filepath.Join("slides", "01-title", "index.md"):              slideTitle(opts.Name),
-		filepath.Join("slides", "02-why", "index.md"):                slideWhy(),
-		filepath.Join("slides", "03-section", "index.md"):            slideSection(),
-		filepath.Join("slides", "04-customer-story", "index.md"):     slideCustomerStory(),
-		filepath.Join("slides", "05-closing", "index.md"):            slideClosing(),
-		filepath.Join("archetypes", "default", "archetype.yaml"):     defaultArchetypeMetadata(),
-		filepath.Join("archetypes", "title", "archetype.yaml"):       titleArchetypeMetadata(),
-		filepath.Join("archetypes", "section", "archetype.yaml"):     sectionArchetypeMetadata(),
-		filepath.Join("archetypes", "agenda", "archetype.yaml"):      agendaArchetypeMetadata(),
-		filepath.Join("archetypes", "image", "archetype.yaml"):       imageArchetypeMetadata(),
-		filepath.Join("archetypes", "two-column", "archetype.yaml"):  twoColumnArchetypeMetadata(),
-		filepath.Join("archetypes", "media-right", "archetype.yaml"): mediaRightArchetypeMetadata(),
-		filepath.Join("archetypes", "media-left", "archetype.yaml"):  mediaLeftArchetypeMetadata(),
-		filepath.Join("archetypes", "quote", "archetype.yaml"):       quoteArchetypeMetadata(),
-		filepath.Join("archetypes", "metric", "archetype.yaml"):      metricArchetypeMetadata(),
-		filepath.Join("archetypes", "closing", "archetype.yaml"):     closingArchetypeMetadata(),
-		filepath.Join("shortcodes", "eyebrow.html"):                  defaultDeckEyebrowShortcode(),
-		filepath.Join("assets", "company-logo.svg"):                  starterDeckLogoAsset(),
-		filepath.Join("assets", "shared-grid.svg"):                   starterDeckGridAsset(),
+		"margo.yaml":                          scaffoldConfig(opts.Name),
+		"AGENTS.md":                           scaffoldAgentsGuide(),
+		filepath.Join(".agents", "README.md"): scaffoldAgentsReadme(),
+		filepath.Join(".agents", "skills", "margo-deck-authoring", "SKILL.md"):                         scaffoldDeckAuthoringSkill(),
+		filepath.Join(".agents", "skills", "margo-deck-authoring", "references", "conventions.md"):     scaffoldDeckConventions(),
+		filepath.Join(".agents", "skills", "margo-deck-authoring", "references", "commands.md"):        scaffoldCommandReference(),
+		filepath.Join(".agents", "skills", "margo-theme-authoring", "SKILL.md"):                        scaffoldThemeAuthoringSkill(),
+		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "theme-contract.md"): scaffoldThemeContract(),
+		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "commands.md"):       scaffoldCommandReference(),
+		filepath.Join("slides", "01-title", "index.md"):                                                slideTitle(opts.Name),
+		filepath.Join("slides", "02-why", "index.md"):                                                  slideWhy(),
+		filepath.Join("slides", "03-section", "index.md"):                                              slideSection(),
+		filepath.Join("slides", "04-customer-story", "index.md"):                                       slideCustomerStory(),
+		filepath.Join("slides", "05-closing", "index.md"):                                              slideClosing(),
+		filepath.Join("archetypes", "default", "archetype.yaml"):                                       defaultArchetypeMetadata(),
+		filepath.Join("archetypes", "title", "archetype.yaml"):                                         titleArchetypeMetadata(),
+		filepath.Join("archetypes", "section", "archetype.yaml"):                                       sectionArchetypeMetadata(),
+		filepath.Join("archetypes", "agenda", "archetype.yaml"):                                        agendaArchetypeMetadata(),
+		filepath.Join("archetypes", "image", "archetype.yaml"):                                         imageArchetypeMetadata(),
+		filepath.Join("archetypes", "two-column", "archetype.yaml"):                                    twoColumnArchetypeMetadata(),
+		filepath.Join("archetypes", "media-right", "archetype.yaml"):                                   mediaRightArchetypeMetadata(),
+		filepath.Join("archetypes", "media-left", "archetype.yaml"):                                    mediaLeftArchetypeMetadata(),
+		filepath.Join("archetypes", "quote", "archetype.yaml"):                                         quoteArchetypeMetadata(),
+		filepath.Join("archetypes", "metric", "archetype.yaml"):                                        metricArchetypeMetadata(),
+		filepath.Join("archetypes", "closing", "archetype.yaml"):                                       closingArchetypeMetadata(),
+		filepath.Join("shortcodes", "eyebrow.html"):                                                    defaultDeckEyebrowShortcode(),
+		filepath.Join("assets", "company-logo.svg"):                                                    starterDeckLogoAsset(),
+		filepath.Join("assets", "shared-grid.svg"):                                                     starterDeckGridAsset(),
 	}
 	for path, content := range ThemeFiles("default", true) {
 		files[path] = content
@@ -60,6 +68,7 @@ func CreateDeck(opts DeckOptions) error {
 		filepath.Join("themes"),
 		filepath.Join("archetypes"),
 		filepath.Join("shortcodes"),
+		filepath.Join(".agents", "skills"),
 	}
 
 	if err := ensureCreatable(targetDir, files); err != nil {
@@ -83,6 +92,147 @@ func CreateDeck(opts DeckOptions) error {
 	}
 
 	return nil
+}
+
+func scaffoldAgentsGuide() string {
+	return `# Margo Deck Agent Guide
+
+This directory is a Margo deck project. Read this file before changing deck content, themes, or build artifacts.
+
+## Working rules
+
+- margo.yaml is the deck configuration entry point. It selects the active theme and configured outputs.
+- Keep slide content in Markdown bundles under slides/<slide-id>/index.md. Put slide-local assets beside that file and shared assets under assets/.
+- Use an existing archetype before inventing a new slide shape. Archetypes create authoring files; layouts render slides.
+- Keep presentation markup, CSS, layouts, partials, and theme shortcodes under themes/<theme-name>/. Keep the Margo engine generic.
+- Do not edit generated dist/ output. Change source files and run Margo again.
+- Treat imported themes as trusted project code. Templates, shortcodes, and JavaScript can run during local builds and previews.
+
+## Agent resources
+
+Read .agents/README.md to choose the right repository-local skill. The deck-authoring skill covers normal slide work and packaging. The theme-authoring skill covers custom theme work.
+`
+}
+
+func scaffoldAgentsReadme() string {
+	return `# Margo Agent Resources
+
+This directory contains repository-local, documentation-only skills for this deck. They are intended for agents working in this project and contain no executable scripts or external-service dependencies.
+
+## Skills
+
+- margo-deck-authoring: use for creating, editing, reviewing, building, or packaging this deck.
+- margo-theme-authoring: use only when creating, modifying, installing, importing, or reviewing a deck theme.
+
+Both skills link to the current deck conventions and command reference. Start with AGENTS.md for rules that always apply.
+`
+}
+
+func scaffoldDeckAuthoringSkill() string {
+	return `---
+name: margo-deck-authoring
+description: Create, edit, review, build, or package a Margo deck. Use for slide content, front matter, assets, notes, archetypes, deck outputs, and portable deck archives. Do not use for theme implementation work; use margo-theme-authoring instead.
+---
+
+1. Read AGENTS.md and references/conventions.md before changing the deck.
+2. Read references/commands.md before running a Margo command.
+3. Keep source changes in deck-owned files. Do not edit dist/ output.
+4. Use the smallest relevant build or test to verify the change. Build the deck when author-facing output changes.
+`
+}
+
+func scaffoldThemeAuthoringSkill() string {
+	return `---
+name: margo-theme-authoring
+description: Create, modify, install, import, package, or review a Margo deck theme. Use for layouts, partials, shortcodes, theme assets, and theme selection. Do not use for ordinary slide-content changes unless the requested result requires a theme change.
+---
+
+1. Read AGENTS.md and references/theme-contract.md before changing a theme.
+2. Read references/commands.md before running a Margo command.
+3. Keep rendering shape in templates and CSS. Do not add presentation-specific behavior to the Margo engine when template composition can express it.
+4. Validate the theme and build the deck after a theme change. Check interactive and print-oriented outputs when the change affects rendering.
+`
+}
+
+func scaffoldDeckConventions() string {
+	return `# Deck conventions
+
+## Project shape
+
+- margo.yaml: deck metadata, active theme, and output configuration.
+- slides/<slide-id>/index.md: one Markdown slide bundle. Slide-local assets and named notes belong in the same bundle.
+- assets/: shared deck assets.
+- archetypes/: authoring-time templates used by margo new slide.
+- shortcodes/: deck-local content components. A deck-local shortcode overrides a theme shortcode with the same name.
+- themes/<theme-name>/: deck-local themes. One theme is active at a time through margo.yaml.
+
+## Slides
+
+Use YAML front matter for title, order, layout, section, draft, visibility, background, image_hints, and notes when needed. Use Markdown for the slide body. Draft slides appear in serve but normal builds omit them; visibility: hidden excludes slides from normal output.
+
+Choose an existing layout and archetype first. The default scaffold supports content, title, section, agenda, image, two-column, media-left, media-right, quote, metric, and closing layouts.
+
+## Assets and notes
+
+Reference a slide-local image by filename. Reference a shared asset with an assets/ path. Put named notes under slides/<slide-id>/notes/; notes stay out of print HTML and PDF output.
+
+## Outputs
+
+Margo builds source files into dist/. Treat dist/ as generated output. For output defects, compare the interactive HTML, print HTML, and PDF rather than changing source blindly.
+`
+}
+
+func scaffoldThemeContract() string {
+	return `# Theme contract
+
+Themes live under themes/<theme-name>/. The usual entry points are theme.yaml, assets/, layouts/, partials/, and shortcodes/.
+
+- Layouts own slide and deck markup.
+- Partials are reusable template fragments.
+- Shortcodes are content components expanded inside slide Markdown.
+- Theme assets contain CSS, fonts, JavaScript, and images needed by the theme.
+
+Deck-local partials and shortcodes override theme entries with the same name. Keep the engine responsible for generic parsing, validation, asset resolution, and model shaping. Keep presentation-specific markup, class composition, and styling in theme templates and CSS.
+
+Select the active theme in margo.yaml. Create a default-inspired theme before editing a shared default theme. Use Git installation for maintained shared themes; use .margot import for a fixed offline handoff. Do not import a theme from an untrusted source.
+`
+}
+
+func scaffoldCommandReference() string {
+	return `# Margo commands
+
+Run these from the deck root when margo is on your PATH. If it is not, replace margo with the path to the local binary.
+
+~~~bash
+# Build and preview
+margo build
+margo build --include-drafts
+margo serve
+margo serve --port 1414
+margo clean
+
+# Add deck content
+margo new slide roadmap --archetype agenda
+margo new note speaker-script --slide 02-why
+
+# Create and manage themes
+margo new theme custom
+margo new theme minimalist --blank
+margo theme add https://example.com/brand-theme.git --ref v1.2.0 --name brand
+margo theme update brand
+margo theme list
+
+# Transfer one theme
+margo theme pack brand --output ../brand.margot
+margo theme import ../brand.margot --name client-brand --activate
+
+# Transfer the complete editable deck
+margo pack .
+margo unpack ../my-deck.margo restored-deck
+~~~
+
+Use .margo for a complete editable deck project. Use .margot for one theme only. Imported themes are local copies and are not updated with margo theme update.
+`
 }
 
 func ensureCreatable(targetDir string, files map[string]string) error {

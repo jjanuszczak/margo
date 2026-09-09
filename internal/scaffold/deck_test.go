@@ -1,10 +1,63 @@
 package scaffold
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestCreateDeckIncludesAgentGuidanceAndSkills(t *testing.T) {
+	targetDir := filepath.Join(t.TempDir(), "agent-ready-deck")
+	if err := CreateDeck(DeckOptions{Name: "Agent Ready Deck", TargetDir: targetDir}); err != nil {
+		t.Fatalf("create deck: %v", err)
+	}
+
+	expected := map[string][]string{
+		"AGENTS.md":                           {"# Margo Deck Agent Guide", "Do not edit generated dist/ output."},
+		filepath.Join(".agents", "README.md"): {"margo-deck-authoring", "margo-theme-authoring"},
+		filepath.Join(".agents", "skills", "margo-deck-authoring", "SKILL.md"): {
+			"name: margo-deck-authoring",
+			"Create, edit, review, build, or package a Margo deck.",
+		},
+		filepath.Join(".agents", "skills", "margo-deck-authoring", "references", "commands.md"): {
+			"margo new slide roadmap --archetype agenda",
+			"margo theme import ../brand.margot --name client-brand --activate",
+			"margo pack .",
+		},
+		filepath.Join(".agents", "skills", "margo-theme-authoring", "SKILL.md"): {
+			"name: margo-theme-authoring",
+			"Do not use for ordinary slide-content changes",
+		},
+		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "theme-contract.md"): {
+			"Keep presentation-specific markup, class composition, and styling in theme templates and CSS.",
+		},
+	}
+
+	for path, fragments := range expected {
+		raw, err := os.ReadFile(filepath.Join(targetDir, path))
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		for _, fragment := range fragments {
+			if !strings.Contains(string(raw), fragment) {
+				t.Errorf("%s does not contain %q", path, fragment)
+			}
+		}
+	}
+}
+
+func TestCreateDeckRefusesAgentGuidanceCollision(t *testing.T) {
+	targetDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(targetDir, "AGENTS.md"), []byte("existing guidance"), 0o644); err != nil {
+		t.Fatalf("write existing guide: %v", err)
+	}
+
+	err := CreateDeck(DeckOptions{Name: "Collision Deck", TargetDir: targetDir})
+	if err == nil || !strings.Contains(err.Error(), "target file already exists") || !strings.Contains(err.Error(), "AGENTS.md") {
+		t.Fatalf("expected AGENTS.md collision, got %v", err)
+	}
+}
 
 func TestThemeFilesIncludeRefinedThemeStructure(t *testing.T) {
 	files := ThemeFiles("default", true)

@@ -391,6 +391,16 @@ func TestRunNewDeckThenBuildStarterDeck(t *testing.T) {
 	}
 
 	projectRoot := filepath.Join(parentDir, "starter-deck")
+	for _, rel := range []string{
+		"AGENTS.md",
+		filepath.Join(".agents", "README.md"),
+		filepath.Join(".agents", "skills", "margo-deck-authoring", "SKILL.md"),
+		filepath.Join(".agents", "skills", "margo-theme-authoring", "SKILL.md"),
+	} {
+		if _, err := os.Stat(filepath.Join(projectRoot, rel)); err != nil {
+			t.Fatalf("expected new deck to include %s: %v", rel, err)
+		}
+	}
 	configPath := filepath.Join(projectRoot, "margo.yaml")
 	raw, err := os.ReadFile(configPath)
 	if err != nil {
@@ -435,6 +445,29 @@ func TestRunNewDeckThenBuildStarterDeck(t *testing.T) {
 	}
 	if strings.Contains(out, "Export PDF") {
 		t.Fatalf("expected starter deck output to omit PDF control when pdf output is disabled")
+	}
+}
+
+func TestRunInitIncludesAgentGuidanceAndSkills(t *testing.T) {
+	projectRoot := t.TempDir()
+	restoreWD := withWorkingDir(t, projectRoot)
+	defer restoreWD()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	if code := Run([]string{"init"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("expected init to succeed, stderr=%q", stderr.String())
+	}
+
+	for _, rel := range []string{
+		"AGENTS.md",
+		filepath.Join(".agents", "README.md"),
+		filepath.Join(".agents", "skills", "margo-deck-authoring", "SKILL.md"),
+		filepath.Join(".agents", "skills", "margo-theme-authoring", "SKILL.md"),
+	} {
+		if _, err := os.Stat(filepath.Join(projectRoot, rel)); err != nil {
+			t.Fatalf("expected initialized deck to include %s: %v", rel, err)
+		}
 	}
 }
 

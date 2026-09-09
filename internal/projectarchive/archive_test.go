@@ -16,6 +16,8 @@ func TestPackAndUnpackPortableProject(t *testing.T) {
 	writeArchiveFile(t, filepath.Join(projectRoot, "slides", "01-title", "index.md"), "# Title\n")
 	writeArchiveFile(t, filepath.Join(projectRoot, "themes", "brand", "theme.yaml"), "name: brand\n")
 	writeArchiveFile(t, filepath.Join(projectRoot, "archetypes", "default", "archetype.yaml"), "name: default\n")
+	writeArchiveFile(t, filepath.Join(projectRoot, "AGENTS.md"), "# Agent guidance\n")
+	writeArchiveFile(t, filepath.Join(projectRoot, ".agents", "skills", "margo-deck-authoring", "SKILL.md"), "---\nname: margo-deck-authoring\n---\n")
 	writeArchiveFile(t, filepath.Join(projectRoot, "dist", "html", "index.html"), "generated")
 	writeArchiveFile(t, filepath.Join(projectRoot, ".git", "config"), "gitdir")
 	writeArchiveFile(t, filepath.Join(projectRoot, ".margo-backups", "old"), "backup")
@@ -36,7 +38,7 @@ func TestPackAndUnpackPortableProject(t *testing.T) {
 	}
 	reader.Close()
 	sort.Strings(names)
-	for _, want := range []string{ManifestName, "margo.yaml", "slides/01-title/index.md", "themes/brand/theme.yaml"} {
+	for _, want := range []string{ManifestName, "margo.yaml", "slides/01-title/index.md", "themes/brand/theme.yaml", "AGENTS.md", ".agents/skills/margo-deck-authoring/SKILL.md"} {
 		if !contains(names, want) {
 			t.Fatalf("expected archive to contain %q, got %#v", want, names)
 		}
@@ -55,7 +57,7 @@ func TestPackAndUnpackPortableProject(t *testing.T) {
 	if manifest.FormatVersion != FormatVersion || manifest.ProjectName != "deck" || manifest.MinMargo != "0.1.0" {
 		t.Fatalf("unexpected manifest: %#v", manifest)
 	}
-	for _, rel := range []string{"margo.yaml", "slides/01-title/index.md", "themes/brand/theme.yaml"} {
+	for _, rel := range []string{"margo.yaml", "slides/01-title/index.md", "themes/brand/theme.yaml", "AGENTS.md", ".agents/skills/margo-deck-authoring/SKILL.md"} {
 		if _, err := os.Stat(filepath.Join(destination, rel)); err != nil {
 			t.Fatalf("expected restored %s: %v", rel, err)
 		}
