@@ -1,0 +1,4 @@
+name: media-right
+description: Image on the right with supporting content on the left
+default_layout: media-right
+default_type: media-right

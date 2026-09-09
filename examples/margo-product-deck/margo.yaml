@@ -1,0 +1,24 @@
+version: 1
+
+deck:
+  title: Margo
+  description: Markdown-native presentation building for people who ship in Git
+  language: en
+  logo: assets/margo-mark.svg
+  footer: Margo · markdown go
+
+theme:
+  name: margo-brand
+  color_mode: dark
+  typography: executive
+  accent_color: "#69E3B1"
+
+outputs:
+  html: true
+  pdf: false
+  png: false
+  pptx: false
+
+presentation:
+  navigation:
+    notes: true

@@ -1,0 +1,57 @@
+name: margo-brand
+version: 0.1.0
+description: A crisp, dark product theme for Margo's public product deck
+config_options:
+  - name: color_mode
+    type: string
+    description: Light or dark presentation mode
+    default: light
+    values:
+      - light
+      - dark
+  - name: typography
+    type: string
+    description: Typography preset for deck tone
+    default: editorial
+    values:
+      - editorial
+      - executive
+  - name: accent_color
+    type: string
+    description: Accent color used for emphasis
+    default: "#69E3B1"
+pptx:
+  slide_size: widescreen
+  fonts:
+    heading: Arial
+    body: Arial
+  colors:
+    background: "#07110F"
+    foreground: "#F0FFF8"
+    accent: "#69E3B1"
+  layouts:
+    title:
+      name: title
+      body_y: 2.1
+      body_height: 4.7
+    section:
+      name: section
+      body_y: 2.0
+      body_height: 4.8
+    content:
+      name: content
+      body_y: 1.55
+      body_height: 5.2
+    image:
+      name: image
+      image_position: center
+      image_width: 11.2
+      image_height: 4.1
+    media-left:
+      name: media-left
+      image_position: left
+      image_width: 5.5
+    media-right:
+      name: media-right
+      image_position: right
+      image_width: 5.5

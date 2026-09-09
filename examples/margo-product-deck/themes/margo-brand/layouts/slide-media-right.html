@@ -1,0 +1,13 @@
+<div class="slide-shell split-layout">
+  {{ template "slide-header" . }}
+  {{ $lead := leadingImage .Body }}
+  {{ $content := withoutLeadingImage .Body }}
+  <div class="slide-body media-split-slide media-right">
+    <div class="content-pane prose-body">
+      {{ $content }}
+    </div>
+    <div class="media-pane">
+      {{ $lead }}
+    </div>
+  </div>
+</div>

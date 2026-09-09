@@ -1,0 +1,12 @@
+<div class="slide-shell split-layout">
+  {{ template "slide-header" . }}
+  {{ $columns := splitBodyColumns .ExpandedMarkdown .Body }}
+  <div class="slide-body two-column-slide prose-body">
+    <div class="column">
+      {{ if $columns }}{{ index $columns 0 }}{{ else }}{{ .Body }}{{ end }}
+    </div>
+    <div class="column">
+      {{ if gt (len $columns) 1 }}{{ index $columns 1 }}{{ end }}
+    </div>
+  </div>
+</div>

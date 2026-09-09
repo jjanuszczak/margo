@@ -1,0 +1,4 @@
+name: title
+description: Title or opening slide
+default_layout: title
+default_type: title

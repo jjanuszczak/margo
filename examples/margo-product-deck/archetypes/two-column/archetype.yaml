@@ -1,0 +1,4 @@
+name: two-column
+description: Split content into two columns
+default_layout: two-column
+default_type: two-column
