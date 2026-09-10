@@ -16,7 +16,7 @@ theme:
 outputs:
   html: true
   pdf: false
-  png: false
+  png: true
   pptx: false
 
 presentation:
