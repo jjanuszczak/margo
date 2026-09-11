@@ -1,17 +1,31 @@
 package scaffold
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/jjanuszczak/margo/internal/version"
+	"gopkg.in/yaml.v3"
 )
 
 type DeckOptions struct {
 	Name      string
 	TargetDir string
+}
+
+const ManifestPath = ".margo/scaffold-manifest.yaml"
+
+// Manifest records the exact starter files Margo created. It lets a later
+// upgrade distinguish an untouched scaffold file from an authored change.
+type Manifest struct {
+	Version string            `yaml:"version"`
+	Margo   string            `yaml:"margo_version"`
+	Files   map[string]string `yaml:"files"`
 }
 
 func CreateDeck(opts DeckOptions) error {
@@ -37,6 +51,7 @@ func CreateDeck(opts DeckOptions) error {
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "SKILL.md"):                        scaffoldThemeAuthoringSkill(),
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "theme-contract.md"): scaffoldThemeContract(),
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "commands.md"):       scaffoldCommandReference(),
+		filepath.Join(".agents", "skills", "margo-github-pages", "SKILL.md"):                           scaffoldGitHubPagesSkill(),
 		filepath.Join("slides", "01-title", "index.md"):                                                slideTitle(opts.Name),
 		filepath.Join("slides", "02-why", "index.md"):                                                  slideWhy(),
 		filepath.Join("slides", "03-section", "index.md"):                                              slideSection(),
@@ -60,6 +75,11 @@ func CreateDeck(opts DeckOptions) error {
 	for path, content := range ThemeFiles("default", true) {
 		files[path] = content
 	}
+	manifest, err := yaml.Marshal(scaffoldManifest(files))
+	if err != nil {
+		return fmt.Errorf("encode scaffold manifest: %w", err)
+	}
+	files[ManifestPath] = string(manifest)
 
 	dirs := []string{
 		"assets",
@@ -94,6 +114,35 @@ func CreateDeck(opts DeckOptions) error {
 	return nil
 }
 
+func scaffoldManifest(files map[string]string) Manifest {
+	checksums := make(map[string]string, len(files))
+	for path, content := range files {
+		checksums[filepath.ToSlash(path)] = checksum([]byte(content))
+	}
+	return Manifest{Version: "1", Margo: version.Current(), Files: checksums}
+}
+
+func checksum(data []byte) string {
+	sum := sha256.Sum256(data)
+	return fmt.Sprintf("%x", sum[:])
+}
+
+// AgentFiles is the safe, replaceable part of the starter scaffold. Content,
+// configuration, assets, and themes remain author-owned during upgrades.
+func AgentFiles() map[string]string {
+	return map[string]string{
+		"AGENTS.md":                           scaffoldAgentsGuide(),
+		filepath.Join(".agents", "README.md"): scaffoldAgentsReadme(),
+		filepath.Join(".agents", "skills", "margo-deck-authoring", "SKILL.md"):                         scaffoldDeckAuthoringSkill(),
+		filepath.Join(".agents", "skills", "margo-deck-authoring", "references", "conventions.md"):     scaffoldDeckConventions(),
+		filepath.Join(".agents", "skills", "margo-deck-authoring", "references", "commands.md"):        scaffoldCommandReference(),
+		filepath.Join(".agents", "skills", "margo-theme-authoring", "SKILL.md"):                        scaffoldThemeAuthoringSkill(),
+		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "theme-contract.md"): scaffoldThemeContract(),
+		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "commands.md"):       scaffoldCommandReference(),
+		filepath.Join(".agents", "skills", "margo-github-pages", "SKILL.md"):                           scaffoldGitHubPagesSkill(),
+	}
+}
+
 func scaffoldAgentsGuide() string {
 	return `# Margo Deck Agent Guide
 
@@ -110,7 +159,7 @@ This directory is a Margo deck project. Read this file before changing deck cont
 
 ## Agent resources
 
-Read .agents/README.md to choose the right repository-local skill. The deck-authoring skill covers normal slide work and packaging. The theme-authoring skill covers custom theme work.
+Read .agents/README.md to choose the right repository-local skill. The deck-authoring skill covers normal slide work, upgrades, and packaging. The theme-authoring skill covers custom theme work. The GitHub Pages skill covers deployment setup.
 `
 }
 
@@ -123,6 +172,7 @@ This directory contains repository-local, documentation-only skills for this dec
 
 - margo-deck-authoring: use for creating, editing, reviewing, building, or packaging this deck.
 - margo-theme-authoring: use only when creating, modifying, installing, importing, or reviewing a deck theme.
+- margo-github-pages: use when configuring or reviewing GitHub Pages deployment for this deck.
 
 Both skills link to the current deck conventions and command reference. Start with AGENTS.md for rules that always apply.
 `
@@ -131,13 +181,28 @@ Both skills link to the current deck conventions and command reference. Start wi
 func scaffoldDeckAuthoringSkill() string {
 	return `---
 name: margo-deck-authoring
-description: Create, edit, review, build, or package a Margo deck. Use for slide content, front matter, assets, notes, archetypes, deck outputs, and portable deck archives. Do not use for theme implementation work; use margo-theme-authoring instead.
+description: Create, edit, review, build, upgrade, or package a Margo deck. Use for slide content, front matter, assets, notes, archetypes, deck outputs, safe scaffold upgrades, and portable deck archives. Do not use for theme implementation work or GitHub Pages setup.
 ---
 
 1. Read AGENTS.md and references/conventions.md before changing the deck.
 2. Read references/commands.md before running a Margo command.
 3. Keep source changes in deck-owned files. Do not edit dist/ output.
 4. Use the smallest relevant build or test to verify the change. Build the deck when author-facing output changes.
+5. Before upgrading an existing project, run margo upgrade --plan. Apply only with margo upgrade --apply after reviewing additions, updates, and preserved custom files.
+`
+}
+
+func scaffoldGitHubPagesSkill() string {
+	return `---
+name: margo-github-pages
+description: Configure or review GitHub Pages deployment for a Margo deck. Use when the task concerns the generated Pages workflow, release-gated publishing, manual dispatch, or the published deck artifact. Do not use for normal deck content or theme work.
+---
+
+1. Read AGENTS.md before changing deployment files.
+2. Confirm the deck is in a Git repository and identify the Margo release version already verified for the deck.
+3. Generate the workflow with margo deploy github-pages --margo-version <version>. Do not replace an existing workflow unless the task explicitly authorizes it.
+4. The generated workflow deploys dist/html on v* tags and manual dispatch. It does not publish directly from the local machine or configure repository settings.
+5. After generation, inspect the workflow and build the deck locally. Tell the user to commit the workflow and set the repository Pages source to GitHub Actions.
 `
 }
 
@@ -210,6 +275,13 @@ margo build --include-drafts
 margo serve
 margo serve --port 1414
 margo clean
+
+# Safely refresh Margo-managed agent guidance
+margo upgrade --plan
+margo upgrade --apply
+
+# Configure GitHub Pages (requires a Git repository and a released Margo version)
+margo deploy github-pages --margo-version v0.3.0
 
 # Add deck content
 margo new slide roadmap --archetype agenda

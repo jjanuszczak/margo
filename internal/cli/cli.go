@@ -16,6 +16,7 @@ import (
 	"github.com/jjanuszczak/margo/internal/config"
 	"github.com/jjanuszczak/margo/internal/content"
 	"github.com/jjanuszczak/margo/internal/deck"
+	"github.com/jjanuszczak/margo/internal/deploy"
 	"github.com/jjanuszczak/margo/internal/diagnostics"
 	"github.com/jjanuszczak/margo/internal/manifest"
 	"github.com/jjanuszczak/margo/internal/output/html"
@@ -29,6 +30,7 @@ import (
 	"github.com/jjanuszczak/margo/internal/serve"
 	"github.com/jjanuszczak/margo/internal/theme"
 	"github.com/jjanuszczak/margo/internal/themearchive"
+	"github.com/jjanuszczak/margo/internal/upgrade"
 	"github.com/jjanuszczak/margo/internal/version"
 )
 
@@ -91,12 +93,103 @@ func dispatch(args []string, stdout io.Writer, stderr io.Writer) error {
 		return runInit(stdout)
 	case "clean":
 		return runClean(stdout)
+	case "upgrade":
+		return runUpgrade(args[1:], stdout)
+	case "deploy":
+		return runDeploy(args[1:], stdout)
 	default:
 		if strings.HasSuffix(strings.ToLower(args[0]), projectarchive.Extension) {
 			return runArchiveOpen(args, stdout)
 		}
 		return fmt.Errorf("unknown command %q", args[0])
 	}
+}
+
+func runUpgrade(args []string, stdout io.Writer) error {
+	apply := false
+	for _, arg := range args {
+		switch arg {
+		case "--plan", "--dry-run":
+		case "--apply":
+			apply = true
+		default:
+			return fmt.Errorf("unknown upgrade option %q", arg)
+		}
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	root, err := project.Discover(wd)
+	if err != nil {
+		return fmt.Errorf("upgrade requires a Margo project root: %w", err)
+	}
+	plan, err := upgrade.BuildPlan(root.Dir)
+	if err != nil {
+		return fmt.Errorf("plan project upgrade: %w", err)
+	}
+	fmt.Fprint(stdout, upgrade.Format(plan))
+	if !apply {
+		return nil
+	}
+	backup, err := upgrade.Apply(root.Dir, plan)
+	if err != nil {
+		return fmt.Errorf("apply project upgrade: %w", err)
+	}
+	if backup != "" {
+		fmt.Fprintf(stdout, "upgrade applied; backups at %s\n", backup)
+	} else {
+		fmt.Fprintln(stdout, "upgrade applied; no files needed changes")
+	}
+	return nil
+}
+
+func runDeploy(args []string, stdout io.Writer) error {
+	if len(args) == 0 || args[0] != "github-pages" {
+		return errors.New("usage: margo deploy github-pages [--workflow-name <name>] [--margo-version <version>] [--replace]")
+	}
+	options := deploy.PagesOptions{}
+	for i := 1; i < len(args); i++ {
+		switch args[i] {
+		case "--workflow-name":
+			if i+1 >= len(args) {
+				return errors.New("deploy github-pages requires a value for --workflow-name")
+			}
+			options.WorkflowName = args[i+1]
+			i++
+		case "--margo-version":
+			if i+1 >= len(args) {
+				return errors.New("deploy github-pages requires a value for --margo-version")
+			}
+			options.MargoVersion = args[i+1]
+			i++
+		case "--replace":
+			options.Replace = true
+		default:
+			return fmt.Errorf("unknown deploy github-pages option %q", args[i])
+		}
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	root, err := project.Discover(wd)
+	if err != nil {
+		return fmt.Errorf("deploy github-pages requires a Margo project root: %w", err)
+	}
+	if options.MargoVersion == "" {
+		options.MargoVersion = version.Current()
+	}
+	if options.MargoVersion == "0.0.0-dev" {
+		return errors.New("deploy github-pages requires --margo-version when running an unversioned development build")
+	}
+	result, err := deploy.GitHubPages(root.Dir, options)
+	if err != nil {
+		return fmt.Errorf("configure GitHub Pages deployment: %w", err)
+	}
+	fmt.Fprintf(stdout, "created GitHub Pages workflow at %s\n", result.WorkflowPath)
+	fmt.Fprintln(stdout, "next: commit these files, push a v* tag or run the workflow manually, and set Pages source to GitHub Actions in repository settings")
+	return nil
 }
 
 func runPack(args []string, stdout io.Writer) error {
@@ -1079,6 +1172,8 @@ func writeHelp(w io.Writer) {
 	fmt.Fprintln(w, "  theme        Install or inspect vendored themes")
 	fmt.Fprintln(w, "  new          Create a deck, slide, or theme scaffold")
 	fmt.Fprintln(w, "  init         Initialize a deck in the current directory")
+	fmt.Fprintln(w, "  upgrade      Safely refresh Margo-managed project scaffolding")
+	fmt.Fprintln(w, "  deploy       Configure a deployment workflow for the current deck")
 	fmt.Fprintln(w, "  clean        Remove generated output and tool-managed build state")
 	fmt.Fprintln(w, "  version      Print version information")
 	fmt.Fprintln(w, "")
@@ -1093,6 +1188,8 @@ func writeHelp(w io.Writer) {
 	fmt.Fprintln(w, "  margo theme import <archive.margot> [--name <local-name>] [--activate]")
 	fmt.Fprintln(w, "  margo theme update <name>")
 	fmt.Fprintln(w, "  margo theme list")
+	fmt.Fprintln(w, "  margo upgrade --plan|--apply")
+	fmt.Fprintln(w, "  margo deploy github-pages [--workflow-name <name>] [--margo-version <version>] [--replace]")
 	fmt.Fprintln(w, "  margo theme pptx init|inspect|validate <name>")
 	fmt.Fprintln(w, "  margo new slide <name> [--archetype <name>]")
 	fmt.Fprintln(w, "  margo new note <name> --slide <slide-bundle>")

@@ -18,7 +18,7 @@ func TestCreateDeckIncludesAgentGuidanceAndSkills(t *testing.T) {
 		filepath.Join(".agents", "README.md"): {"margo-deck-authoring", "margo-theme-authoring"},
 		filepath.Join(".agents", "skills", "margo-deck-authoring", "SKILL.md"): {
 			"name: margo-deck-authoring",
-			"Create, edit, review, build, or package a Margo deck.",
+			"Create, edit, review, build, upgrade, or package a Margo deck.",
 		},
 		filepath.Join(".agents", "skills", "margo-deck-authoring", "references", "commands.md"): {
 			"margo new slide roadmap --archetype agenda",
@@ -32,6 +32,10 @@ func TestCreateDeckIncludesAgentGuidanceAndSkills(t *testing.T) {
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "theme-contract.md"): {
 			"Keep presentation-specific markup, class composition, and styling in theme templates and CSS.",
 		},
+		filepath.Join(".agents", "skills", "margo-github-pages", "SKILL.md"): {
+			"Configure or review GitHub Pages deployment for a Margo deck.",
+			"deploys dist/html on v* tags and manual dispatch",
+		},
 	}
 
 	for path, fragments := range expected {
@@ -44,6 +48,20 @@ func TestCreateDeckIncludesAgentGuidanceAndSkills(t *testing.T) {
 				t.Errorf("%s does not contain %q", path, fragment)
 			}
 		}
+	}
+}
+
+func TestCreateDeckWritesScaffoldManifest(t *testing.T) {
+	targetDir := filepath.Join(t.TempDir(), "manifest-deck")
+	if err := CreateDeck(DeckOptions{Name: "Manifest Deck", TargetDir: targetDir}); err != nil {
+		t.Fatalf("create deck: %v", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(targetDir, ManifestPath))
+	if err != nil {
+		t.Fatalf("read manifest: %v", err)
+	}
+	if !strings.Contains(string(raw), "version: \"1\"") || !strings.Contains(string(raw), "AGENTS.md") {
+		t.Fatalf("unexpected manifest: %s", raw)
 	}
 }
 

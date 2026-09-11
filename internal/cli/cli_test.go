@@ -50,6 +50,44 @@ func TestParseBuildLikeArgsRejectsInvalidServePort(t *testing.T) {
 	}
 }
 
+func TestRunDeployGitHubPagesCreatesWorkflow(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := scaffold.CreateDeck(scaffold.DeckOptions{Name: "deck", TargetDir: projectRoot}); err != nil {
+		t.Fatal(err)
+	}
+	if output, err := exec.Command("git", "init", projectRoot).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, output)
+	}
+	restoreWD := withWorkingDir(t, projectRoot)
+	defer restoreWD()
+	var stdout, stderr bytes.Buffer
+	if code := Run([]string{"deploy", "github-pages", "--margo-version", "v0.3.0"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("deploy failed: %s", stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, ".github", "workflows", "margo-pages.yml")); err != nil {
+		t.Fatalf("workflow missing: %v", err)
+	}
+}
+
+func TestRunUpgradePlanPreservesCustomGuidance(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := scaffold.CreateDeck(scaffold.DeckOptions{Name: "deck", TargetDir: projectRoot}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectRoot, "AGENTS.md"), []byte("custom guide"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	restoreWD := withWorkingDir(t, projectRoot)
+	defer restoreWD()
+	var stdout, stderr bytes.Buffer
+	if code := Run([]string{"upgrade", "--plan"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("upgrade plan failed: %s", stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "skip AGENTS.md") {
+		t.Fatalf("expected preserved guide report: %s", stdout.String())
+	}
+}
+
 func TestParseNewSlideArgs(t *testing.T) {
 	name, archetype, err := parseNewSlideArgs([]string{"roadmap", "--archetype", "title"})
 	if err != nil {

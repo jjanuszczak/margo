@@ -34,6 +34,8 @@ Working today:
 - `margo theme import <archive.margot>`
 - `margo theme list`
 - `margo clean`
+- `margo upgrade --plan|--apply`
+- `margo deploy github-pages`
 - `margo new slide <name>`
 - `margo new theme <name>`
 - `margo new theme <name> blank`
@@ -148,6 +150,26 @@ Update an installed vendored theme from its recorded Git source:
 ```bash
 ../bin/margo theme update brand
 ```
+
+Upgrade Margo-managed agent guidance in an older deck without replacing
+authored slides, configuration, assets, or themes:
+
+```bash
+margo upgrade --plan
+margo upgrade --apply
+```
+
+Configure GitHub Pages deployment for a deck already stored in a Git
+repository. The generated workflow deploys when a `v*` tag is pushed and can
+also run on demand from GitHub Actions:
+
+```bash
+margo deploy github-pages --margo-version v0.3.0
+```
+
+New deck scaffolds include repository-local agent guidance for deck authoring,
+theme work, and GitHub Pages deployment. Run `margo upgrade --plan` on an
+older deck to add the missing guidance safely.
 
 ## Project Shape
 
