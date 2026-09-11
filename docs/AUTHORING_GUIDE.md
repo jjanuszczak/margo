@@ -48,6 +48,7 @@ my-deck/
       margo-deck-authoring/
       margo-theme-authoring/
       margo-github-pages/
+      margo-error-triage/
   margo.yaml
   slides/
     01-title/index.md
@@ -76,11 +77,12 @@ New decks include `AGENTS.md` and repository-local skills under `.agents/skills/
 
 `AGENTS.md` contains the rules that always apply: keep slide content in Markdown bundles, keep presentational composition in themes, use `margo.yaml` as the configuration entry point, and do not edit generated `dist/` output.
 
-The scaffold includes three documentation-only skills:
+The scaffold includes four documentation-only skills:
 
 - `margo-deck-authoring` for slide content, front matter, assets, notes, builds, safe scaffold upgrades, and complete deck packaging.
 - `margo-theme-authoring` for layouts, partials, shortcodes, theme assets, theme installation, and `.margot` theme transfer.
 - `margo-github-pages` for GitHub Pages setup, generated workflow review, release-tag deployment, and manual dispatch.
+- `margo-error-triage` for reported build, preview, rendering, and export failures. It gathers evidence, identifies whether the deck, theme, Margo, or the local environment owns the problem, and requires approval before any change or external report.
 
 The skills contain no executable scripts or external-service dependencies. Customize the generated guidance for deck-specific conventions, but keep the command reference aligned with the installed Margo version.
 

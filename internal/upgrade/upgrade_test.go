@@ -91,6 +91,43 @@ func TestPlanPreservesCustomizedGuidance(t *testing.T) {
 	}
 }
 
+func TestPlanAddsMissingErrorTriageSkillToOlderDeck(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "deck")
+	if err := scaffold.CreateDeck(scaffold.DeckOptions{Name: "deck", TargetDir: root}); err != nil {
+		t.Fatal(err)
+	}
+
+	for path := range scaffold.AgentFiles() {
+		if strings.Contains(path, "margo-error-triage") {
+			if err := os.Remove(filepath.Join(root, path)); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	plan, err := BuildPlan(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for path := range scaffold.AgentFiles() {
+		if strings.Contains(path, "margo-error-triage") && !hasAction(plan, path, Add) {
+			t.Errorf("expected missing error-triage resource %q to be added: %#v", path, plan)
+		}
+	}
+
+	if _, err := Apply(root, plan); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, ".agents", "skills", "margo-error-triage", "SKILL.md")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "name: margo-error-triage") {
+		t.Fatalf("unexpected error-triage skill: %s", raw)
+	}
+}
+
 func hasAction(plan Plan, path string, action Action) bool {
 	for _, c := range plan.Changes {
 		if c.Path == path && c.Action == action {
