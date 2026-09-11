@@ -15,7 +15,7 @@ func TestCreateDeckIncludesAgentGuidanceAndSkills(t *testing.T) {
 
 	expected := map[string][]string{
 		"AGENTS.md":                           {"# Margo Deck Agent Guide", "Do not edit generated dist/ output."},
-		filepath.Join(".agents", "README.md"): {"margo-deck-authoring", "margo-theme-authoring"},
+		filepath.Join(".agents", "README.md"): {"margo-deck-authoring", "margo-theme-authoring", "margo-error-triage"},
 		filepath.Join(".agents", "skills", "margo-deck-authoring", "SKILL.md"): {
 			"name: margo-deck-authoring",
 			"Create, edit, review, build, upgrade, or package a Margo deck.",
@@ -35,6 +35,18 @@ func TestCreateDeckIncludesAgentGuidanceAndSkills(t *testing.T) {
 		filepath.Join(".agents", "skills", "margo-github-pages", "SKILL.md"): {
 			"Configure or review GitHub Pages deployment for a Margo deck.",
 			"deploys dist/html on v* tags and manual dispatch",
+		},
+		filepath.Join(".agents", "skills", "margo-error-triage", "SKILL.md"): {
+			"name: margo-error-triage",
+			"Do not edit source, configuration, themes, generated output, or external systems while diagnosing.",
+		},
+		filepath.Join(".agents", "skills", "margo-error-triage", "references", "triage.md"): {
+			"Deck-owned: Markdown, front matter, margo.yaml, assets, includes, or deck-local shortcodes.",
+			"Theme-owned: layouts, partials, theme shortcodes, CSS, theme assets, or print templates.",
+			"Margo-owned: reproducible CLI or engine behavior that persists in a clean or committed fixture.",
+		},
+		filepath.Join(".agents", "skills", "margo-error-triage", "references", "evidence.md"): {
+			"interactive HTML, print HTML, and PDF as separate checkpoints",
 		},
 	}
 

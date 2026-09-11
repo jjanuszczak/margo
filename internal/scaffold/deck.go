@@ -52,6 +52,11 @@ func CreateDeck(opts DeckOptions) error {
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "theme-contract.md"): scaffoldThemeContract(),
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "commands.md"):       scaffoldCommandReference(),
 		filepath.Join(".agents", "skills", "margo-github-pages", "SKILL.md"):                           scaffoldGitHubPagesSkill(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "SKILL.md"):                           scaffoldErrorTriageSkill(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "references", "triage.md"):            scaffoldErrorTriageWorkflow(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "references", "evidence.md"):          scaffoldErrorTriageEvidence(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "references", "reporting.md"):         scaffoldErrorTriageReporting(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "references", "known-boundaries.md"):  scaffoldErrorTriageBoundaries(),
 		filepath.Join("slides", "01-title", "index.md"):                                                slideTitle(opts.Name),
 		filepath.Join("slides", "02-why", "index.md"):                                                  slideWhy(),
 		filepath.Join("slides", "03-section", "index.md"):                                              slideSection(),
@@ -140,6 +145,11 @@ func AgentFiles() map[string]string {
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "theme-contract.md"): scaffoldThemeContract(),
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "commands.md"):       scaffoldCommandReference(),
 		filepath.Join(".agents", "skills", "margo-github-pages", "SKILL.md"):                           scaffoldGitHubPagesSkill(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "SKILL.md"):                           scaffoldErrorTriageSkill(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "references", "triage.md"):            scaffoldErrorTriageWorkflow(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "references", "evidence.md"):          scaffoldErrorTriageEvidence(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "references", "reporting.md"):         scaffoldErrorTriageReporting(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "references", "known-boundaries.md"):  scaffoldErrorTriageBoundaries(),
 	}
 }
 
@@ -159,7 +169,7 @@ This directory is a Margo deck project. Read this file before changing deck cont
 
 ## Agent resources
 
-Read .agents/README.md to choose the right repository-local skill. The deck-authoring skill covers normal slide work, upgrades, and packaging. The theme-authoring skill covers custom theme work. The GitHub Pages skill covers deployment setup.
+Read .agents/README.md to choose the right repository-local skill. The deck-authoring skill covers normal slide work, upgrades, and packaging. The theme-authoring skill covers custom theme work. The GitHub Pages skill covers deployment setup. The error-triage skill covers reported build, rendering, preview, and export failures.
 `
 }
 
@@ -173,8 +183,9 @@ This directory contains repository-local, documentation-only skills for this dec
 - margo-deck-authoring: use for creating, editing, reviewing, building, or packaging this deck.
 - margo-theme-authoring: use only when creating, modifying, installing, importing, or reviewing a deck theme.
 - margo-github-pages: use when configuring or reviewing GitHub Pages deployment for this deck.
+- margo-error-triage: use when diagnosing a Margo build, serve, rendering, or export failure before proposing a repair or report.
 
-Both skills link to the current deck conventions and command reference. Start with AGENTS.md for rules that always apply.
+All skills link to the current deck conventions and command reference. Start with AGENTS.md for rules that always apply.
 `
 }
 
@@ -203,6 +214,112 @@ description: Configure or review GitHub Pages deployment for a Margo deck. Use w
 3. Generate the workflow with margo deploy github-pages --margo-version <version>. Do not replace an existing workflow unless the task explicitly authorizes it.
 4. The generated workflow deploys dist/html on v* tags and manual dispatch. It does not publish directly from the local machine or configure repository settings.
 5. After generation, inspect the workflow and build the deck locally. Tell the user to commit the workflow and set the repository Pages source to GitHub Actions.
+`
+}
+
+func scaffoldErrorTriageSkill() string {
+	return `---
+name: margo-error-triage
+description: Diagnose a reported Margo build, serve, rendering, or export failure. Use before proposing a repair, workaround, or upstream report. Do not use for ordinary deck editing or proactive reviews.
+---
+
+Use this skill only when a user reports a failure or unexpected output. It is demand-driven; it does not watch processes or invoke an agent from Margo.
+
+1. Read AGENTS.md and identify the command, exact failure, Margo version, selected theme, requested output, and relevant source path.
+2. Read references/triage.md. Classify the problem before suggesting a change.
+3. Read references/evidence.md when collecting or reproducing evidence. For visual or export defects, compare interactive HTML, print HTML, and PDF when those outputs apply.
+4. Read references/reporting.md only after evidence indicates a Margo bug and the user wants upstream action.
+5. Read references/known-boundaries.md whenever ownership is unclear.
+
+Do not edit source, configuration, themes, generated output, or external systems while diagnosing. Ask for explicit approval before making a change, uploading logs, or creating or commenting on an external issue.
+`
+}
+
+func scaffoldErrorTriageWorkflow() string {
+	return `# Margo error-triage workflow
+
+Start with a concise incident report, not a speculative fix.
+
+## Establish the facts
+
+- Read the deck AGENTS.md and use the narrowest applicable Margo skill.
+- Record the Margo version, operating system and relevant runtime, exact command, exact stderr, selected theme, requested output, and relevant source path.
+- Reproduce with the smallest safe command. Do not edit dist/ or reset source files to make the error disappear.
+
+## Classify ownership
+
+- Deck-owned: Markdown, front matter, margo.yaml, assets, includes, or deck-local shortcodes.
+- Theme-owned: layouts, partials, theme shortcodes, CSS, theme assets, or print templates.
+- Margo-owned: reproducible CLI or engine behavior that persists in a clean or committed fixture.
+- Environment-owned: browser, Chromium, fonts, PDF tooling, filesystem permissions, or port availability, unless Margo configuration caused it.
+
+When evidence supports more than one owner, say so. Do not call an environment problem a Margo defect merely because Margo exposed it.
+
+## Return this shape
+
+## Finding
+
+State the most likely owner and problem in one sentence.
+
+## Evidence
+
+List only the commands, diagnostics, output comparison, and source locations needed to support the finding.
+
+## Recommended next action
+
+Name the smallest safe repair or the next diagnostic check. State whether it needs user approval.
+
+## Upstream status
+
+State whether existing Margo issues were searched and whether a matching report exists.
+`
+}
+
+func scaffoldErrorTriageEvidence() string {
+	return `# Evidence collection
+
+Collect the minimum evidence needed to explain the failure. Keep deck content local unless the user authorizes sharing it.
+
+## Build and preview failures
+
+- Capture the exact command and complete stderr.
+- Identify the source file and line from Margo diagnostics when present.
+- Check margo.yaml and the active theme only when they are relevant to the error.
+- Use a committed fixture or a minimal copy when reproducing a suspected Margo defect.
+
+## Rendering and export failures
+
+Treat interactive HTML, print HTML, and PDF as separate checkpoints. A defect in PDF can arise from print HTML, the browser or PDF runtime, fonts, or the theme's print rules. Compare the earliest incorrect artifact before changing source.
+
+Do not edit generated output to test a theory. Change source only after the user approves a repair.
+`
+}
+
+func scaffoldErrorTriageReporting() string {
+	return `# Reporting a Margo bug
+
+Read this only after the evidence indicates a Margo-owned problem and the user asks to report it.
+
+1. Search existing Margo GitHub issues using the diagnostic code, error text, command, and affected component.
+2. If an open issue matches, summarize its status and any verified workaround. Do not add a comment without approval.
+3. If no match exists, prepare a draft with the observed behavior, expected behavior, smallest reproduction, Margo version, environment, diagnostics, and ownership reasoning.
+4. Remove private deck content, credentials, local paths, and unnecessary logs before showing the draft to the user.
+5. Create an issue only after the user approves the final draft.
+
+A third-party runtime or theme defect belongs upstream only when evidence shows Margo itself caused it. Otherwise direct the user to the relevant owner without filing on their behalf.
+`
+}
+
+func scaffoldErrorTriageBoundaries() string {
+	return `# Ownership boundaries
+
+Keep the Margo engine generic. Content and theme problems should be repaired in the deck or theme that owns them, not by adding feature-specific behavior to Margo.
+
+- Do not modify generated dist/ output. Change the deck, theme, or Margo source and rebuild.
+- Do not reset a theme or overwrite authored files as a diagnostic shortcut.
+- Do not upload logs or deck material without explicit approval.
+- Do not create, comment on, or subscribe to an external issue without explicit approval.
+- If browser, font, or PDF tooling is implicated, report that uncertainty and give the next factual check instead of guessing at a source change.
 `
 }
 
