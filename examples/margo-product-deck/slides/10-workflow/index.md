@@ -1,5 +1,5 @@
 ---
-title: A small, deliberate CLI surface
+title: A small deliberate CLI
 order: 10
 layout: content
 section: Workflow
@@ -9,7 +9,7 @@ section: Workflow
 
 {{< columns >}}
 {{< column >}}
-### Create and author
+### Create and maintain
 
 ```sh
 # new deck
@@ -17,9 +17,12 @@ margo new roadmap
 
 # new slide
 margo new slide launch-plan
+
+# review managed guidance updates
+margo upgrade --plan
 ```
 
-Use archetypes when a slide needs a known **content** template.
+Use archetypes when a slide needs a known **content** template. Review a safe scaffold update before applying it.
 {{< /column >}}
 {{< column >}}
 ### Preview and share

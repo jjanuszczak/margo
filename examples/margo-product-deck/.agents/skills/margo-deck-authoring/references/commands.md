@@ -10,6 +10,13 @@ margo serve
 margo serve --port 1414
 margo clean
 
+# Safely refresh Margo-managed agent guidance
+margo upgrade --plan
+margo upgrade --apply
+
+# Configure GitHub Pages (requires a Git repository and a released Margo version)
+margo deploy github-pages --margo-version v0.3.0
+
 # Add deck content
 margo new slide roadmap --archetype agenda
 margo new note speaker-script --slide 02-why

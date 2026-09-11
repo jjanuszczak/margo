@@ -1,11 +1,11 @@
 ---
 title: Shortcodes are reusable and theme-defined
-order: 16
+order: 17
 layout: content
 section: Themes
 ---
 
-## Use shortcodes when Markdown alone cannot express the visual.
+## When Markdown alone cannot express the visual.
 
 {{< chart caption="Example monthly source activity and cumulative deck adoption" height="260px" width="100%" >}}
 type: bar
