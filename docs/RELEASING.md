@@ -26,7 +26,9 @@ git push origin v0.3.0
 ```
 
 The `Release` workflow tests the tag, builds all archives, verifies checksums,
-and publishes the GitHub Release with generated notes. Tags containing a
+and publishes the GitHub Release with generated notes. It also builds and
+publishes the Margo product deck to GitHub Pages. The separate `Deploy Margo
+product deck` workflow provides the on-demand equivalent. Tags containing a
 prerelease suffix, such as `v0.3.0-rc.1`, are supported.
 
 ## Homebrew

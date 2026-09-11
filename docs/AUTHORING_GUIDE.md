@@ -47,6 +47,7 @@ my-deck/
     skills/
       margo-deck-authoring/
       margo-theme-authoring/
+      margo-github-pages/
   margo.yaml
   slides/
     01-title/index.md
@@ -75,12 +76,49 @@ New decks include `AGENTS.md` and repository-local skills under `.agents/skills/
 
 `AGENTS.md` contains the rules that always apply: keep slide content in Markdown bundles, keep presentational composition in themes, use `margo.yaml` as the configuration entry point, and do not edit generated `dist/` output.
 
-The scaffold includes two documentation-only skills:
+The scaffold includes three documentation-only skills:
 
-- `margo-deck-authoring` for slide content, front matter, assets, notes, builds, and complete deck packaging.
+- `margo-deck-authoring` for slide content, front matter, assets, notes, builds, safe scaffold upgrades, and complete deck packaging.
 - `margo-theme-authoring` for layouts, partials, shortcodes, theme assets, theme installation, and `.margot` theme transfer.
+- `margo-github-pages` for GitHub Pages setup, generated workflow review, release-tag deployment, and manual dispatch.
 
 The skills contain no executable scripts or external-service dependencies. Customize the generated guidance for deck-specific conventions, but keep the command reference aligned with the installed Margo version.
+
+There is no separate upgrade skill. Upgrade is a guarded maintenance action inside normal deck ownership, so `margo-deck-authoring` owns it. GitHub Pages is a distinct external publishing workflow, so it has its own narrowly scoped skill.
+
+### Upgrade an older project
+
+Use the upgrade planner before applying a scaffold refresh:
+
+```bash
+margo upgrade --plan
+margo upgrade --apply
+```
+
+Margo updates only agent guidance that matches its recorded scaffold baseline
+and adds missing guidance files. It preserves customized guidance, slides,
+configuration, themes, assets, and generated output. Before replacing an
+untouched managed file, it saves the prior file under `.margo-backups/`.
+Projects created before scaffold manifests receive a conservative additive
+upgrade: existing files remain untouched, while missing agent resources and a
+new `.margo/scaffold-manifest.yaml` are added.
+
+### Publish to GitHub Pages
+
+From a Margo deck inside a Git repository, create a transparent GitHub Actions
+workflow with:
+
+```bash
+margo deploy github-pages --margo-version v0.3.0
+```
+
+This writes `.github/workflows/margo-pages.yml` and `.nojekyll`. The workflow
+publishes the HTML deck on pushes of `v*` tags and supports manual dispatch.
+It pins the Margo release specified by `--margo-version`; use the version your
+deck has been verified against. Commit the generated files, push them, then
+set the repository’s Pages source to **GitHub Actions** in GitHub settings.
+Use `--replace` only when you intentionally want to replace Margo’s generated
+workflow. Custom domains remain a GitHub Pages repository setting.
 
 ## 3. Understand `margo.yaml`
 

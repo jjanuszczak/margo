@@ -44,7 +44,7 @@ These are future considerations, not permanent exclusions.
 - PPTX export
 - Multi-deck repositories as a first-class workflow
 - Collaborative editing
-- Hosting or deployment workflows
+- Hosting providers other than GitHub Pages
 - Browser-based authoring
 - Plugin system beyond themes, shortcodes, partials, and includes
 - Alternate publishing modes such as article view or web narrative mode
@@ -92,6 +92,8 @@ When there is tension in v1 design, authoring simplicity for deck writers wins o
 - `margo build`
 - `margo serve`
 - `margo clean`
+- `margo upgrade`
+- `margo deploy github-pages`
 - `margo new slide`
 - `margo new theme`
 

@@ -44,6 +44,8 @@ If that loop is not solid, the rest is premature.
 8. Build/export pipeline
 9. Diagnostics and validation layer
 10. Scaffolding system for deck, slide, and theme creation
+11. Conservative project-scaffold upgrade planning and application
+12. GitHub Pages workflow generation for release-gated and on-demand deck publishing
 
 ### High-level data flow
 1. Load root config and resolve project paths.
@@ -80,6 +82,8 @@ Exact package names can change, but the codebase should likely separate into the
 - `internal/watch`
 - `internal/diagnostics`
 - `internal/scaffold`
+- `internal/upgrade`
+- `internal/deploy`
 - `internal/fsutil`
 
 This keeps the content model, renderer, and CLI concerns separate enough that the implementation stays testable.
