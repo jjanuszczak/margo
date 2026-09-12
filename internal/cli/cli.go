@@ -28,6 +28,7 @@ import (
 	"github.com/jjanuszczak/margo/internal/projectarchive"
 	"github.com/jjanuszczak/margo/internal/scaffold"
 	"github.com/jjanuszczak/margo/internal/serve"
+	"github.com/jjanuszczak/margo/internal/skillinstall"
 	"github.com/jjanuszczak/margo/internal/theme"
 	"github.com/jjanuszczak/margo/internal/themearchive"
 	"github.com/jjanuszczak/margo/internal/upgrade"
@@ -95,6 +96,8 @@ func dispatch(args []string, stdout io.Writer, stderr io.Writer) error {
 		return runClean(stdout)
 	case "upgrade":
 		return runUpgrade(args[1:], stdout)
+	case "skills":
+		return runSkills(args[1:], stdout)
 	case "deploy":
 		return runDeploy(args[1:], stdout)
 	default:
@@ -103,6 +106,68 @@ func dispatch(args []string, stdout io.Writer, stderr io.Writer) error {
 		}
 		return fmt.Errorf("unknown command %q", args[0])
 	}
+}
+
+func runSkills(args []string, stdout io.Writer) error {
+	if len(args) == 0 || args[0] != "install" || len(args) < 2 || args[1] != "brand-theme" {
+		return errors.New("usage: margo skills install brand-theme --scope user|project [--plan]")
+	}
+	scope := skillinstall.Scope("")
+	planOnly := false
+	for i := 2; i < len(args); i++ {
+		switch args[i] {
+		case "--scope":
+			if i+1 >= len(args) {
+				return errors.New("skills install requires a value for --scope")
+			}
+			scope = skillinstall.Scope(args[i+1])
+			i++
+		case "--plan", "--dry-run":
+			planOnly = true
+		default:
+			return fmt.Errorf("unknown skills install option %q", args[i])
+		}
+	}
+	if scope != skillinstall.User && scope != skillinstall.Project {
+		return errors.New("skills install requires --scope user or --scope project")
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	projectRoot := ""
+	if scope == skillinstall.Project {
+		root, err := project.Discover(wd)
+		if err != nil {
+			return fmt.Errorf("project skill install requires a Margo project root: %w", err)
+		}
+		projectRoot = root.Dir
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("find user home directory: %w", err)
+	}
+	target, err := skillinstall.Target(projectRoot, home, scope)
+	if err != nil {
+		return err
+	}
+	files, err := skillinstall.Files(scope)
+	if err != nil {
+		return err
+	}
+	plan, err := skillinstall.BuildPlan(target, files)
+	if err != nil {
+		return fmt.Errorf("plan skill install: %w", err)
+	}
+	fmt.Fprint(stdout, skillinstall.Format(plan))
+	if planOnly {
+		return nil
+	}
+	if err := skillinstall.Apply(plan, files); err != nil {
+		return fmt.Errorf("install skill: %w", err)
+	}
+	fmt.Fprintf(stdout, "installed brand theme skill at %s\n", target)
+	return nil
 }
 
 func runUpgrade(args []string, stdout io.Writer) error {
@@ -1173,6 +1238,7 @@ func writeHelp(w io.Writer) {
 	fmt.Fprintln(w, "  new          Create a deck, slide, or theme scaffold")
 	fmt.Fprintln(w, "  init         Initialize a deck in the current directory")
 	fmt.Fprintln(w, "  upgrade      Safely refresh Margo-managed project scaffolding")
+	fmt.Fprintln(w, "  skills       Install Margo-provided agent skills")
 	fmt.Fprintln(w, "  deploy       Configure a deployment workflow for the current deck")
 	fmt.Fprintln(w, "  clean        Remove generated output and tool-managed build state")
 	fmt.Fprintln(w, "  version      Print version information")
@@ -1189,6 +1255,7 @@ func writeHelp(w io.Writer) {
 	fmt.Fprintln(w, "  margo theme update <name>")
 	fmt.Fprintln(w, "  margo theme list")
 	fmt.Fprintln(w, "  margo upgrade --plan|--apply")
+	fmt.Fprintln(w, "  margo skills install brand-theme --scope user|project [--plan]")
 	fmt.Fprintln(w, "  margo deploy github-pages [--workflow-name <name>] [--margo-version <version>] [--replace]")
 	fmt.Fprintln(w, "  margo theme pptx init|inspect|validate <name>")
 	fmt.Fprintln(w, "  margo new slide <name> [--archetype <name>]")

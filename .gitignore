@@ -32,6 +32,7 @@ scratch-init/
 
 # Local dogfood decks not yet promoted to committed fixtures
 examples/arca-investor-memo/
+examples/get-brand-deck/
 
 # Skill evaluation reports
 skills/*/evals/reports/

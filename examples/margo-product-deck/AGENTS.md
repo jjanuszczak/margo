@@ -13,4 +13,4 @@ This directory is a Margo deck project. Read this file before changing deck cont
 
 ## Agent resources
 
-Read .agents/README.md to choose the right repository-local skill. The deck-authoring skill covers normal slide work, upgrades, and packaging. The theme-authoring skill covers custom theme work. The GitHub Pages skill covers deployment setup. The error-triage skill covers reported build, rendering, preview, and export failures.
+Read .agents/README.md to choose the right repository-local skill. The deck-authoring skill covers normal slide work, upgrades, and packaging. The theme-authoring skill covers custom theme work. The brand-theme skill covers evidence-backed brand-theme creation. The GitHub Pages skill covers deployment setup. The error-triage skill covers reported build, rendering, preview, and export failures.

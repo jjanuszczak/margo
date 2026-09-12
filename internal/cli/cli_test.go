@@ -88,6 +88,26 @@ func TestRunUpgradePlanPreservesCustomGuidance(t *testing.T) {
 	}
 }
 
+func TestRunSkillsInstallProjectPlan(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := scaffold.CreateDeck(scaffold.DeckOptions{Name: "deck", TargetDir: projectRoot}); err != nil {
+		t.Fatal(err)
+	}
+	reference := filepath.Join(projectRoot, ".agents", "skills", "margo-brand-theme", "references", "workflow.md")
+	if err := os.Remove(reference); err != nil {
+		t.Fatal(err)
+	}
+	restoreWD := withWorkingDir(t, projectRoot)
+	defer restoreWD()
+	var stdout, stderr bytes.Buffer
+	if code := Run([]string{"skills", "install", "brand-theme", "--scope", "project", "--plan"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("skills install plan failed: %s", stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "add references/workflow.md") {
+		t.Fatalf("expected missing file plan, got %q", stdout.String())
+	}
+}
+
 func TestParseNewSlideArgs(t *testing.T) {
 	name, archetype, err := parseNewSlideArgs([]string{"roadmap", "--archetype", "title"})
 	if err != nil {
@@ -434,6 +454,7 @@ func TestRunNewDeckThenBuildStarterDeck(t *testing.T) {
 		filepath.Join(".agents", "README.md"),
 		filepath.Join(".agents", "skills", "margo-deck-authoring", "SKILL.md"),
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "SKILL.md"),
+		filepath.Join(".agents", "skills", "margo-brand-theme", "SKILL.md"),
 	} {
 		if _, err := os.Stat(filepath.Join(projectRoot, rel)); err != nil {
 			t.Fatalf("expected new deck to include %s: %v", rel, err)
@@ -502,6 +523,7 @@ func TestRunInitIncludesAgentGuidanceAndSkills(t *testing.T) {
 		filepath.Join(".agents", "README.md"),
 		filepath.Join(".agents", "skills", "margo-deck-authoring", "SKILL.md"),
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "SKILL.md"),
+		filepath.Join(".agents", "skills", "margo-brand-theme", "SKILL.md"),
 	} {
 		if _, err := os.Stat(filepath.Join(projectRoot, rel)); err != nil {
 			t.Fatalf("expected initialized deck to include %s: %v", rel, err)

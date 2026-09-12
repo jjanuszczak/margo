@@ -93,9 +93,14 @@ When there is tension in v1 design, authoring simplicity for deck writers wins o
 - `margo serve`
 - `margo clean`
 - `margo upgrade`
+- `margo skills install brand-theme --scope user|project`
 - `margo deploy github-pages`
 - `margo new slide`
 - `margo new theme`
+
+Margo may ship portable project skills with a new deck. A skill installer may
+also place an explicitly requested workflow in the user's agent-skill directory.
+Project skills remain portable with the deck; user-global skills are opt-in.
 
 ### CLI behavior requirements
 - Interactive prompts are allowed generally in v1.

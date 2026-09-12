@@ -1,6 +1,6 @@
 ---
 title: Publish versioned decks to GitHub Pages
-order: 13
+order: 12
 layout: content
 section: Workflow
 ---

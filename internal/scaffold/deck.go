@@ -77,6 +77,9 @@ func CreateDeck(opts DeckOptions) error {
 		filepath.Join("assets", "company-logo.svg"):                                                    starterDeckLogoAsset(),
 		filepath.Join("assets", "shared-grid.svg"):                                                     starterDeckGridAsset(),
 	}
+	for path, content := range AgentFiles() {
+		files[path] = content
+	}
 	for path, content := range ThemeFiles("default", true) {
 		files[path] = content
 	}
@@ -150,6 +153,26 @@ func AgentFiles() map[string]string {
 		filepath.Join(".agents", "skills", "margo-error-triage", "references", "evidence.md"):          scaffoldErrorTriageEvidence(),
 		filepath.Join(".agents", "skills", "margo-error-triage", "references", "reporting.md"):         scaffoldErrorTriageReporting(),
 		filepath.Join(".agents", "skills", "margo-error-triage", "references", "known-boundaries.md"):  scaffoldErrorTriageBoundaries(),
+		filepath.Join(".agents", "skills", "margo-brand-theme", "SKILL.md"):                            scaffoldBrandThemeProjectSkill(),
+		filepath.Join(".agents", "skills", "margo-brand-theme", "references", "workflow.md"):           scaffoldBrandThemeWorkflow(),
+		filepath.Join(".agents", "skills", "margo-brand-theme", "references", "evidence.md"):           scaffoldBrandThemeEvidence(),
+		filepath.Join(".agents", "skills", "margo-brand-theme", "references", "component-contract.md"): scaffoldBrandThemeComponentContract(),
+		filepath.Join(".agents", "skills", "margo-brand-theme", "references", "acceptance.md"):         scaffoldBrandThemeAcceptance(),
+	}
+}
+
+// BrandThemeUserSkillFiles returns the complete portable skill installed in a
+// user's agent-skill directory. Its distinct name prevents Codex from showing
+// two identically named skills when a deck also carries its project skill.
+func BrandThemeUserSkillFiles() map[string]string {
+	skill := strings.Replace(scaffoldBrandThemeProjectSkill(), "name: margo-brand-theme", "name: brand-to-margo-theme", 1)
+	skill = strings.Replace(skill, "the local margo-theme-authoring skill", "the target deck's margo-theme-authoring skill when present", 1)
+	return map[string]string{
+		"SKILL.md":                         skill,
+		"references/workflow.md":           scaffoldBrandThemeWorkflow(),
+		"references/evidence.md":           scaffoldBrandThemeEvidence(),
+		"references/component-contract.md": scaffoldBrandThemeComponentContract(),
+		"references/acceptance.md":         scaffoldBrandThemeAcceptance(),
 	}
 }
 
@@ -169,7 +192,7 @@ This directory is a Margo deck project. Read this file before changing deck cont
 
 ## Agent resources
 
-Read .agents/README.md to choose the right repository-local skill. The deck-authoring skill covers normal slide work, upgrades, and packaging. The theme-authoring skill covers custom theme work. The GitHub Pages skill covers deployment setup. The error-triage skill covers reported build, rendering, preview, and export failures.
+Read .agents/README.md to choose the right repository-local skill. The deck-authoring skill covers normal slide work, upgrades, and packaging. The theme-authoring skill covers custom theme work. The brand-theme skill covers evidence-backed brand-theme creation. The GitHub Pages skill covers deployment setup. The error-triage skill covers reported build, rendering, preview, and export failures.
 `
 }
 
@@ -184,6 +207,7 @@ This directory contains repository-local, documentation-only skills for this dec
 - margo-theme-authoring: use only when creating, modifying, installing, importing, or reviewing a deck theme.
 - margo-github-pages: use when configuring or reviewing GitHub Pages deployment for this deck.
 - margo-error-triage: use when diagnosing a Margo build, serve, rendering, or export failure before proposing a repair or report.
+- margo-brand-theme: use when turning approved brand material into a Margo theme. It requires approval of a design direction before it creates theme files.
 
 All skills link to the current deck conventions and command reference. Start with AGENTS.md for rules that always apply.
 `
@@ -336,6 +360,112 @@ description: Create, modify, install, import, package, or review a Margo deck th
 `
 }
 
+func scaffoldBrandThemeProjectSkill() string {
+	return `---
+name: margo-brand-theme
+description: Turn approved brand guidelines, websites, or visual references into an editable Margo theme. Use only for brand-theme creation or refreshes. Do not create theme files until the user approves the proposed design direction.
+---
+
+1. Read AGENTS.md, references/workflow.md, references/evidence.md, references/component-contract.md, and the local margo-theme-authoring skill before acting.
+2. Classify design confidence, source authority, asset/packaging rights, and supported component specificity separately. Do not claim high fidelity without authoritative evidence.
+3. Audit inherited theme styles before copying a base theme: border radii, shadows, gradients, card/pill controls, and media treatment. Choose a blank theme or a reset layer, then record intentional exceptions.
+4. Produce a concise design-direction review with the brand component contract, proposed shortcode/API list, token sheet, layout storyboard, output-support matrix, assumptions, and licensing constraints. Stop for explicit approval.
+5. After approval, create an editable theme under themes/<brand>/ with layouts, partials, shortcodes, assets, theme.yaml, and a PPTX contract. Keep presentation decisions in templates and CSS. Do not add brand-specific behavior to the Margo engine.
+6. Verify each branded selector against rendered HTML or the owning template, scan final CSS for non-compliant inherited styles, and prove every custom component visually in HTML and print HTML/PDF.
+7. For each component, implement a PPTX-safe equivalent or record a visible fallback/unsupported decision before delivery. Classify PDF runtime failures by owner, preserve unaffected artifacts, and do not change output configuration without approval.
+8. Deliver the evidence manifest, brand component contract, design decision log, proof matrix, exact runtime limitations, and a .margot archive.
+`
+}
+
+func scaffoldBrandThemeWorkflow() string {
+	return `# Brand-to-theme workflow
+
+## Inputs
+
+Prefer official brand guides, logo kits, font licences, and design systems. A live website, existing deck, screenshots, product UI, and campaign imagery can supply directional evidence. Record source URLs, supplied files, access date, and usage restrictions. Do not package third-party assets unless the user supplied them or confirms use rights.
+
+## Website component inventory
+
+Before design review, inventory reusable website patterns, not only colors and type. Identify notices, feature media panels, content cards, CTAs, data containers, navigation-like controls, and media treatment. For each pattern, decide whether it becomes a layout, a shortcode, a CSS primitive, or is intentionally excluded. Include the proposed shortcode/API name, parameters, visual behavior, and HTML/PDF/PPTX support in the review.
+
+## Inherited-style audit
+
+Before using a base theme, inventory its border-radius, box-shadow, gradients, cards, pill controls, and image treatment. Use a blank theme when the brand diverges materially, otherwise add an explicit reset layer. Before delivery, scan final CSS and rendered output; every remaining rounded, elevated, or decorative style must be intentional and listed in the decision log.
+
+## Required review gate
+
+Before changing themes, present: the evidence confidence (high-fidelity reproduction or inferred brand expression), source authority, asset rights, audience and deck purpose, color and type tokens, hierarchy and density rules, image/data treatment, title/content/metric/image/section/closing storyboard, the component contract, proposed shortcode/API list, output-support matrix, inherited-style audit, and open assumptions. Wait for explicit approval.
+
+## Build and handoff
+
+Use the standard Margo layout vocabulary. Maintain one token system across CSS and PPTX theme metadata. Test a fixed proof deck with title, dense content, image, section, two-column comparison, metric, chart/table, quote, and closing slides. Every custom component needs a proof slide and visible HTML and print HTML/PDF verification. Verify each CSS selector against rendered markup or its owning template. Check interactive HTML first, print HTML/PDF second, and editable PPTX independently.
+
+If PDF generation fails, preserve the HTML and print artifacts, classify the fault as theme, engine, or environment, validate unaffected outputs, ask before changing output configuration, restore any approved temporary configuration, and record the exact failure. Ship brand-sources.yaml, BRAND_COMPONENT_CONTRACT.yaml, BRAND_DECISIONS.md, a component proof matrix, known limitations, and a .margot archive.
+`
+}
+
+func scaffoldBrandThemeEvidence() string {
+	return `# Evidence rules
+
+- Official guide, licensed font specification, or supplied logo kit: authoritative.
+- Current official website or recent company deck: strong directional evidence.
+- Screenshots, isolated images, or third-party pages: weak inspiration.
+
+For every source, record four independent fields: design confidence, source authority, asset/packaging rights, and the exact components it supports. A useful but unofficial guide can support design direction without being authoritative. Screenshots can support current component behavior without granting asset rights.
+
+Use the strongest evidence available. State which category supports every material design decision. If evidence is incomplete, label the result inferred brand expression. Never silently invent font licences, logo variants, or image rights.
+`
+}
+
+func scaffoldBrandThemeComponentContract() string {
+	return `# Brand component contract
+
+Create this machine-readable contract and obtain approval before theme implementation. Every rule needs a source, rendered selector or shortcode, proof slide, and output behavior.
+
+~~~yaml
+geometry:
+  container_radius: 0
+  image_radius: 0
+  decorative_shadows: prohibited
+  gradients: prohibited
+components:
+  cards:
+    treatment: square-bordered
+    selector_or_shortcode: content-card
+    proof_slide: 05-components
+    outputs: { html: required, pdf: required, pptx: fallback }
+  notices:
+    treatment: blue-information
+    selector_or_shortcode: notice
+    proof_slide: 05-components
+    outputs: { html: required, pdf: required, pptx: unsupported }
+  ctas:
+    treatment: coral-outline
+    selector_or_shortcode: cta
+    proof_slide: 05-components
+    outputs: { html: required, pdf: required, pptx: fallback }
+~~~
+
+Include media treatment, information states, CTA behavior, cards, feature panels, data containers, and any brand-specific controls. Validation must flag a rule with no selector/shortcode, no proof slide, or no declared HTML/PDF/PPTX behavior. CSS rules that target selectors absent from rendered markup are defects, not completed styling.
+`
+}
+
+func scaffoldBrandThemeAcceptance() string {
+	return `# Acceptance checklist
+
+- Design direction received explicit approval before theme files were created.
+- Brand component contract and proposed shortcode/API list received approval before implementation.
+- Inherited-style audit selected a blank theme or reset layer, and final CSS/rendered output confirms every remaining radius, shadow, gradient, card, or pill style is intentional.
+- Theme is editable and contains theme metadata, layouts, partials, shortcodes, and scoped assets.
+- Every branded selector was checked against rendered HTML or its owning template.
+- Every custom component has a proof slide and visible HTML and print HTML/PDF verification.
+- HTML, print HTML/PDF, and PPTX were each checked against the proof deck; each component declares required, fallback, or unsupported behavior per output.
+- HTML/PDF and PPTX compromises are recorded separately. PDF runtime failures preserve artifacts, identify theme/engine/environment ownership, and record the exact failure.
+- Source manifest records design confidence, source authority, asset rights, and supported component specificity. Brand component contract, design decisions, proof matrix, and known limitations are delivered with the theme.
+- No feature-specific brand logic was added to the Margo engine.
+`
+}
+
 func scaffoldDeckConventions() string {
 	return `# Deck conventions
 
@@ -396,6 +526,11 @@ margo clean
 # Safely refresh Margo-managed agent guidance
 margo upgrade --plan
 margo upgrade --apply
+
+# Install the brand-to-theme skill for this deck or for the current user
+margo skills install brand-theme --scope project
+margo skills install brand-theme --scope user
+margo skills install brand-theme --scope project --plan
 
 # Configure GitHub Pages (requires a Git repository and a released Margo version)
 margo deploy github-pages --margo-version v0.3.0

@@ -1,6 +1,6 @@
 ---
 title: Shortcodes for content that needs specialized rendering
-order: 16
+order: 19
 layout: content
 section: Themes
 ---

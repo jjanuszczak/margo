@@ -15,7 +15,17 @@ func TestCreateDeckIncludesAgentGuidanceAndSkills(t *testing.T) {
 
 	expected := map[string][]string{
 		"AGENTS.md":                           {"# Margo Deck Agent Guide", "Do not edit generated dist/ output."},
-		filepath.Join(".agents", "README.md"): {"margo-deck-authoring", "margo-theme-authoring", "margo-error-triage"},
+		filepath.Join(".agents", "README.md"): {"margo-deck-authoring", "margo-theme-authoring", "margo-error-triage", "margo-brand-theme"},
+		filepath.Join(".agents", "skills", "margo-brand-theme", "SKILL.md"): {
+			"name: margo-brand-theme",
+			"Do not create theme files until the user approves",
+			"Audit inherited theme styles",
+		},
+		filepath.Join(".agents", "skills", "margo-brand-theme", "references", "component-contract.md"): {
+			"Brand component contract",
+			"decorative_shadows: prohibited",
+			"CSS rules that target selectors absent from rendered markup are defects",
+		},
 		filepath.Join(".agents", "skills", "margo-deck-authoring", "SKILL.md"): {
 			"name: margo-deck-authoring",
 			"Create, edit, review, build, upgrade, or package a Margo deck.",
