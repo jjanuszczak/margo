@@ -4,6 +4,10 @@
   <img alt="Margo logo" src="./assets/margo-logo-glow.png" width="600">
 </picture>
 
+Markdown presentation engine | Inspired by [Hugo](https://gohugo.io/) | Developer *and* agent friendly
+
+This project's overview is a [slide deck](https://jjanuszczak.github.io/margo/) built with **margo**!
+
 # Margo
 
 Margo is a Go app for building slide decks from Markdown with a Hugo-like project model.
@@ -15,6 +19,7 @@ The current repo contains:
 - a working local deck scaffold/build/serve flow
 - one committed reference fixture deck in [examples/reference-deck](./examples/reference-deck)
 - one committed benchmark deck in [examples/benchmark-deck](./examples/benchmark-deck)
+- an installable Omarchy palette theme and preview deck in [examples/omarchy-theme-showcase](./examples/omarchy-theme-showcase)
 
 ## Current Status
 
