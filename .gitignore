@@ -6,6 +6,8 @@ coverage.out
 
 # Local Go cache used in this workspace
 .gocache/
+.gopath/
+.gomodcache/
 
 # Generated deck artifacts
 dist/
