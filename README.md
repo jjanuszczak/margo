@@ -1,12 +1,12 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./assets/margo-logo-dark-bg-flat.png">
-  <source media="(prefers-color-scheme: light)" srcset="./assets/margo-logo-light-bg-flat.png">
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/new-logo-dark-bg.png">
+  <source media="(prefers-color-scheme: light)" srcset="./assets/new-logo-light-bg.png">
   <img alt="Margo logo" src="./assets/margo-logo-glow.png" width="600">
 </picture>
 
 # Margo
 
-Margo is a Go prototype for building slide decks from Markdown with a Hugo-like project model.
+Margo is a Go app for building slide decks from Markdown with a Hugo-like project model.
 
 The current repo contains:
 - the CLI implementation
