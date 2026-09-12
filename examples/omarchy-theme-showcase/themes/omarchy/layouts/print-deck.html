@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ .Deck.Title }}</title>
+  <link rel="stylesheet" href="themes/{{ .Theme.Name }}/assets/theme.css">
+</head>
+<body data-palette="{{ themeOption .ThemeOptions "palette" "tokyo-night" }}" class="margo-print">
+  <main><div class="deck">{{ $root := . }}{{ range $slide := .Slides }}<section class="slide active"{{ if $slide.StyleAttr }} style="{{ $slide.StyleAttr }}"{{ end }}>{{ template "deck-logo" (dict "Root" $root "Slide" $slide) }}{{ $slide.Body }}{{ template "deck-footer" (dict "Root" $root "Slide" $slide) }}</section>{{ end }}</div></main>
+</body>
+</html>

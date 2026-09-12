@@ -1,0 +1,31 @@
+name: omarchy
+version: 0.1.0
+description: Omarchy-inspired Margo theme with the palettes from omarchy.org
+config_options:
+  - name: palette
+    type: string
+    description: Omarchy palette used by the deck
+    default: tokyo-night
+    values:
+      - catppuccin
+      - catppuccin-latte
+      - ethereal
+      - everforest
+      - flexoki-light
+      - gruvbox
+      - hackerman
+      - kanagawa
+      - last-horizon
+      - lumon
+      - lupine
+      - matte-black
+      - miasma
+      - nord
+      - osaka-jade
+      - retro-82
+      - ristretto
+      - rose-pine
+      - solitude
+      - tokyo-night
+      - vantablack
+      - white

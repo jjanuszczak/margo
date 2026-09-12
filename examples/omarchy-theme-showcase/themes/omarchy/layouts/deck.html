@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ .Deck.Title }}</title>
+  {{ .Snippets.Head }}
+  <link rel="stylesheet" href="themes/{{ .Theme.Name }}/assets/theme.css">
+</head>
+<body data-palette="{{ themeOption .ThemeOptions "palette" "tokyo-night" }}">
+  <main>
+    <div class="deck">
+      {{ $root := . }}
+      {{ range $i, $slide := .Slides }}
+      <section class="slide{{ if eq $i 0 }} active{{ end }}"{{ if $slide.StyleAttr }} style="{{ $slide.StyleAttr }}"{{ end }}>
+        {{ template "deck-logo" (dict "Root" $root "Slide" $slide) }}
+        {{ $slide.Body }}
+        {{ template "deck-footer" (dict "Root" $root "Slide" $slide) }}
+      </section>
+      {{ end }}
+      <div class="controls"><button class="slide-nav" type="button" data-slide-previous>Previous</button><span data-slide-count></span><button class="slide-nav" type="button" data-slide-next>Next</button></div>
+    </div>
+  </main>
+  <script>
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const previous = document.querySelector('[data-slide-previous]');
+    const next = document.querySelector('[data-slide-next]');
+    const count = document.querySelector('[data-slide-count]');
+    let index = 0;
+    const show = (i) => { index = Math.max(0, Math.min(i, slides.length - 1)); slides.forEach((slide, n) => slide.classList.toggle('active', n === index)); previous.disabled = index === 0; next.disabled = index === slides.length - 1; count.textContent = `${index + 1} / ${slides.length}`; };
+    previous.addEventListener('click', () => show(index - 1));
+    next.addEventListener('click', () => show(index + 1));
+    document.addEventListener('keydown', (event) => { if (event.key === 'ArrowLeft') show(index - 1); if (event.key === 'ArrowRight') show(index + 1); });
+    show(0);
+  </script>
+  {{ .Snippets.BodyEnd }}
+</body>
+</html>

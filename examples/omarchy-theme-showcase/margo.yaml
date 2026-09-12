@@ -1,0 +1,20 @@
+version: 1
+
+deck:
+  title: Omarchy for Margo
+  description: A Margo theme with the palettes from omarchy.org
+  logo: OMARCHY
+  footer: Press left/right to move
+
+theme:
+  name: omarchy
+  palette: catppuccin
+
+outputs:
+  html: true
+  pdf: false
+  png: true
+
+presentation:
+  navigation:
+    notes: false
