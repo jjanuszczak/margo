@@ -77,14 +77,27 @@ New decks include `AGENTS.md` and repository-local skills under `.agents/skills/
 
 `AGENTS.md` contains the rules that always apply: keep slide content in Markdown bundles, keep presentational composition in themes, use `margo.yaml` as the configuration entry point, and do not edit generated `dist/` output.
 
-The scaffold includes four documentation-only skills:
+The scaffold includes five documentation-only skills:
 
 - `margo-deck-authoring` for slide content, front matter, assets, notes, builds, safe scaffold upgrades, and complete deck packaging.
 - `margo-theme-authoring` for layouts, partials, shortcodes, theme assets, theme installation, and `.margot` theme transfer.
 - `margo-github-pages` for GitHub Pages setup, generated workflow review, release-tag deployment, and manual dispatch.
 - `margo-error-triage` for reported build, preview, rendering, and export failures. It gathers evidence, identifies whether the deck, theme, Margo, or the local environment owns the problem, and requires approval before any change or external report.
+- `margo-brand-theme` for evidence-backed brand-theme creation, with a mandatory design-direction approval gate before theme files change.
 
 The skills contain no executable scripts or external-service dependencies. Customize the generated guidance for deck-specific conventions, but keep the command reference aligned with the installed Margo version.
+
+### Brand-theme skill
+
+Every new deck includes `margo-brand-theme`, a project-local skill for turning approved brand guidelines, websites, and visual references into an editable Margo theme. It requires a machine-readable component contract and explicit review of the proposed visual direction before changing theme files. It audits inherited theme styling, verifies branded selectors against rendered markup, records evidence authority and asset rights separately, and validates HTML, PDF, and PPTX separately.
+
+Install the complete user-global version when you want the same workflow available across Margo decks:
+
+```bash
+margo skills install brand-theme --scope user
+```
+
+Use `--scope project` to install the deck-local version in an existing project, or `--plan` to inspect safe additions, updates, and preserved custom files. The user-global skill is named `brand-to-margo-theme`; the project-local skill is named `margo-brand-theme` so Codex can distinguish them.
 
 There is no separate upgrade skill. Upgrade is a guarded maintenance action inside normal deck ownership, so `margo-deck-authoring` owns it. GitHub Pages is a distinct external publishing workflow, so it has its own narrowly scoped skill.
 

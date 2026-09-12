@@ -1,6 +1,6 @@
 ---
 title: Shortcodes are reusable and theme-defined
-order: 17
+order: 20
 layout: content
 section: Themes
 ---

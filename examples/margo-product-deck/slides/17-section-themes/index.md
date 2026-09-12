@@ -1,6 +1,6 @@
 ---
 title: Theme System
-order: 14
+order: 17
 layout: section
 type: section
 section: Themes

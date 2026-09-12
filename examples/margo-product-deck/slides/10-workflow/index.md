@@ -20,6 +20,9 @@ margo new slide launch-plan
 
 # review managed guidance updates
 margo upgrade --plan
+
+# install the global brand-theme workflow
+margo skills install brand-theme --scope user
 ```
 
 Use archetypes when a slide needs a known **content** template. Review a safe scaffold update before applying it.
