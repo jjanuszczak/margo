@@ -413,17 +413,33 @@ main {
 }
 
 .shortcode-columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  margin: 28px 0;
+	display: flex;
+	align-items: stretch;
+	--shortcode-column-gap: 24px;
+	gap: var(--shortcode-column-gap);
+	flex-wrap: nowrap;
+	margin: 28px 0;
 }
 
 .shortcode-column {
-  padding: 18px 20px;
-  border-radius: 18px;
+	box-sizing: border-box;
+	container-type: inline-size;
+	flex: 1 1 0;
+	min-width: 0;
+	padding: 18px 20px;
+	font-size: 100%;
+	font-size: var(--shortcode-column-font-size, clamp(0.8rem, calc(0.75rem + 0.06cqw), 1.1rem));
+	border-radius: 18px;
   background: color-mix(in srgb, var(--card) 88%, var(--accent) 12%);
   border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.shortcode-column-sized {
+	flex: 0 1 var(--shortcode-column-width);
+}
+
+.shortcode-column :where(p, li, blockquote, figcaption, td, th) {
+	font-size: inherit;
 }
 
 .shortcode-column > :first-child {
@@ -1070,7 +1086,14 @@ main {
   .media-split-slide,
   .two-column-slide,
   .shortcode-columns {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    flex-wrap: nowrap;
+  }
+
+  .shortcode-column,
+  .shortcode-column-sized {
+    flex-basis: auto;
+    width: 100%;
   }
 }
 

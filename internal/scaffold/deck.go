@@ -92,6 +92,7 @@ func CreateDeck(opts DeckOptions) error {
 	dirs := []string{
 		"assets",
 		filepath.Join("layouts"),
+		filepath.Join("partials"),
 		filepath.Join("slides"),
 		filepath.Join("themes"),
 		filepath.Join("archetypes"),
@@ -186,7 +187,7 @@ This directory is a Margo deck project. Read this file before changing deck cont
 - margo.yaml is the deck configuration entry point. It selects the active theme and configured outputs.
 - Keep slide content in Markdown bundles under slides/<slide-id>/index.md. Put slide-local assets beside that file and shared assets under assets/.
 - Use an existing archetype before inventing a new slide shape. Archetypes create authoring files; layouts render slides.
-- Keep presentation markup, CSS, layouts, partials, and theme shortcodes under themes/<theme-name>/. Keep the Margo engine generic.
+- Keep slide and deck presentation markup, CSS, layouts, theme partials, and theme shortcodes under themes/<theme-name>/. Put deck-specific reusable template fragments in partials/ and deck-specific Markdown-facing components in shortcodes/. Keep the Margo engine generic.
 - Do not edit generated dist/ output. Change source files and run Margo again.
 - Treat imported themes as trusted project code. Templates, shortcodes, and JavaScript can run during local builds and previews.
 
@@ -221,10 +222,16 @@ description: Create, edit, review, build, upgrade, or package a Margo deck. Use 
 
 1. Read AGENTS.md and references/conventions.md before changing the deck.
 2. Read references/commands.md before running a Margo command.
-3. Keep source changes in deck-owned files. Do not edit dist/ output.
-4. Use the smallest relevant build or test to verify the change. Build the deck when author-facing output changes.
-5. Before upgrading an existing project, run margo upgrade --plan. Apply only with margo upgrade --apply after reviewing additions, updates, and preserved custom files.
-6. Use margo slide insert, move, and delete for sequence changes instead of manually renaming bundles or editing every order field.
+3. Write slide bodies in Markdown first. Use headings, paragraphs, lists, tables, blockquotes, code fences, images, and ordinary emphasis before reaching for HTML or a shortcode.
+4. Keep slide content semantic and readable. Do not paste a large HTML wrapper, theme classes, inline styles, or generated markup into slides just to achieve a visual composition.
+5. Use a shortcode when the content needs a reusable, named visual component or behavior that Markdown cannot express. The slide should contain the shortcode invocation and its content or parameters; the HTML structure belongs in the shortcode template. If the component is deck-specific, keep its CSS in the deck's assets/ directory or inline in the shortcode when it is genuinely small. Margo stages deck assets but does not currently bundle or auto-load CSS, so add an explicit stylesheet link from the active theme layout for shared CSS. Put CSS in the theme only when the component is part of the theme contract.
+6. Use a partial for reusable template fragments called by layouts or shortcodes. Do not call partials directly from Markdown. If a visual needs a partial, expose it through a small purpose-specific shortcode or use it from the layout.
+7. Use a layout for the larger slide shell or recurring composition, such as title, media-left, two-column, or metric. Choose an existing layout first. For a genuinely one-off slide, add a focused layout under the active deck-local theme and select it in front matter; do not modify the Margo engine or a shared installed theme for a single slide.
+8. Prefer a short, purpose-specific shortcode over a raw HTML composition. Raw HTML is a last resort for markup that cannot reasonably be represented by Markdown, an existing shortcode, a new shortcode, or a layout. Keep any exception minimal and document why it is needed.
+9. Keep source changes in deck-owned files. Do not edit dist/ output.
+10. Use the smallest relevant build or test to verify the change. Build the deck when author-facing output changes.
+11. Before upgrading an existing project, run margo upgrade --plan. Apply only with margo upgrade --apply after reviewing additions, updates, and preserved custom files.
+12. Use margo slide insert, move, and delete for sequence changes instead of manually renaming bundles or editing every order field.
 `
 }
 
@@ -356,8 +363,9 @@ description: Create, modify, install, import, package, or review a Margo deck th
 
 1. Read AGENTS.md and references/theme-contract.md before changing a theme.
 2. Read references/commands.md before running a Margo command.
-3. Keep rendering shape in templates and CSS. Do not add presentation-specific behavior to the Margo engine when template composition can express it.
-4. Validate the theme and build the deck after a theme change. Check interactive and print-oriented outputs when the change affects rendering.
+3. Put theme layouts in themes/<theme-name>/layouts/, theme partials in themes/<theme-name>/partials/, and theme shortcodes in themes/<theme-name>/shortcodes/. Keep deck-specific partials and shortcodes at the project root in partials/ and shortcodes/.
+4. Keep rendering shape in templates and CSS. Do not add presentation-specific behavior to the Margo engine when template composition can express it.
+5. Validate the theme and build the deck after a theme change. Check interactive and print-oriented outputs when the change affects rendering.
 `
 }
 
@@ -475,15 +483,45 @@ func scaffoldDeckConventions() string {
 - margo.yaml: deck metadata, active theme, and output configuration.
 - slides/<slide-id>/index.md: one Markdown slide bundle. Slide-local assets and named notes belong in the same bundle.
 - assets/: shared deck assets.
+- assets/css/ or assets/scss/: deck-specific styles for deck-local components. Margo stages files under assets/ into build output; it does not currently bundle or auto-load CSS, so include an external stylesheet deliberately from the active theme layout or use a small inline style in the shortcode.
 - archetypes/: authoring-time templates used by margo new slide.
-- shortcodes/: deck-local content components. A deck-local shortcode overrides a theme shortcode with the same name.
+- partials/: deck-local reusable template fragments called by layouts or shortcodes. A deck-local partial overrides a theme partial with the same name.
+- shortcodes/: deck-local Markdown-facing content components. A deck-local shortcode overrides a theme shortcode with the same name.
+- layouts/: reserved project-level layout location; normal slide and deck layouts belong under themes/<theme-name>/layouts/.
 - themes/<theme-name>/: deck-local themes. One theme is active at a time through margo.yaml.
 
 ## Slides
 
 Use YAML front matter for title, order, layout, section, draft, visibility, background, image_hints, and notes when needed. Use Markdown for the slide body. Draft slides appear in serve but normal builds omit them; visibility: hidden excludes slides from normal output.
 
-Choose an existing layout and archetype first. The default scaffold supports content, title, section, agenda, image, two-column, media-left, media-right, quote, metric, and closing layouts.
+Choose an existing layout and archetype first. The default scaffold supports content, title, section, agenda, image, two-column, media-left, media-right, quote, metric, and closing layouts. Slide and deck layouts belong under themes/<active-theme>/layouts/. If one slide needs a genuinely new composition, add a focused slide-<name>.html layout there and select it in that slide's front matter. Keep one-off layout work local to the deck; do not change the engine or a shared installed theme unless the pattern is meant to be reusable.
+
+## Markdown-first authoring
+
+Slide Markdown is the source of truth. Keep it understandable to a person reading the file without rendering the deck.
+
+Use this decision order:
+
+1. Markdown for ordinary slide content and structure.
+2. An existing shortcode for a supported visual component, such as figure, columns, callout, stat, chart, math, mermaid, or video.
+3. A new deck-local shortcode for a reusable component specific to this deck. Put its markup in shortcodes/<name>.html, and keep repeated fragments in partials/<name>.html when the shortcode or a layout can call them.
+4. A focused slide layout for a larger shell or one-off composition. Put it under themes/<active-theme>/layouts/ and select it with layout: in front matter. The root layouts/ directory is not the normal location for active slide layouts.
+5. Minimal raw HTML only when the previous options cannot express the requirement.
+
+For example, a text-and-image convergence slide should keep the list as Markdown and invoke a visual component, rather than embedding a grid of nested div elements in index.md:
+
+~~~md
+- **Institutional products have moved on-chain.** Major asset managers are extending regulated cash products with blockchain-enabled access.
+- **The benefits are operational.** Better records, lower reconciliation burden, fractional access, and programmable lifecycle operations.
+- **The legal perimeter is clearer.** Tokenized securities remain securities.
+- **The local market is modernizing.** PSE product initiatives include Global Philippine Depositary Receipts; StratBox is a controlled testing path.
+
+{{< figure src="assets/03-why-now-convergence.png" alt="Institutional supply, better rails, clearer rules, and local distribution need converging" class="wide-media" />}}
+~~~
+
+If the composition itself is reusable, create a named shortcode such as refresh-slide-grid with parameters or inner Markdown content. Keep refresh-slide-grid.html responsible for the wrapper markup and class names, and keep its visual rules in the active theme CSS. Do not invent a new wrapper in every slide.
+
+Shortcodes are the Markdown-facing API. Layouts and partials are template implementation details. A partial is not a reason to expose HTML in slide content: wrap it in a shortcode when authors need to invoke it from Markdown.
 
 ## Slide sequencing
 
@@ -502,7 +540,7 @@ Margo builds source files into dist/. Treat dist/ as generated output. For outpu
 func scaffoldThemeContract() string {
 	return `# Theme contract
 
-Themes live under themes/<theme-name>/. The usual entry points are theme.yaml, assets/, layouts/, partials/, and shortcodes/.
+Themes live under themes/<theme-name>/. The usual theme entry points are theme.yaml, assets/, layouts/, partials/, and shortcodes/. At the deck root, partials/ contains deck-local template fragments and shortcodes/ contains deck-local Markdown-facing components. The root layouts/ directory is reserved; put active slide and deck layouts in the selected theme's layouts/ directory.
 
 - Layouts own slide and deck markup.
 - Partials are reusable template fragments.
@@ -1053,7 +1091,7 @@ func defaultThemeColumnsShortcode() string {
 }
 
 func defaultThemeColumnShortcode() string {
-	return `<div class="shortcode-column">
+	return `{{ validateParams .Name .Params "width" "font-size" }}{{ $width := optionalParam .Params "width" }}{{ $fontSize := optionalParam .Params "font-size" }}{{ if $width }}{{ mustMatch .Name $width "width" "^(100|[1-9]?[0-9])%$" }}{{ end }}{{ if $fontSize }}{{ mustMatch .Name $fontSize "^(100|[1-9]?[0-9])%$" }}{{ end }}<div class="shortcode-column{{ if $width }} shortcode-column-sized{{ end }}"{{ if or $width $fontSize }} style="{{ if $width }}--shortcode-column-width: {{ $width }};{{ end }}{{ if $fontSize }}{{ if $width }} {{ end }}--shortcode-column-font-size: {{ $fontSize }};{{ end }}"{{ end }}>
   {{ .Inner }}
 </div>
 `
@@ -2029,17 +2067,33 @@ main {
 }
 
 .shortcode-columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  margin: 28px 0;
+	display: flex;
+	align-items: stretch;
+	--shortcode-column-gap: 24px;
+	gap: var(--shortcode-column-gap);
+	flex-wrap: nowrap;
+	margin: 28px 0;
 }
 
 .shortcode-column {
-  padding: 18px 20px;
-  border-radius: 18px;
+	box-sizing: border-box;
+	container-type: inline-size;
+	flex: 1 1 0;
+	min-width: 0;
+	padding: 18px 20px;
+	font-size: 100%;
+	font-size: var(--shortcode-column-font-size, clamp(0.8rem, calc(0.75rem + 0.06cqw), 1.1rem));
+	border-radius: 18px;
   background: color-mix(in srgb, var(--card) 88%, var(--accent) 12%);
   border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.shortcode-column-sized {
+	flex: 0 1 var(--shortcode-column-width);
+}
+
+.shortcode-column :where(p, li, blockquote, figcaption, td, th) {
+	font-size: inherit;
 }
 
 .shortcode-column > :first-child {
@@ -2686,7 +2740,14 @@ main {
   .media-split-slide,
   .two-column-slide,
   .shortcode-columns {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    flex-wrap: nowrap;
+  }
+
+  .shortcode-column,
+  .shortcode-column-sized {
+    flex-basis: auto;
+    width: 100%;
   }
 }
 
