@@ -43,6 +43,9 @@ Working today:
 - `margo skills install brand-theme --scope user|project [--plan]`
 - `margo deploy github-pages`
 - `margo new slide <name>`
+- `margo slide insert <name> (--before <slide> | --after <slide> | --position <n>)`
+- `margo slide move <slide> (--before <slide> | --after <slide> | --position <n>)`
+- `margo slide delete <slide>`
 - `margo new theme <name>`
 - `margo new theme <name> blank`
 - `margo theme update <name>`
@@ -60,7 +63,6 @@ Implemented in the content model:
 
 Not finished:
 - advanced PPTX theme recipes and full shortcode parity
-- manifest-driven sequencing beyond the current loader path
 - presenter mode
 - browser-refresh injection outside the scaffolded default theme
 
@@ -137,6 +139,27 @@ Create a slide:
 ```bash
 ../bin/margo new slide roadmap
 ```
+
+Insert a slide into an existing deck:
+
+```bash
+../bin/margo slide insert roadmap --after 02-why --archetype agenda
+```
+
+When every existing bundle uses a positional name such as `01-title`, Margo
+renumbers later bundles automatically. For decks with descriptive bundle names,
+it preserves those paths and only updates slide order. Add `--renumber` when
+you explicitly want to convert those bundle paths to positional names.
+
+Move or remove a slide with the same sequencing rules:
+
+```bash
+../bin/margo slide move 12-market-size --after 04-product
+../bin/margo slide delete 04-product
+```
+
+Deletion moves the bundle into the deck-local `.margo-trash/` directory so its
+content, notes, and assets can be recovered.
 
 Create a theme:
 

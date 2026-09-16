@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jjanuszczak/margo/internal/archetype"
 	"github.com/jjanuszczak/margo/internal/clean"
@@ -88,6 +89,8 @@ func dispatch(args []string, stdout io.Writer, stderr io.Writer) error {
 		return runUnpack(args[1:], stdout)
 	case "new":
 		return runNestedNew(args[1:], stdout, stderr)
+	case "slide":
+		return runSlideCommand(args[1:], stdout)
 	case "theme":
 		return runThemeCommand(args[1:], stdout)
 	case "init":
@@ -565,6 +568,620 @@ func runNewSlide(args []string, stdout io.Writer) error {
 	}
 
 	fmt.Fprintf(stdout, "created slide at %s\n", indexPath)
+	return nil
+}
+
+type insertSlideOptions struct {
+	Name      string
+	Archetype string
+	Before    string
+	After     string
+	Position  int
+	Renumber  bool
+}
+
+func runSlideCommand(args []string, stdout io.Writer) error {
+	if len(args) == 0 {
+		return errors.New("usage: margo slide <insert|move|delete> ...")
+	}
+	switch args[0] {
+	case "insert":
+		return runSlideInsert(args[1:], stdout)
+	case "move":
+		return runSlideMove(args[1:], stdout)
+	case "delete":
+		return runSlideDelete(args[1:], stdout)
+	default:
+		return fmt.Errorf("unknown slide command %q", args[0])
+	}
+}
+
+func runSlideInsert(args []string, stdout io.Writer) error {
+	opts, err := parseInsertSlideArgs(args)
+	if err != nil {
+		return err
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working directory: %w", err)
+	}
+	root, err := project.Discover(wd)
+	if err != nil {
+		return fmt.Errorf("slide insert requires a Margo project root: %w", err)
+	}
+
+	slides, err := content.DiscoverSlides(root.Dir)
+	if err != nil {
+		return fmt.Errorf("discover slides: %w", err)
+	}
+	manifestFile, hasManifest, err := manifest.Load(root.Dir)
+	if err != nil {
+		return err
+	}
+	if hasManifest {
+		slides, err = manifest.Apply(slides, manifestFile)
+		if err != nil {
+			return fmt.Errorf("apply manifest: %w", err)
+		}
+	}
+
+	insertAt, err := resolveInsertPosition(slides, opts)
+	if err != nil {
+		return err
+	}
+	if opts.Archetype == "" {
+		opts.Archetype, err = chooseSlideArchetype(root.Dir, os.Stdin, stdout)
+		if err != nil {
+			return err
+		}
+	}
+	indexPath, err := scaffold.CreateSlide(scaffold.SlideOptions{ProjectRoot: root.Dir, Name: opts.Name, Archetype: opts.Archetype})
+	if err != nil {
+		return fmt.Errorf("create slide scaffold: %w", err)
+	}
+	newID := filepath.Base(filepath.Dir(indexPath))
+	orderedIDs := make([]string, 0, len(slides)+1)
+	for i, slide := range slides {
+		if i == insertAt {
+			orderedIDs = append(orderedIDs, newID)
+		}
+		orderedIDs = append(orderedIDs, slide.ID)
+	}
+	if insertAt == len(slides) {
+		orderedIDs = append(orderedIDs, newID)
+	}
+
+	shouldRenumber := opts.Renumber || hasPositionalBundleNames(slides)
+	finalIDs := append([]string(nil), orderedIDs...)
+	if shouldRenumber {
+		finalIDs = renumberBundleIDs(orderedIDs)
+	}
+	if err := renameSlideBundles(root.Dir, orderedIDs, finalIDs); err != nil {
+		return fmt.Errorf("rename slide bundles: %w", err)
+	}
+	if err := rewriteSlideOrders(root.Dir, finalIDs); err != nil {
+		return fmt.Errorf("update slide order: %w", err)
+	}
+	if hasManifest {
+		if err := manifest.Save(root.Dir, manifest.File{Slides: finalIDs}); err != nil {
+			return fmt.Errorf("save manifest: %w", err)
+		}
+	}
+
+	fmt.Fprintf(stdout, "inserted %s at position %d\n", finalIDs[insertAt], insertAt+1)
+	for i := range orderedIDs {
+		if orderedIDs[i] == newID {
+			fmt.Fprintf(stdout, "created %s\n", finalIDs[i])
+		} else if orderedIDs[i] != finalIDs[i] {
+			fmt.Fprintf(stdout, "renamed %s -> %s\n", orderedIDs[i], finalIDs[i])
+		}
+	}
+	return nil
+}
+
+func parseInsertSlideArgs(args []string) (insertSlideOptions, error) {
+	var opts insertSlideOptions
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--archetype", "--before", "--after", "--position":
+			if i+1 >= len(args) {
+				return opts, fmt.Errorf("slide insert requires a value for %s", args[i])
+			}
+			value := strings.TrimSpace(args[i+1])
+			switch args[i] {
+			case "--archetype":
+				if opts.Archetype != "" {
+					return opts, errors.New("slide insert accepts --archetype once")
+				}
+				opts.Archetype = value
+			case "--before":
+				if opts.Before != "" {
+					return opts, errors.New("slide insert accepts --before once")
+				}
+				opts.Before = value
+			case "--after":
+				if opts.After != "" {
+					return opts, errors.New("slide insert accepts --after once")
+				}
+				opts.After = value
+			case "--position":
+				if opts.Position != 0 {
+					return opts, errors.New("slide insert accepts --position once")
+				}
+				position, err := strconv.Atoi(value)
+				if err != nil || position < 1 {
+					return opts, fmt.Errorf("slide insert position %q must be a positive integer", value)
+				}
+				opts.Position = position
+			}
+			i++
+		case "--renumber":
+			opts.Renumber = true
+		default:
+			if strings.HasPrefix(args[i], "--") {
+				return opts, fmt.Errorf("unknown slide insert option %q", args[i])
+			}
+			if opts.Name != "" {
+				return opts, errors.New("slide insert accepts exactly one slide name")
+			}
+			opts.Name = args[i]
+		}
+	}
+	if opts.Name == "" {
+		return opts, errors.New("slide insert requires a slide name")
+	}
+	selectors := 0
+	if opts.Before != "" {
+		selectors++
+	}
+	if opts.After != "" {
+		selectors++
+	}
+	if opts.Position != 0 {
+		selectors++
+	}
+	if selectors != 1 {
+		return opts, errors.New("slide insert requires exactly one of --before, --after, or --position")
+	}
+	return opts, nil
+}
+
+func resolveInsertPosition(slides []deck.Slide, opts insertSlideOptions) (int, error) {
+	if opts.Position != 0 {
+		if opts.Position > len(slides)+1 {
+			return 0, fmt.Errorf("slide insert position %d is outside this %d-slide deck", opts.Position, len(slides))
+		}
+		return opts.Position - 1, nil
+	}
+	for i, slide := range slides {
+		if slide.ID == opts.Before {
+			return i, nil
+		}
+		if slide.ID == opts.After {
+			return i + 1, nil
+		}
+	}
+	target := opts.Before
+	if target == "" {
+		target = opts.After
+	}
+	return 0, fmt.Errorf("slide insert target %q was not found", target)
+}
+
+type sequenceOptions struct {
+	Before   string
+	After    string
+	Position int
+	Renumber bool
+}
+
+func runSlideMove(args []string, stdout io.Writer) error {
+	slideID, opts, err := parseSlideMoveArgs(args)
+	if err != nil {
+		return err
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working directory: %w", err)
+	}
+	root, err := project.Discover(wd)
+	if err != nil {
+		return fmt.Errorf("slide move requires a Margo project root: %w", err)
+	}
+	slides, hasManifest, err := loadResolvedSlides(root.Dir)
+	if err != nil {
+		return err
+	}
+	if opts.Before == slideID || opts.After == slideID {
+		return fmt.Errorf("slide move cannot place %q relative to itself", slideID)
+	}
+	moveAt := -1
+	remaining := make([]deck.Slide, 0, len(slides)-1)
+	for i, slide := range slides {
+		if slide.ID == slideID {
+			moveAt = i
+			continue
+		}
+		remaining = append(remaining, slide)
+	}
+	if moveAt < 0 {
+		return fmt.Errorf("slide move target %q was not found", slideID)
+	}
+	insertAt, err := resolveSequencePosition(remaining, opts, "move")
+	if err != nil {
+		return err
+	}
+	orderedIDs := make([]string, 0, len(slides))
+	for i, slide := range remaining {
+		if i == insertAt {
+			orderedIDs = append(orderedIDs, slideID)
+		}
+		orderedIDs = append(orderedIDs, slide.ID)
+	}
+	if insertAt == len(remaining) {
+		orderedIDs = append(orderedIDs, slideID)
+	}
+	finalIDs := finalSlideIDs(orderedIDs, opts.Renumber || hasPositionalBundleNames(slides))
+	if err := applySlideSequence(root.Dir, orderedIDs, finalIDs, hasManifest); err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "moved %s to position %d\n", finalIDs[insertAt], insertAt+1)
+	writeSlideRenameMap(stdout, orderedIDs, finalIDs, "")
+	return nil
+}
+
+func runSlideDelete(args []string, stdout io.Writer) error {
+	slideID, renumber, err := parseSlideDeleteArgs(args)
+	if err != nil {
+		return err
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working directory: %w", err)
+	}
+	root, err := project.Discover(wd)
+	if err != nil {
+		return fmt.Errorf("slide delete requires a Margo project root: %w", err)
+	}
+	slides, hasManifest, err := loadResolvedSlides(root.Dir)
+	if err != nil {
+		return err
+	}
+	if len(slides) <= 1 {
+		return errors.New("slide delete cannot leave a deck without slides")
+	}
+	remaining := make([]deck.Slide, 0, len(slides)-1)
+	found := false
+	for _, slide := range slides {
+		if slide.ID == slideID {
+			found = true
+			continue
+		}
+		remaining = append(remaining, slide)
+	}
+	if !found {
+		return fmt.Errorf("slide delete target %q was not found", slideID)
+	}
+	trashPath, err := moveSlideToTrash(root.Dir, slideID)
+	if err != nil {
+		return fmt.Errorf("move slide to trash: %w", err)
+	}
+	orderedIDs := make([]string, len(remaining))
+	for i, slide := range remaining {
+		orderedIDs[i] = slide.ID
+	}
+	finalIDs := finalSlideIDs(orderedIDs, renumber || hasPositionalBundleNames(slides))
+	if err := applySlideSequence(root.Dir, orderedIDs, finalIDs, hasManifest); err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "deleted %s (moved to %s)\n", slideID, trashPath)
+	writeSlideRenameMap(stdout, orderedIDs, finalIDs, "")
+	return nil
+}
+
+func parseSlideMoveArgs(args []string) (string, sequenceOptions, error) {
+	var slideID string
+	opts, err := parseSequenceOptions(args, true)
+	if err != nil {
+		return "", opts, err
+	}
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--before" || args[i] == "--after" || args[i] == "--position" {
+			i++
+			continue
+		}
+		if !strings.HasPrefix(args[i], "--") && slideID == "" {
+			slideID = args[i]
+		}
+	}
+	if slideID == "" {
+		return "", opts, errors.New("slide move requires a slide bundle name")
+	}
+	return slideID, opts, nil
+}
+
+func parseSlideDeleteArgs(args []string) (string, bool, error) {
+	var slideID string
+	renumber := false
+	for _, arg := range args {
+		switch arg {
+		case "--renumber":
+			renumber = true
+		default:
+			if strings.HasPrefix(arg, "--") {
+				return "", false, fmt.Errorf("unknown slide delete option %q", arg)
+			}
+			if slideID != "" {
+				return "", false, errors.New("slide delete accepts exactly one slide bundle name")
+			}
+			slideID = arg
+		}
+	}
+	if slideID == "" {
+		return "", false, errors.New("slide delete requires a slide bundle name")
+	}
+	return slideID, renumber, nil
+}
+
+func parseSequenceOptions(args []string, requirePosition bool) (sequenceOptions, error) {
+	var opts sequenceOptions
+	var slideIDSeen bool
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--before", "--after", "--position":
+			if i+1 >= len(args) {
+				return opts, fmt.Errorf("slide move requires a value for %s", args[i])
+			}
+			value := strings.TrimSpace(args[i+1])
+			switch args[i] {
+			case "--before":
+				if opts.Before != "" {
+					return opts, errors.New("slide move accepts --before once")
+				}
+				opts.Before = value
+			case "--after":
+				if opts.After != "" {
+					return opts, errors.New("slide move accepts --after once")
+				}
+				opts.After = value
+			case "--position":
+				if opts.Position != 0 {
+					return opts, errors.New("slide move accepts --position once")
+				}
+				position, err := strconv.Atoi(value)
+				if err != nil || position < 1 {
+					return opts, fmt.Errorf("slide move position %q must be a positive integer", value)
+				}
+				opts.Position = position
+			}
+			i++
+		case "--renumber":
+			opts.Renumber = true
+		default:
+			if strings.HasPrefix(args[i], "--") {
+				return opts, fmt.Errorf("unknown slide move option %q", args[i])
+			}
+			if slideIDSeen {
+				return opts, errors.New("slide move accepts exactly one slide bundle name")
+			}
+			slideIDSeen = true
+		}
+	}
+	selectors := 0
+	if opts.Before != "" {
+		selectors++
+	}
+	if opts.After != "" {
+		selectors++
+	}
+	if opts.Position != 0 {
+		selectors++
+	}
+	if requirePosition && selectors != 1 {
+		return opts, errors.New("slide move requires exactly one of --before, --after, or --position")
+	}
+	return opts, nil
+}
+
+func loadResolvedSlides(projectRoot string) ([]deck.Slide, bool, error) {
+	slides, err := content.DiscoverSlides(projectRoot)
+	if err != nil {
+		return nil, false, fmt.Errorf("discover slides: %w", err)
+	}
+	manifestFile, hasManifest, err := manifest.Load(projectRoot)
+	if err != nil {
+		return nil, false, err
+	}
+	if hasManifest {
+		slides, err = manifest.Apply(slides, manifestFile)
+		if err != nil {
+			return nil, false, fmt.Errorf("apply manifest: %w", err)
+		}
+	}
+	return slides, hasManifest, nil
+}
+
+func resolveSequencePosition(slides []deck.Slide, opts sequenceOptions, command string) (int, error) {
+	if opts.Position != 0 {
+		if opts.Position > len(slides)+1 {
+			return 0, fmt.Errorf("slide %s position %d is outside this %d-slide deck", command, opts.Position, len(slides))
+		}
+		return opts.Position - 1, nil
+	}
+	for i, slide := range slides {
+		if slide.ID == opts.Before {
+			return i, nil
+		}
+		if slide.ID == opts.After {
+			return i + 1, nil
+		}
+	}
+	target := opts.Before
+	if target == "" {
+		target = opts.After
+	}
+	return 0, fmt.Errorf("slide %s target %q was not found", command, target)
+}
+
+func finalSlideIDs(orderedIDs []string, renumber bool) []string {
+	if renumber {
+		return renumberBundleIDs(orderedIDs)
+	}
+	return append([]string(nil), orderedIDs...)
+}
+
+func applySlideSequence(projectRoot string, orderedIDs, finalIDs []string, hasManifest bool) error {
+	if err := renameSlideBundles(projectRoot, orderedIDs, finalIDs); err != nil {
+		return fmt.Errorf("rename slide bundles: %w", err)
+	}
+	if err := rewriteSlideOrders(projectRoot, finalIDs); err != nil {
+		return fmt.Errorf("update slide order: %w", err)
+	}
+	if hasManifest {
+		if err := manifest.Save(projectRoot, manifest.File{Slides: finalIDs}); err != nil {
+			return fmt.Errorf("save manifest: %w", err)
+		}
+	}
+	return nil
+}
+
+func moveSlideToTrash(projectRoot, slideID string) (string, error) {
+	trashDir := filepath.Join(projectRoot, ".margo-trash", time.Now().UTC().Format("20060102T150405.000000000Z"))
+	if err := os.MkdirAll(trashDir, 0o755); err != nil {
+		return "", err
+	}
+	source := filepath.Join(projectRoot, "slides", slideID)
+	destination := filepath.Join(trashDir, slideID)
+	if err := os.Rename(source, destination); err != nil {
+		return "", err
+	}
+	return destination, nil
+}
+
+func writeSlideRenameMap(stdout io.Writer, orderedIDs, finalIDs []string, createdID string) {
+	for i := range orderedIDs {
+		if orderedIDs[i] == createdID {
+			fmt.Fprintf(stdout, "created %s\n", finalIDs[i])
+		} else if orderedIDs[i] != finalIDs[i] {
+			fmt.Fprintf(stdout, "renamed %s -> %s\n", orderedIDs[i], finalIDs[i])
+		}
+	}
+}
+
+var positionalBundleName = regexp.MustCompile(`^\d{2,}-.+$`)
+var positionalBundlePrefix = regexp.MustCompile(`^\d{2,}-(.+)$`)
+
+func hasPositionalBundleNames(slides []deck.Slide) bool {
+	return len(slides) > 0 && func() bool {
+		for _, slide := range slides {
+			if !positionalBundleName.MatchString(slide.ID) {
+				return false
+			}
+		}
+		return true
+	}()
+}
+
+func renumberBundleIDs(ids []string) []string {
+	width := len(strconv.Itoa(len(ids)))
+	if width < 2 {
+		width = 2
+	}
+	result := make([]string, len(ids))
+	for i, id := range ids {
+		slug := id
+		if matches := positionalBundlePrefix.FindStringSubmatch(id); len(matches) == 2 {
+			slug = matches[1]
+		}
+		result[i] = fmt.Sprintf("%0*d-%s", width, i+1, slug)
+	}
+	return result
+}
+
+func renameSlideBundles(projectRoot string, oldIDs, newIDs []string) error {
+	if len(oldIDs) != len(newIDs) {
+		return errors.New("slide rename plan is inconsistent")
+	}
+	seen := make(map[string]bool, len(newIDs))
+	for _, id := range newIDs {
+		if seen[id] {
+			return fmt.Errorf("slide rename plan creates duplicate bundle %q", id)
+		}
+		seen[id] = true
+	}
+	type rename struct{ oldPath, tempPath, newPath string }
+	var plan []rename
+	for i := range oldIDs {
+		if oldIDs[i] == newIDs[i] {
+			continue
+		}
+		oldPath := filepath.Join(projectRoot, "slides", oldIDs[i])
+		plan = append(plan, rename{oldPath, oldPath + fmt.Sprintf(".margo-renaming-%d", i), filepath.Join(projectRoot, "slides", newIDs[i])})
+	}
+	for _, item := range plan {
+		if _, err := os.Stat(item.tempPath); err == nil {
+			return fmt.Errorf("temporary rename path already exists: %s", item.tempPath)
+		}
+	}
+	for i, item := range plan {
+		if err := os.Rename(item.oldPath, item.tempPath); err != nil {
+			for j := i - 1; j >= 0; j-- {
+				_ = os.Rename(plan[j].tempPath, plan[j].oldPath)
+			}
+			return err
+		}
+	}
+	for i, item := range plan {
+		if err := os.Rename(item.tempPath, item.newPath); err != nil {
+			for j := i - 1; j >= 0; j-- {
+				_ = os.Rename(plan[j].newPath, plan[j].oldPath)
+			}
+			for j := i; j < len(plan); j++ {
+				_ = os.Rename(plan[j].tempPath, plan[j].oldPath)
+			}
+			return err
+		}
+	}
+	return nil
+}
+
+func rewriteSlideOrders(projectRoot string, ids []string) error {
+	for i, id := range ids {
+		path := filepath.Join(projectRoot, "slides", id, "index.md")
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		source := string(data)
+		if !strings.HasPrefix(source, "---\n") {
+			updated := fmt.Sprintf("---\norder: %d\n---\n%s", i+1, source)
+			if err := os.WriteFile(path, []byte(updated), 0o644); err != nil {
+				return err
+			}
+			continue
+		}
+		frontMatterEnd := strings.Index(source[4:], "\n---\n")
+		if frontMatterEnd < 0 {
+			return fmt.Errorf("%s has unclosed front matter", path)
+		}
+		frontMatterEnd += 4
+		frontMatter := source[:frontMatterEnd]
+		lines := strings.Split(frontMatter, "\n")
+		foundOrder := false
+		for lineIndex, line := range lines {
+			if strings.HasPrefix(line, "order:") {
+				lines[lineIndex] = fmt.Sprintf("order: %d", i+1)
+				foundOrder = true
+			}
+		}
+		if !foundOrder {
+			lines = append(lines, fmt.Sprintf("order: %d", i+1))
+		}
+		updated := strings.Join(lines, "\n") + source[frontMatterEnd:]
+		if err := os.WriteFile(path, []byte(updated), 0o644); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -1235,6 +1852,7 @@ func writeHelp(w io.Writer) {
 	fmt.Fprintln(w, "  pack         Package a deck project as a portable .margo archive")
 	fmt.Fprintln(w, "  unpack       Restore a portable .margo archive to a project folder")
 	fmt.Fprintln(w, "  theme        Install or inspect vendored themes")
+	fmt.Fprintln(w, "  slide        Insert, move, delete, and reorder slides in a deck")
 	fmt.Fprintln(w, "  new          Create a deck, slide, or theme scaffold")
 	fmt.Fprintln(w, "  init         Initialize a deck in the current directory")
 	fmt.Fprintln(w, "  upgrade      Safely refresh Margo-managed project scaffolding")
@@ -1259,6 +1877,9 @@ func writeHelp(w io.Writer) {
 	fmt.Fprintln(w, "  margo deploy github-pages [--workflow-name <name>] [--margo-version <version>] [--replace]")
 	fmt.Fprintln(w, "  margo theme pptx init|inspect|validate <name>")
 	fmt.Fprintln(w, "  margo new slide <name> [--archetype <name>]")
+	fmt.Fprintln(w, "  margo slide insert <name> (--before <slide> | --after <slide> | --position <n>) [--archetype <name>] [--renumber]")
+	fmt.Fprintln(w, "  margo slide move <slide> (--before <slide> | --after <slide> | --position <n>) [--renumber]")
+	fmt.Fprintln(w, "  margo slide delete <slide> [--renumber]")
 	fmt.Fprintln(w, "  margo new note <name> --slide <slide-bundle>")
 	fmt.Fprintln(w, "  margo new theme <name> [--blank]")
 }
