@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jjanuszczak/margo/internal/content"
 	"github.com/jjanuszczak/margo/internal/manifest"
 	"github.com/jjanuszczak/margo/internal/scaffold"
 )
@@ -256,6 +257,209 @@ func TestRunNewSlideAppendsToManifestWhenPresent(t *testing.T) {
 	got := strings.Join(file.Slides, ",")
 	if got != "01-title,02-why,roadmap" {
 		t.Fatalf("unexpected manifest order %q", got)
+	}
+}
+
+func TestRunSlideInsertRenumbersPositionalManifestDeck(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := scaffold.CreateDeck(scaffold.DeckOptions{Name: "test-deck", TargetDir: projectRoot}); err != nil {
+		t.Fatalf("create deck: %v", err)
+	}
+	slides, err := content.DiscoverSlides(projectRoot)
+	if err != nil {
+		t.Fatalf("discover slides: %v", err)
+	}
+	ids := make([]string, len(slides))
+	for i, slide := range slides {
+		ids[i] = slide.ID
+	}
+	if err := manifest.Save(projectRoot, manifest.File{Slides: ids}); err != nil {
+		t.Fatalf("save manifest: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(projectRoot, "slides", "02-why", "preserved.txt"), []byte("asset"), 0o644); err != nil {
+		t.Fatalf("write bundle asset: %v", err)
+	}
+
+	restoreWD := withWorkingDir(t, projectRoot)
+	defer restoreWD()
+	var stdout, stderr bytes.Buffer
+	if code := Run([]string{"slide", "insert", "roadmap", "--after", "01-title", "--archetype", "default"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("slide insert failed: %s", stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, "slides", "02-roadmap", "index.md")); err != nil {
+		t.Fatalf("inserted positional slide missing: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, "slides", "03-why", "preserved.txt")); err != nil {
+		t.Fatalf("renamed bundle did not preserve asset: %v", err)
+	}
+	file, ok, err := manifest.Load(projectRoot)
+	if err != nil || !ok {
+		t.Fatalf("load manifest: ok=%v err=%v", ok, err)
+	}
+	if got, want := strings.Join(file.Slides[:3], ","), "01-title,02-roadmap,03-why"; got != want {
+		t.Fatalf("unexpected manifest sequence %q, want %q", got, want)
+	}
+	inserted, err := os.ReadFile(filepath.Join(projectRoot, "slides", "02-roadmap", "index.md"))
+	if err != nil {
+		t.Fatalf("read inserted slide: %v", err)
+	}
+	if !strings.Contains(string(inserted), "order: 2") {
+		t.Fatalf("expected inserted slide order to be rewritten, got:\n%s", inserted)
+	}
+	if !strings.Contains(stdout.String(), "renamed 02-why -> 03-why") {
+		t.Fatalf("expected rename map, got:\n%s", stdout.String())
+	}
+	if _, err := content.DiscoverSlides(projectRoot); err != nil {
+		t.Fatalf("renumbered slides should remain valid content: %v", err)
+	}
+}
+
+func TestRunSlideInsertKeepsArbitraryBundleNamesUnlessRenumberRequested(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := scaffold.CreateDeck(scaffold.DeckOptions{Name: "test-deck", TargetDir: projectRoot}); err != nil {
+		t.Fatalf("create deck: %v", err)
+	}
+	if err := os.Rename(filepath.Join(projectRoot, "slides", "01-title"), filepath.Join(projectRoot, "slides", "title")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(filepath.Join(projectRoot, "slides", "02-why"), filepath.Join(projectRoot, "slides", "why")); err != nil {
+		t.Fatal(err)
+	}
+
+	restoreWD := withWorkingDir(t, projectRoot)
+	defer restoreWD()
+	var stdout, stderr bytes.Buffer
+	if code := Run([]string{"slide", "insert", "roadmap", "--after", "title", "--archetype", "default"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("slide insert failed: %s", stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, "slides", "roadmap", "index.md")); err != nil {
+		t.Fatalf("expected unnumbered inserted slide: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, "slides", "why", "index.md")); err != nil {
+		t.Fatalf("arbitrary bundle should not be renamed: %v", err)
+	}
+	why, err := os.ReadFile(filepath.Join(projectRoot, "slides", "why", "index.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(why), "order: 3") {
+		t.Fatalf("expected re-ordered front matter, got:\n%s", why)
+	}
+}
+
+func TestRewriteSlideOrdersAddsFrontMatterToPlainSlide(t *testing.T) {
+	projectRoot := t.TempDir()
+	indexPath := filepath.Join(projectRoot, "slides", "plain", "index.md")
+	if err := os.MkdirAll(filepath.Dir(indexPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(indexPath, []byte("# Plain slide\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := rewriteSlideOrders(projectRoot, []string{"plain"}); err != nil {
+		t.Fatalf("rewrite plain slide: %v", err)
+	}
+	updated, err := os.ReadFile(indexPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := string(updated), "---\norder: 1\n---\n# Plain slide\n"; got != want {
+		t.Fatalf("unexpected rewritten plain slide %q, want %q", got, want)
+	}
+}
+
+func TestRunSlideMoveRenumbersPositionalManifestDeck(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := scaffold.CreateDeck(scaffold.DeckOptions{Name: "test-deck", TargetDir: projectRoot}); err != nil {
+		t.Fatal(err)
+	}
+	slides, err := content.DiscoverSlides(projectRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := make([]string, len(slides))
+	for i, slide := range slides {
+		ids[i] = slide.ID
+	}
+	if err := manifest.Save(projectRoot, manifest.File{Slides: ids}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectRoot, "slides", "05-closing", "preserved.txt"), []byte("asset"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	restoreWD := withWorkingDir(t, projectRoot)
+	defer restoreWD()
+	var stdout, stderr bytes.Buffer
+	if code := Run([]string{"slide", "move", "05-closing", "--after", "01-title"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("slide move failed: %s", stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, "slides", "02-closing", "preserved.txt")); err != nil {
+		t.Fatalf("moved bundle did not preserve asset: %v", err)
+	}
+	file, ok, err := manifest.Load(projectRoot)
+	if err != nil || !ok {
+		t.Fatalf("load manifest: ok=%v err=%v", ok, err)
+	}
+	if got, want := strings.Join(file.Slides[:3], ","), "01-title,02-closing,03-why"; got != want {
+		t.Fatalf("unexpected manifest sequence %q, want %q", got, want)
+	}
+	if !strings.Contains(stdout.String(), "renamed 05-closing -> 02-closing") {
+		t.Fatalf("expected rename map, got:\n%s", stdout.String())
+	}
+	if _, err := content.DiscoverSlides(projectRoot); err != nil {
+		t.Fatalf("moved slides should remain valid content: %v", err)
+	}
+}
+
+func TestRunSlideDeleteMovesBundleToTrashAndRenumbers(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := scaffold.CreateDeck(scaffold.DeckOptions{Name: "test-deck", TargetDir: projectRoot}); err != nil {
+		t.Fatal(err)
+	}
+	slides, err := content.DiscoverSlides(projectRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := make([]string, len(slides))
+	for i, slide := range slides {
+		ids[i] = slide.ID
+	}
+	if err := manifest.Save(projectRoot, manifest.File{Slides: ids}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectRoot, "slides", "02-why", "preserved.txt"), []byte("asset"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	restoreWD := withWorkingDir(t, projectRoot)
+	defer restoreWD()
+	var stdout, stderr bytes.Buffer
+	if code := Run([]string{"slide", "delete", "02-why"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("slide delete failed: %s", stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, "slides", "02-section", "index.md")); err != nil {
+		t.Fatalf("later positional bundle was not renumbered: %v", err)
+	}
+	trashRuns, err := os.ReadDir(filepath.Join(projectRoot, ".margo-trash"))
+	if err != nil || len(trashRuns) != 1 {
+		t.Fatalf("expected one trash run, entries=%v err=%v", trashRuns, err)
+	}
+	if _, err := os.Stat(filepath.Join(projectRoot, ".margo-trash", trashRuns[0].Name(), "02-why", "preserved.txt")); err != nil {
+		t.Fatalf("deleted bundle was not recoverable from trash: %v", err)
+	}
+	file, ok, err := manifest.Load(projectRoot)
+	if err != nil || !ok {
+		t.Fatalf("load manifest: ok=%v err=%v", ok, err)
+	}
+	if got, want := strings.Join(file.Slides[:2], ","), "01-title,02-section"; got != want {
+		t.Fatalf("unexpected manifest sequence %q, want %q", got, want)
+	}
+	if !strings.Contains(stdout.String(), "deleted 02-why") || !strings.Contains(stdout.String(), "renamed 03-section -> 02-section") {
+		t.Fatalf("expected delete and rename output, got:\n%s", stdout.String())
+	}
+	if _, err := content.DiscoverSlides(projectRoot); err != nil {
+		t.Fatalf("remaining slides should remain valid content: %v", err)
 	}
 }
 

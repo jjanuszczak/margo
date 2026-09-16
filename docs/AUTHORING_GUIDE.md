@@ -320,6 +320,50 @@ Create a slide with a specific archetype:
 ../bin/margo new slide close --archetype closing
 ```
 
+### Insert and reorder slides
+
+Use `slide insert` to place a new slide without manually changing every later
+slide's order:
+
+```bash
+../bin/margo slide insert roadmap --after 02-why --archetype agenda
+../bin/margo slide insert strategy --before 03-roadmap
+../bin/margo slide insert close --position 8 --archetype closing
+```
+
+Choose exactly one placement selector: `--before <slide-bundle>`, `--after
+<slide-bundle>`, or the one-based `--position <n>`. Margo updates each slide's
+front matter `order`, and rewrites `manifest.yaml` when the deck uses one.
+
+If every existing slide bundle uses a positional name such as `01-title`, Margo
+also renames the affected bundles to keep those prefixes contiguous. It prints
+the resulting rename map and preserves all files inside each bundle, including
+notes and assets. For a deck with arbitrary descriptive bundle names, Margo
+keeps those paths stable and only updates sequence metadata. Pass `--renumber`
+to explicitly rename such a deck into positional bundle names.
+
+### Move or delete a slide
+
+Move a slide to a new position with the same placement selectors:
+
+```bash
+../bin/margo slide move 12-market-size --after 04-product
+../bin/margo slide move 12-market-size --before 01-title
+../bin/margo slide move 12-market-size --position 5
+```
+
+Delete a slide bundle with:
+
+```bash
+../bin/margo slide delete 04-product
+```
+
+Margo will not delete the last remaining slide. It moves deleted bundles,
+including all assets and notes, to `.margo-trash/<timestamp>/` at the deck
+root. The remaining slides are resequenced and a positional deck is renumbered
+automatically. Use `--renumber` when you also want to rename a descriptive-name
+deck.
+
 Each slide is a bundle:
 
 ```text

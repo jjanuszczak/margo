@@ -224,6 +224,7 @@ description: Create, edit, review, build, upgrade, or package a Margo deck. Use 
 3. Keep source changes in deck-owned files. Do not edit dist/ output.
 4. Use the smallest relevant build or test to verify the change. Build the deck when author-facing output changes.
 5. Before upgrading an existing project, run margo upgrade --plan. Apply only with margo upgrade --apply after reviewing additions, updates, and preserved custom files.
+6. Use margo slide insert, move, and delete for sequence changes instead of manually renaming bundles or editing every order field.
 `
 }
 
@@ -484,6 +485,10 @@ Use YAML front matter for title, order, layout, section, draft, visibility, back
 
 Choose an existing layout and archetype first. The default scaffold supports content, title, section, agenda, image, two-column, media-left, media-right, quote, metric, and closing layouts.
 
+## Slide sequencing
+
+Use margo slide insert, move, or delete for sequence changes. Those commands update slide order metadata and manifest.yaml when present. A deck whose bundle names are all positional, such as 01-title, is renumbered automatically; keep descriptive bundle names stable unless the user explicitly asks for --renumber. Deletion moves the bundle to .margo-trash/ so assets and notes remain recoverable.
+
 ## Assets and notes
 
 Reference a slide-local image by filename. Reference a shared asset with an assets/ path. Put named notes under slides/<slide-id>/notes/; notes stay out of print HTML and PDF output.
@@ -538,6 +543,11 @@ margo deploy github-pages --margo-version v0.3.0
 # Add deck content
 margo new slide roadmap --archetype agenda
 margo new note speaker-script --slide 02-why
+
+# Insert, move, or delete slides while keeping sequence metadata aligned
+margo slide insert roadmap --after 02-why --archetype agenda
+margo slide move 12-market-size --after 04-product
+margo slide delete 04-product
 
 # Create and manage themes
 margo new theme custom

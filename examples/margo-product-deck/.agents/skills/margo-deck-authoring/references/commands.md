@@ -21,6 +21,11 @@ margo deploy github-pages --margo-version v0.3.0
 margo new slide roadmap --archetype agenda
 margo new note speaker-script --slide 02-why
 
+# Insert, move, or delete slides while keeping sequence metadata aligned
+margo slide insert roadmap --after 02-why --archetype agenda
+margo slide move 12-market-size --after 04-product
+margo slide delete 04-product
+
 # Create and manage themes
 margo new theme custom
 margo new theme minimalist --blank

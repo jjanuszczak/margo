@@ -8,3 +8,4 @@ description: Create, edit, review, build, upgrade, or package a Margo deck. Use 
 3. Keep source changes in deck-owned files. Do not edit dist/ output.
 4. Use the smallest relevant build or test to verify the change. Build the deck when author-facing output changes.
 5. Before upgrading an existing project, run margo upgrade --plan. Apply only with margo upgrade --apply after reviewing additions, updates, and preserved custom files.
+6. Use margo slide insert, move, and delete for sequence changes instead of manually renaming bundles or editing every order field.

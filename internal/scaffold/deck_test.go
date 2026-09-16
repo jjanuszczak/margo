@@ -29,11 +29,18 @@ func TestCreateDeckIncludesAgentGuidanceAndSkills(t *testing.T) {
 		filepath.Join(".agents", "skills", "margo-deck-authoring", "SKILL.md"): {
 			"name: margo-deck-authoring",
 			"Create, edit, review, build, upgrade, or package a Margo deck.",
+			"margo slide insert, move, and delete",
 		},
 		filepath.Join(".agents", "skills", "margo-deck-authoring", "references", "commands.md"): {
 			"margo new slide roadmap --archetype agenda",
+			"margo slide move 12-market-size --after 04-product",
+			"margo slide delete 04-product",
 			"margo theme import ../brand.margot --name client-brand --activate",
 			"margo pack .",
+		},
+		filepath.Join(".agents", "skills", "margo-deck-authoring", "references", "conventions.md"): {
+			"## Slide sequencing",
+			"Deletion moves the bundle to .margo-trash/",
 		},
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "SKILL.md"): {
 			"name: margo-theme-authoring",

@@ -15,6 +15,10 @@ Use YAML front matter for title, order, layout, section, draft, visibility, back
 
 Choose an existing layout and archetype first. The default scaffold supports content, title, section, agenda, image, two-column, media-left, media-right, quote, metric, and closing layouts.
 
+## Slide sequencing
+
+Use margo slide insert, move, or delete for sequence changes. Those commands update slide order metadata and manifest.yaml when present. A deck whose bundle names are all positional, such as 01-title, is renumbered automatically; keep descriptive bundle names stable unless the user explicitly asks for --renumber. Deletion moves the bundle to .margo-trash/ so assets and notes remain recoverable.
+
 ## Assets and notes
 
 Reference a slide-local image by filename. Reference a shared asset with an assets/ path. Put named notes under slides/<slide-id>/notes/; notes stay out of print HTML and PDF output.
