@@ -17,7 +17,7 @@ func TestCreateDeckIncludesAgentGuidanceAndSkills(t *testing.T) {
 	}
 
 	expected := map[string][]string{
-		"AGENTS.md":                           {"# Margo Deck Agent Guide", "Do not edit generated dist/ output."},
+		"AGENTS.md":                           {"# Margo Deck Agent Guide", "Do not edit generated dist/ output.", "## Where custom components live", "shortcodes/<name>.html", "partials/<name>.html", "assets/css/<name>.css", "themes/<theme-name>/shortcodes/", "Deck-local shortcodes and partials override theme entries"},
 		filepath.Join(".agents", "README.md"): {"margo-deck-authoring", "margo-theme-authoring", "margo-error-triage", "margo-brand-theme"},
 		filepath.Join(".agents", "skills", "margo-brand-theme", "SKILL.md"): {
 			"name: margo-brand-theme",
