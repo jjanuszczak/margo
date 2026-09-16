@@ -1,5 +1,5 @@
-// Package upgrade safely refreshes Margo-managed project guidance. It never
-// rewrites slides, configuration, assets, or themes.
+// Package upgrade safely refreshes Margo-managed project scaffolding. It never
+// rewrites authored slides, configuration, assets, or customized theme files.
 package upgrade
 
 import (
@@ -47,6 +47,15 @@ func BuildPlan(root string) (Plan, error) {
 		return Plan{}, err
 	}
 	files := scaffold.AgentFiles()
+	if hasManifest {
+		themeFiles, err := scaffoldManagedThemeFiles(root, manifest)
+		if err != nil {
+			return Plan{}, err
+		}
+		for path, content := range themeFiles {
+			files[path] = content
+		}
+	}
 	paths := make([]string, 0, len(files))
 	for path := range files {
 		paths = append(paths, path)
@@ -107,6 +116,13 @@ func Apply(root string, plan Plan) (string, error) {
 		}
 	}
 	files := scaffold.AgentFiles()
+	themeFiles, err := scaffoldManagedThemeFiles(root, mustLoadManifest(root))
+	if err != nil {
+		return "", err
+	}
+	for path, content := range themeFiles {
+		files[path] = content
+	}
 	for _, change := range plan.Changes {
 		if change.Action != Add && change.Action != Update {
 			continue
@@ -127,6 +143,38 @@ func Apply(root string, plan Plan) (string, error) {
 		return "", err
 	}
 	return backup, nil
+}
+
+func scaffoldManagedThemeFiles(root string, manifest scaffold.Manifest) (map[string]string, error) {
+	files := map[string]string{}
+	themesRoot := filepath.Join(root, "themes")
+	entries, err := os.ReadDir(themesRoot)
+	if os.IsNotExist(err) {
+		return files, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read themes directory: %w", err)
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		for path, content := range scaffold.ThemeFiles(name, true) {
+			if _, tracked := manifest.Files[filepath.ToSlash(path)]; tracked {
+				files[path] = content
+			}
+		}
+	}
+	return files, nil
+}
+
+func mustLoadManifest(root string) scaffold.Manifest {
+	manifest, _, err := loadManifest(root)
+	if err != nil {
+		return scaffold.Manifest{}
+	}
+	return manifest
 }
 
 func containsManifest(plan Plan) bool {

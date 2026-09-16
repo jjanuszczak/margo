@@ -106,6 +106,54 @@ func TestRenderThemeShortcodeSetSupportsVideoAndNestedColumns(t *testing.T) {
 	}
 }
 
+func TestRenderColumnShortcodeSupportsRelativeWidthAndFontSize(t *testing.T) {
+	projectRoot := t.TempDir()
+	themeRoot := filepath.Join(projectRoot, "themes", "default")
+	if err := os.MkdirAll(filepath.Join(themeRoot, "shortcodes"), 0o755); err != nil {
+		t.Fatalf("create theme shortcode dir: %v", err)
+	}
+	column := `{{ validateParams .Name .Params "width" "font-size" }}{{ $width := optionalParam .Params "width" }}{{ $fontSize := optionalParam .Params "font-size" }}{{ if $width }}{{ mustMatch .Name $width "width" "^(100|[1-9]?[0-9])%$" }}{{ end }}{{ if $fontSize }}{{ mustMatch .Name $fontSize "font-size" "^(100|[1-9]?[0-9])%$" }}{{ end }}<div class="shortcode-column{{ if $width }} shortcode-column-sized{{ end }}"{{ if or $width $fontSize }} style="{{ if $width }}--shortcode-column-width: {{ $width }};{{ end }}{{ if $fontSize }}{{ if $width }} {{ end }}--shortcode-column-font-size: {{ $fontSize }};{{ end }}"{{ end }}>{{ .Inner }}</div>`
+	if err := os.WriteFile(filepath.Join(themeRoot, "shortcodes", "column.html"), []byte(column), 0o644); err != nil {
+		t.Fatalf("write column shortcode: %v", err)
+	}
+
+	rendered, err := Render(`{{< column width="70%" font-size="90%" >}}Content{{< /column >}}`, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+	})
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+	for _, needle := range []string{
+		`class="shortcode-column shortcode-column-sized"`,
+		`--shortcode-column-width: 70%;`,
+		`--shortcode-column-font-size: 90%;`,
+		`Content`,
+	} {
+		if !strings.Contains(rendered, needle) {
+			t.Fatalf("expected rendered column to contain %q, got %q", needle, rendered)
+		}
+	}
+}
+
+func TestRenderColumnShortcodeRejectsInvalidRelativeSizing(t *testing.T) {
+	projectRoot := t.TempDir()
+	themeRoot := filepath.Join(projectRoot, "themes", "default")
+	if err := os.MkdirAll(filepath.Join(themeRoot, "shortcodes"), 0o755); err != nil {
+		t.Fatalf("create theme shortcode dir: %v", err)
+	}
+	column := `{{ $width := optionalParam .Params "width" }}{{ if $width }}{{ mustMatch .Name $width "width" "^(100|[1-9]?[0-9])%$" }}{{ end }}<div>{{ .Inner }}</div>`
+	if err := os.WriteFile(filepath.Join(themeRoot, "shortcodes", "column.html"), []byte(column), 0o644); err != nil {
+		t.Fatalf("write column shortcode: %v", err)
+	}
+	if _, err := Render(`{{< column width="110%" >}}Content{{< /column >}}`, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+	}); err == nil || !strings.Contains(err.Error(), `width must match`) {
+		t.Fatalf("expected invalid width error, got %v", err)
+	}
+}
+
 func TestRenderFigureShortcodeValidatesParamsAndResolvesLocalAssets(t *testing.T) {
 	projectRoot := t.TempDir()
 	themeRoot := filepath.Join(projectRoot, "themes", "default")

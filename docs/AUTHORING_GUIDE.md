@@ -50,6 +50,9 @@ my-deck/
       margo-github-pages/
       margo-error-triage/
   margo.yaml
+  partials/                     # deck-local reusable template fragments
+  shortcodes/                   # deck-local Markdown-facing components
+  layouts/                      # reserved; active layouts live in the theme
   slides/
     01-title/index.md
     02-why/index.md
@@ -68,7 +71,6 @@ my-deck/
     metric/
     closing/
   assets/
-  shortcodes/
 ```
 
 ### Agent guidance and deck skills
@@ -110,10 +112,11 @@ margo upgrade --plan
 margo upgrade --apply
 ```
 
-Margo updates only agent guidance that matches its recorded scaffold baseline
-and adds missing guidance files. It preserves customized guidance, slides,
-configuration, themes, assets, and generated output. Before replacing an
-untouched managed file, it saves the prior file under `.margo-backups/`.
+Margo updates agent guidance and untouched theme scaffold files that match its
+recorded scaffold baseline, and adds missing guidance files. It preserves
+customized guidance, slides, configuration, customized theme files, assets, and
+generated output. Before replacing an untouched managed file, it saves the
+prior file under `.margo-backups/`.
 Projects created before scaffold manifests receive a conservative additive
 upgrade: existing files remain untouched, while missing agent resources and a
 new `.margo/scaffold-manifest.yaml` are added.
@@ -699,6 +702,31 @@ Current `figure` behavior:
 - `position` maps to CSS `object-position` for the image
 - `link` optionally wraps the image in an anchor
 
+### Columns
+
+The default-inspired theme includes responsive `columns` and `column` shortcodes. Set a relative width on a column when one side should be wider. Columns without an explicit width divide the remaining space equally.
+
+```md
+{{< columns >}}
+{{< column width="70%" font-size="90%" >}}
+Main content
+{{< /column >}}
+{{< column >}}
+Supporting content
+{{< /column >}}
+{{< /columns >}}
+```
+
+Current `column` behavior:
+- `width` accepts a percentage from `0%` to `100%`
+- unspecified columns share the remaining width
+- `font-size` accepts a percentage relative to the surrounding theme typography
+- column text, lists, captions, and table cells inherit the column font size
+- columns stack at narrow layouts and reset width constraints
+- existing columns without parameters retain the equal-width behavior
+
+Explicit widths should normally total no more than 100%. If they exceed the available space, flexbox shrinks the sized columns to prevent overflow. The default implementation is static and works in interactive HTML and print output. It does not provide a browser drag handle.
+
 ### Mermaid
 
 ```md
@@ -961,6 +989,40 @@ Current partial rules:
 - deck-local partials override theme partials by name
 - templates can render them with standard Go template calls such as `{{ template "deck-logo" . }}`
 
+Deck-local partials live at the project root:
+
+```text
+partials/<name>.html
+```
+
+They are reusable Go template fragments called by a layout or shortcode. They are not invoked directly from Markdown. Use a deck-local shortcode when authors need a Markdown-facing entry point.
+
+Theme partials live inside the active theme:
+
+```text
+themes/<theme-name>/partials/<name>.html
+```
+
+When both locations contain the same partial name, the deck-local partial in `partials/` overrides the theme partial. Keep the fragment's markup in the partial and its styling in the active theme CSS.
+
+The root `layouts/` directory is reserved in the current authoring model. Put active slide and deck layouts under `themes/<theme-name>/layouts/`.
+
+### Styles for deck-local shortcodes and partials
+
+If a shortcode or partial is specific to this deck, keep its styles with the deck rather than adding them to the theme:
+
+```text
+assets/css/<component>.css
+```
+
+Margo stages files under the deck-level `assets/` directory into build output, but the current version does not bundle or automatically discover CSS files. Add an explicit stylesheet link from the active theme's deck layout when the CSS is shared or substantial:
+
+```html
+<link rel="stylesheet" href="assets/css/stat-stack.css">
+```
+
+For a small component used only in one place, a scoped `<style>` block inside the shortcode template is acceptable. Keep theme CSS for components that are part of the theme's reusable visual contract. Do not put styles for a deck-local shortcode into `themes/<theme-name>/assets/theme.css` merely because its markup is rendered inside the theme.
+
 ## 14. How Archetypes, Shortcodes, Layouts, And Partials Fit Together
 
 These parts operate at different stages:
@@ -1002,7 +1064,39 @@ Current design principle:
 - keep parsing, validation, asset resolution, and model shaping in Go
 - keep markup shape, class composition, and template structure in layouts, partials, and shortcodes
 
-## 15. Common Authoring Patterns
+## 15. Markdown-first authoring rule
+
+Slide bodies are meant to be authored in Markdown. Keep them readable as content, not as generated HTML. Use this order when deciding where a feature belongs:
+
+1. Markdown for ordinary slide content and structure.
+2. An existing shortcode for a supported visual component.
+3. A new deck-local shortcode for a reusable, named component. Put the wrapper markup in `shortcodes/<name>.html`; use a partial when the shortcode or a layout needs to reuse a template fragment.
+4. A focused layout under `themes/<active-theme>/layouts/` for a larger slide shell or a genuinely one-off composition. Select it with `layout:` in front matter. This keeps one-off work local to the deck without changing the Margo engine or a shared installed theme.
+5. Minimal raw HTML only when the previous options cannot express the requirement.
+
+For example, keep a text-and-image slide like this:
+
+```md
+- **Institutional products have moved on-chain.** Major asset managers are extending regulated cash products with blockchain-enabled access.
+- **The benefits are operational.** Better records, lower reconciliation burden, fractional access, and programmable lifecycle operations.
+- **The legal perimeter is clearer.** Tokenized securities remain securities.
+- **The local market is modernizing.** PSE product initiatives include Global Philippine Depositary Receipts; StratBox is a controlled testing path.
+
+{{< figure src="assets/03-why-now-convergence.png" alt="Institutional supply, better rails, clearer rules, and local distribution need converging" class="wide-media" />}}
+```
+
+If the grid composition will recur, create a named shortcode such as `refresh-slide-grid` and let its template own the wrapper, classes, and calls to any partials. Keep the visual rules in the active theme CSS. Do not repeat a large nested `<div>` structure in each slide.
+
+The practical Hugo-inspired distinction is:
+
+- Markdown is the content layer.
+- Shortcodes are the Markdown-facing API for reusable special-purpose components.
+- Partials are reusable template fragments called by layouts or shortcodes, not directly from Markdown.
+- Layouts own the larger slide or deck shell and recurring composition.
+
+This separation lets a theme or shortcode evolve its markup and styling without a search-and-replace pass through every slide.
+
+## 16. Common Authoring Patterns
 
 ### Standard content slide
 

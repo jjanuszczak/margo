@@ -12,6 +12,9 @@ func TestCreateDeckIncludesAgentGuidanceAndSkills(t *testing.T) {
 	if err := CreateDeck(DeckOptions{Name: "Agent Ready Deck", TargetDir: targetDir}); err != nil {
 		t.Fatalf("create deck: %v", err)
 	}
+	if info, err := os.Stat(filepath.Join(targetDir, "partials")); err != nil || !info.IsDir() {
+		t.Fatalf("expected scaffolded deck partials directory: %v", err)
+	}
 
 	expected := map[string][]string{
 		"AGENTS.md":                           {"# Margo Deck Agent Guide", "Do not edit generated dist/ output."},
@@ -29,6 +32,10 @@ func TestCreateDeckIncludesAgentGuidanceAndSkills(t *testing.T) {
 		filepath.Join(".agents", "skills", "margo-deck-authoring", "SKILL.md"): {
 			"name: margo-deck-authoring",
 			"Create, edit, review, build, upgrade, or package a Margo deck.",
+			"Write slide bodies in Markdown first.",
+			"Use a partial for reusable template fragments called by layouts or shortcodes.",
+			"add a focused layout under the active deck-local theme",
+			"Raw HTML is a last resort",
 			"margo slide insert, move, and delete",
 		},
 		filepath.Join(".agents", "skills", "margo-deck-authoring", "references", "commands.md"): {
@@ -118,6 +125,12 @@ func TestThemeFilesIncludeRefinedThemeStructure(t *testing.T) {
 	if _, ok := files[filepath.Join("themes", "default", "shortcodes", "math.html")]; !ok {
 		t.Fatal("expected scaffolded theme to include math shortcode")
 	}
+	columnShortcode := files[filepath.Join("themes", "default", "shortcodes", "column.html")]
+	for _, needle := range []string{"\"width\"", "\"font-size\"", "shortcode-column-sized", "--shortcode-column-width", "--shortcode-column-font-size"} {
+		if !strings.Contains(columnShortcode, needle) {
+			t.Fatalf("expected column shortcode to support %q, got %q", needle, columnShortcode)
+		}
+	}
 	if _, ok := files[filepath.Join("themes", "default", "assets", "katex.min.css")]; !ok {
 		t.Fatal("expected scaffolded theme to include KaTeX css asset")
 	}
@@ -158,5 +171,10 @@ func TestThemeFilesIncludeRefinedThemeStructure(t *testing.T) {
 	styles := files[filepath.Join("themes", "default", "assets", "theme.css")]
 	if strings.Contains(styles, "Theme-local styles can be added here later.") {
 		t.Fatal("expected scaffolded theme.css to contain real default theme styles")
+	}
+	for _, needle := range []string{"display: flex", "--shortcode-column-gap", "flex: 1 1 0", "container-type: inline-size", "--shortcode-column-font-size", "cqw", "flex-direction: column"} {
+		if !strings.Contains(styles, needle) {
+			t.Fatalf("expected scaffolded theme styles to contain %q", needle)
+		}
 	}
 }

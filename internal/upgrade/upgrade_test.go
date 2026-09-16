@@ -66,6 +66,52 @@ func TestPlanAndApplyUpdatesUntouchedGuidance(t *testing.T) {
 	}
 }
 
+func TestPlanUpdatesUntouchedGeneratedThemeFiles(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "deck")
+	if err := scaffold.CreateDeck(scaffold.DeckOptions{Name: "deck", TargetDir: root}); err != nil {
+		t.Fatal(err)
+	}
+
+	path := filepath.Join(root, "themes", "default", "shortcodes", "column.html")
+	old := `<div class="shortcode-column">{{ .Inner }}</div>`
+	if err := os.WriteFile(path, []byte(old), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	manifestPath := filepath.Join(root, scaffold.ManifestPath)
+	raw, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest scaffold.Manifest
+	if err := yaml.Unmarshal(raw, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256([]byte(old))
+	manifest.Files["themes/default/shortcodes/column.html"] = fmt.Sprintf("%x", sum[:])
+	raw, err = yaml.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(manifestPath, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	plan, err := BuildPlan(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, change := range plan.Changes {
+		if change.Path == "themes/default/shortcodes/column.html" && change.Action == Update {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("expected untouched generated column shortcode to be planned for update")
+	}
+}
+
 func TestPlanPreservesCustomizedGuidance(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "deck")
 	if err := scaffold.CreateDeck(scaffold.DeckOptions{Name: "deck", TargetDir: root}); err != nil {
