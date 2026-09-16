@@ -191,6 +191,12 @@ This directory is a Margo deck project. Read this file before changing deck cont
 - Do not edit generated dist/ output. Change source files and run Margo again.
 - Treat imported themes as trusted project code. Templates, shortcodes, and JavaScript can run during local builds and previews.
 
+## Where custom components live
+
+- Deck-specific: shortcodes/<name>.html for Markdown-facing components, partials/<name>.html for reusable template fragments, and assets/css/<name>.css or assets/scss/<name>.scss for styles.
+- Theme-wide: themes/<theme-name>/shortcodes/, partials/, layouts/, and assets/.
+- Deck-local shortcodes and partials override theme entries with the same name. Keep deck-specific CSS out of the theme. Partials are called by layouts or shortcodes, not directly from Markdown.
+
 ## Agent resources
 
 Read .agents/README.md to choose the right repository-local skill. The deck-authoring skill covers normal slide work, upgrades, and packaging. The theme-authoring skill covers custom theme work. The brand-theme skill covers evidence-backed brand-theme creation. The GitHub Pages skill covers deployment setup. The error-triage skill covers reported build, rendering, preview, and export failures.
