@@ -165,3 +165,106 @@ func TestLoadRejectsInvalidPPTXColor(t *testing.T) {
 		t.Fatalf("expected invalid PPTX color error, got %v", err)
 	}
 }
+
+func TestLoadReadsLayoutAndResponsiveContracts(t *testing.T) {
+	projectRoot := t.TempDir()
+	themeDir := filepath.Join(projectRoot, ThemesDirName, "custom")
+	if err := os.MkdirAll(filepath.Join(themeDir, "layouts"), 0o755); err != nil {
+		t.Fatalf("mkdir theme dirs: %v", err)
+	}
+	metadata := `name: custom
+layout_contract:
+  slide:
+    width: 1920
+    height: 1080
+  layouts:
+    default:
+      reserved:
+        top: 72
+      regions:
+        - name: content
+          role: body
+          min_font_size: 18
+          min_scale: 0.8
+          overflow_policy: warn
+responsive:
+  profiles:
+    - name: desktop
+      width: 1920
+      height: 1080
+      mode: fixed_canvas
+    - name: mobile
+      width: 390
+      height: 844
+      mode: reflow
+      allow_vertical_scroll: true
+`
+	if err := os.WriteFile(filepath.Join(themeDir, ThemeMetadataFile), []byte(metadata), 0o644); err != nil {
+		t.Fatalf("write metadata: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(themeDir, "layouts", "default.html"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("write default layout: %v", err)
+	}
+
+	meta, err := Load(projectRoot, "custom")
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if meta.LayoutContract == nil || meta.LayoutContract.Slide.Width != 1920 {
+		t.Fatalf("expected layout contract, got %#v", meta.LayoutContract)
+	}
+	if meta.Responsive == nil || len(meta.Responsive.Profiles) != 2 || !meta.Responsive.Profiles[1].AllowVerticalScroll {
+		t.Fatalf("expected responsive profiles, got %#v", meta.Responsive)
+	}
+}
+
+func TestLoadRejectsInvalidResponsiveProfile(t *testing.T) {
+	projectRoot := t.TempDir()
+	themeDir := filepath.Join(projectRoot, ThemesDirName, "custom")
+	if err := os.MkdirAll(filepath.Join(themeDir, "layouts"), 0o755); err != nil {
+		t.Fatalf("mkdir theme dirs: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(themeDir, ThemeMetadataFile), []byte(`name: custom
+responsive:
+  profiles:
+    - name: mobile
+      width: 390
+      height: 844
+      mode: elastic
+`), 0o644); err != nil {
+		t.Fatalf("write metadata: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(themeDir, "layouts", "default.html"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("write default layout: %v", err)
+	}
+	if _, err := Load(projectRoot, "custom"); err == nil || !strings.Contains(err.Error(), `unsupported mode "elastic"`) {
+		t.Fatalf("expected invalid responsive mode error, got %v", err)
+	}
+}
+
+func TestLoadRejectsInvalidLayoutRegionPolicy(t *testing.T) {
+	projectRoot := t.TempDir()
+	themeDir := filepath.Join(projectRoot, ThemesDirName, "custom")
+	if err := os.MkdirAll(filepath.Join(themeDir, "layouts"), 0o755); err != nil {
+		t.Fatalf("mkdir theme dirs: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(themeDir, ThemeMetadataFile), []byte(`name: custom
+layout_contract:
+  slide:
+    width: 1920
+    height: 1080
+  layouts:
+    default:
+      regions:
+        - name: content
+          overflow_policy: teleport
+`), 0o644); err != nil {
+		t.Fatalf("write metadata: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(themeDir, "layouts", "default.html"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("write default layout: %v", err)
+	}
+	if _, err := Load(projectRoot, "custom"); err == nil || !strings.Contains(err.Error(), `unsupported overflow_policy "teleport"`) {
+		t.Fatalf("expected invalid overflow policy error, got %v", err)
+	}
+}

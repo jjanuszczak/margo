@@ -42,6 +42,42 @@ type commandError struct {
 	report  diagnostics.Report
 }
 
+func layoutAuditArtifacts(path, selector, label string, activeTheme theme.Metadata, print bool) []layoutaudit.Artifact {
+	profiles := activeTheme.ResponsiveProfiles()
+	if print {
+		profiles = []theme.ResponsiveProfile{printAuditProfile(profiles)}
+	}
+	artifacts := make([]layoutaudit.Artifact, 0, len(profiles))
+	for _, profile := range profiles {
+		artifacts = append(artifacts, layoutaudit.Artifact{
+			Path:                path,
+			Profile:             profile.Name + profileSuffix(profile, print),
+			SlideSelector:       selector,
+			SlideLabel:          label,
+			ViewportWidth:       profile.Width,
+			ViewportHeight:      profile.Height,
+			AllowVerticalScroll: profile.AllowVerticalScroll,
+		})
+	}
+	return artifacts
+}
+
+func profileSuffix(profile theme.ResponsiveProfile, print bool) string {
+	if print {
+		return " print"
+	}
+	return " interactive"
+}
+
+func printAuditProfile(profiles []theme.ResponsiveProfile) theme.ResponsiveProfile {
+	for _, profile := range profiles {
+		if strings.EqualFold(profile.Name, "desktop") {
+			return profile
+		}
+	}
+	return profiles[0]
+}
+
 func (e commandError) Error() string {
 	return e.message
 }
@@ -1716,14 +1752,13 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			if len(report.Items) > 0 {
 				diagnostics.WriteReport(stdout, report)
 			}
-			auditReport, err := layoutaudit.Run([]layoutaudit.Artifact{{
-				Path:           filepath.Join(root.Dir, html.OutputFile),
-				Profile:        "desktop interactive",
-				SlideSelector:  "main .slide, main .print-slide, main > .deck > section, main [data-slide-index]",
-				SlideLabel:     "interactive HTML",
-				ViewportWidth:  1920,
-				ViewportHeight: 1080,
-			}})
+			auditReport, err := layoutaudit.Run(layoutAuditArtifacts(
+				filepath.Join(root.Dir, html.OutputFile),
+				"main .slide, main .print-slide, main > .deck > section, main [data-slide-index]",
+				"interactive HTML",
+				activeTheme,
+				false,
+			))
 			if err != nil {
 				return fmt.Errorf("audit html layout: %w", err)
 			}
@@ -1739,14 +1774,13 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			if len(report.Items) > 0 {
 				diagnostics.WriteReport(stdout, report)
 			}
-			auditReport, err := layoutaudit.Run([]layoutaudit.Artifact{{
-				Path:           filepath.Join(root.Dir, printhtml.OutputFile),
-				Profile:        "desktop print",
-				SlideSelector:  "main .print-slide, main .slide, main > .deck > section, main [data-slide-index]",
-				SlideLabel:     "print HTML",
-				ViewportWidth:  1920,
-				ViewportHeight: 1080,
-			}})
+			auditReport, err := layoutaudit.Run(layoutAuditArtifacts(
+				filepath.Join(root.Dir, printhtml.OutputFile),
+				"main .print-slide, main .slide, main > .deck > section, main [data-slide-index]",
+				"print HTML",
+				activeTheme,
+				true,
+			))
 			if err != nil {
 				return fmt.Errorf("audit print layout: %w", err)
 			}

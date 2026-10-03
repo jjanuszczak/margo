@@ -881,6 +881,48 @@ config_options:
     type: string
     description: Accent color used for emphasis
     default: "#8f6f33"
+layout_contract:
+  slide:
+    width: 1920
+    height: 1080
+  layouts:
+    default:
+      reserved:
+        top: 72
+        right: 72
+        bottom: 72
+        left: 72
+      regions:
+        - name: content
+          role: body
+          min_font_size: 18
+          min_scale: 0.8
+          overflow_policy: warn
+          flexible: true
+    two-column:
+      reserved:
+        top: 72
+        right: 72
+        bottom: 72
+        left: 72
+      regions:
+        - name: columns
+          role: body
+          min_font_size: 16
+          min_scale: 0.8
+          overflow_policy: warn
+          flexible: true
+responsive:
+  profiles:
+    - name: desktop
+      width: 1920
+      height: 1080
+      mode: fixed_canvas
+    - name: mobile
+      width: 390
+      height: 844
+      mode: reflow
+      allow_vertical_scroll: true
 pptx:
   slide_size: widescreen
   fonts:
@@ -1005,6 +1047,48 @@ config_options:
     type: string
     description: Accent color used for emphasis
     default: "#8f6f33"
+layout_contract:
+  slide:
+    width: 1920
+    height: 1080
+  layouts:
+    default:
+      reserved:
+        top: 72
+        right: 72
+        bottom: 72
+        left: 72
+      regions:
+        - name: content
+          role: body
+          min_font_size: 18
+          min_scale: 0.8
+          overflow_policy: warn
+          flexible: true
+    two-column:
+      reserved:
+        top: 72
+        right: 72
+        bottom: 72
+        left: 72
+      regions:
+        - name: columns
+          role: body
+          min_font_size: 16
+          min_scale: 0.8
+          overflow_policy: warn
+          flexible: true
+responsive:
+  profiles:
+    - name: desktop
+      width: 1920
+      height: 1080
+      mode: fixed_canvas
+    - name: mobile
+      width: 390
+      height: 844
+      mode: reflow
+      allow_vertical_scroll: true
 pptx:
   slide_size: widescreen
   fonts:

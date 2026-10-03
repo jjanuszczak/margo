@@ -28,12 +28,13 @@ const (
 
 // Artifact describes a generated HTML surface to inspect.
 type Artifact struct {
-	Path           string
-	Profile        string
-	SlideSelector  string
-	SlideLabel     string
-	ViewportWidth  int
-	ViewportHeight int
+	Path                string
+	Profile             string
+	SlideSelector       string
+	SlideLabel          string
+	ViewportWidth       int
+	ViewportHeight      int
+	AllowVerticalScroll bool
 }
 
 type result struct {
@@ -260,9 +261,14 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("encode layout audit selector: %w", err)
 	}
+	allowVerticalScroll, err := json.Marshal(artifact.AllowVerticalScroll)
+	if err != nil {
+		return nil, fmt.Errorf("encode layout audit scroll policy: %w", err)
+	}
 	script := fmt.Sprintf(`<script>
 (() => {
   const selector = %s;
+  const allowVerticalScroll = %s;
   const slides = Array.from(document.querySelectorAll(selector));
   const findings = [];
   const visible = element => {
@@ -295,10 +301,10 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
         ['left', left, 'descendant'],
         ['right', right, 'descendant'],
         ['top', top, 'descendant'],
-        ['bottom', bottom, 'descendant'],
       ];
+      if (!allowVerticalScroll) checks.push(['bottom', bottom, 'descendant']);
       if (slide.scrollWidth > slide.clientWidth + 1) checks.push(['right', slide.scrollWidth - slide.clientWidth, 'scroll container']);
-      if (slide.scrollHeight > slide.clientHeight + 1) checks.push(['bottom', slide.scrollHeight - slide.clientHeight, 'scroll container']);
+      if (!allowVerticalScroll && slide.scrollHeight > slide.clientHeight + 1) checks.push(['bottom', slide.scrollHeight - slide.clientHeight, 'scroll container']);
       const largest = new Map();
       checks.forEach(([direction, amount, mechanism]) => {
         if (amount > 1 && (!largest.has(direction) || largest.get(direction).amount < amount)) {
@@ -322,7 +328,7 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
   };
   waitForAssets();
 })();
-</script>`, string(selector))
+</script>`, string(selector), string(allowVerticalScroll))
 	prelude := []byte(`<script>window.setInterval = () => 0; window.fetch = () => Promise.reject(new Error('layout audit'));</script>`)
 	withPrelude := make([]byte, 0, len(document)+len(prelude))
 	withPrelude = append(withPrelude, document[:headPosition]...)
