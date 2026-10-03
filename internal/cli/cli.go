@@ -19,6 +19,7 @@ import (
 	"github.com/jjanuszczak/margo/internal/deck"
 	"github.com/jjanuszczak/margo/internal/deploy"
 	"github.com/jjanuszczak/margo/internal/diagnostics"
+	"github.com/jjanuszczak/margo/internal/layoutaudit"
 	"github.com/jjanuszczak/margo/internal/manifest"
 	"github.com/jjanuszczak/margo/internal/output/html"
 	"github.com/jjanuszczak/margo/internal/output/pdf"
@@ -1715,6 +1716,20 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			if len(report.Items) > 0 {
 				diagnostics.WriteReport(stdout, report)
 			}
+			auditReport, err := layoutaudit.Run([]layoutaudit.Artifact{{
+				Path:           filepath.Join(root.Dir, html.OutputFile),
+				Profile:        "desktop interactive",
+				SlideSelector:  "main .slide, main .print-slide, main > .deck > section, main [data-slide-index]",
+				SlideLabel:     "interactive HTML",
+				ViewportWidth:  1920,
+				ViewportHeight: 1080,
+			}})
+			if err != nil {
+				return fmt.Errorf("audit html layout: %w", err)
+			}
+			if len(auditReport.Items) > 0 {
+				diagnostics.WriteReport(stdout, auditReport)
+			}
 		}
 		if renderPDF || renderPNG {
 			report, err := printhtml.Write(root.Dir, model, activeTheme)
@@ -1723,6 +1738,20 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			}
 			if len(report.Items) > 0 {
 				diagnostics.WriteReport(stdout, report)
+			}
+			auditReport, err := layoutaudit.Run([]layoutaudit.Artifact{{
+				Path:           filepath.Join(root.Dir, printhtml.OutputFile),
+				Profile:        "desktop print",
+				SlideSelector:  "main .print-slide, main .slide, main > .deck > section, main [data-slide-index]",
+				SlideLabel:     "print HTML",
+				ViewportWidth:  1920,
+				ViewportHeight: 1080,
+			}})
+			if err != nil {
+				return fmt.Errorf("audit print layout: %w", err)
+			}
+			if len(auditReport.Items) > 0 {
+				diagnostics.WriteReport(stdout, auditReport)
 			}
 		}
 		if renderPDF {
