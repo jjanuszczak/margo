@@ -144,7 +144,8 @@ complete.
   candidates are attached to an overflow diagnostic.
 - Overflow diagnostics carry `split_mode: proposal_only` and structured
   `split_proposals` metadata. The interactive Layout panel displays the best
-  proposal alongside the existing fit guidance.
+  proposal alongside the existing fit guidance, including the exact approval
+  command for the selected proposal.
 - RFC-wiki verification proposes splitting Interview map before `Control and
   field execution`; Control hypotheses remains a fit-only result.
 - Automatic content rewriting and slide creation remain out of scope until

@@ -86,13 +86,14 @@ func attachSplitProposals(report *diagnostics.Report, slides []deck.Slide) {
 			continue
 		}
 		metadata := make([]map[string]any, 0, len(proposals))
-		for _, proposal := range proposals {
+		for proposalIndex, proposal := range proposals {
 			metadata = append(metadata, map[string]any{
 				"after_line":      proposal.AfterLine,
 				"boundary":        proposal.Boundary,
 				"confidence":      proposal.Confidence,
 				"reason":          proposal.Reason,
 				"estimated_parts": proposal.EstimatedParts,
+				"command":         fmt.Sprintf("margo slide split %s --proposal %d", slides[slideIndex].ID, proposalIndex+1),
 			})
 		}
 		item.Meta["split_proposals"] = metadata

@@ -105,6 +105,9 @@ func InjectPanel(path string, report diagnostics.Report) error {
 				if boundary, ok := proposals[0]["boundary"].(string); ok {
 					suggestion = "Suggested split " + boundary + " (proposal only)."
 				}
+				if command, ok := proposals[0]["command"].(string); ok && command != "" {
+					suggestion += " Review and run: " + command
+				}
 			}
 		}
 		staticRows.WriteString(`<button type="button" class="margo-layout-diagnostic" data-code="`)
@@ -173,8 +176,11 @@ func InjectPanel(path string, report diagnostics.Report) error {
 	const suggestionFor = item => {
 		if (item.code === 'layout_fit') return 'Automatic fitting was applied within the theme limit.';
 		if (item.code === 'layout_structure') return 'Use a full-width layout or populate both layout regions before reducing type size.';
-    const proposals = item.meta && item.meta.split_proposals;
-    if (proposals && proposals.length) return 'Suggested split ' + proposals[0].boundary + ' (proposal only).';
+		const proposals = item.meta && item.meta.split_proposals;
+		if (proposals && proposals.length) {
+			const command = proposals[0].command ? ' Review and run: ' + proposals[0].command : '';
+			return 'Suggested split ' + proposals[0].boundary + ' (proposal only).' + command;
+		}
     return 'Review the content or theme contract.';
   };
   relevant.forEach(item => {

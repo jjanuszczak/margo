@@ -20,7 +20,14 @@ func TestWriteReportAndInjectPanel(t *testing.T) {
 		Severity: diagnostics.SeverityWarning,
 		Code:     "layout_overflow",
 		Message:  "Interview map (desktop interactive) overflows bottom by 39px (descendant)",
-		Meta:     map[string]any{"slide_index": 0, "title": "Interview map"},
+		Meta: map[string]any{
+			"slide_index": 0,
+			"title":       "Interview map",
+			"split_proposals": []map[string]any{{
+				"boundary": "before Control and field execution",
+				"command":  "margo slide split 04-customer-story --proposal 1",
+			}},
+		},
 	})
 	if err := WriteReport(root, report); err != nil {
 		t.Fatalf("WriteReport() error = %v", err)
@@ -35,7 +42,7 @@ func TestWriteReportAndInjectPanel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read HTML fixture: %v", err)
 	}
-	for _, needle := range []string{"data-margo-diagnostics-ui", "Layout diagnostics", "Interview map", "data-margo-diagnostics", "data-margo-slide-index=\"0\""} {
+	for _, needle := range []string{"data-margo-diagnostics-ui", "Layout diagnostics", "Interview map", "data-margo-diagnostics", "data-margo-slide-index=\"0\"", "margo slide split 04-customer-story --proposal 1"} {
 		if !strings.Contains(string(output), needle) {
 			t.Fatalf("expected injected HTML to contain %q", needle)
 		}
