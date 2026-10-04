@@ -93,9 +93,16 @@ func InjectPanel(path string, report diagnostics.Report) error {
 				slideIndex = int(value)
 			}
 		}
-		suggestion := "Review the content, theme contract, or a future split proposal."
+		suggestion := "Review the content or theme contract."
 		if item.Code == "layout_fit" {
 			suggestion = "Automatic fitting was applied within the theme limit."
+		}
+		if item.Code == "layout_overflow" && item.Meta != nil {
+			if proposals, ok := item.Meta["split_proposals"].([]map[string]any); ok && len(proposals) > 0 {
+				if boundary, ok := proposals[0]["boundary"].(string); ok {
+					suggestion = "Suggested split " + boundary + " (proposal only)."
+				}
+			}
 		}
 		staticRows.WriteString(`<button type="button" class="margo-layout-diagnostic" data-code="`)
 		staticRows.WriteString(html.EscapeString(item.Code))
@@ -160,7 +167,12 @@ func InjectPanel(path string, report diagnostics.Report) error {
   const slides = Array.from(document.querySelectorAll('.slide'));
   const metaFor = item => item.meta || {};
   const titleFor = item => metaFor(item).title || 'Slide ' + ((Number(metaFor(item).slide_index) || 0) + 1);
-  const suggestionFor = item => item.code === 'layout_fit' ? 'Automatic fitting was applied within the theme limit.' : 'Review the content, theme contract, or a future split proposal.';
+  const suggestionFor = item => {
+    if (item.code === 'layout_fit') return 'Automatic fitting was applied within the theme limit.';
+    const proposals = item.meta && item.meta.split_proposals;
+    if (proposals && proposals.length) return 'Suggested split ' + proposals[0].boundary + ' (proposal only).';
+    return 'Review the content or theme contract.';
+  };
   relevant.forEach(item => {
     const row = document.createElement('div');
     row.className = 'margo-layout-diagnostic';

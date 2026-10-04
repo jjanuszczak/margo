@@ -132,6 +132,24 @@ complete.
 - Stale-preview indicators and richer agent semantic-change proposals remain
   candidates for a later refinement; this phase does not rewrite content.
 
+## Phase 5 implementation notes
+
+- The first Phase 5 slice is proposal-only. It does not rewrite Markdown or
+  create slides.
+- Split proposals recognize explicit `<!-- margo: split -->` or
+  `<!-- margo-split -->` markers and heading-level boundaries that preserve
+  complete Markdown sections.
+- Candidates are ranked with explicit markers first, level-two section
+  boundaries next, and other heading boundaries after that. At most three
+  candidates are attached to an overflow diagnostic.
+- Overflow diagnostics carry `split_mode: proposal_only` and structured
+  `split_proposals` metadata. The interactive Layout panel displays the best
+  proposal alongside the existing fit guidance.
+- RFC-wiki verification proposes splitting Interview map before `Control and
+  field execution`; Control hypotheses remains a fit-only result.
+- Automatic content rewriting and slide creation remain out of scope until
+  boundary quality and author approval flows are defined.
+
 ### Phase 2 contract example
 
 ```yaml

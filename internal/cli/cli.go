@@ -21,6 +21,7 @@ import (
 	"github.com/jjanuszczak/margo/internal/diagnostics"
 	"github.com/jjanuszczak/margo/internal/diagnosticui"
 	"github.com/jjanuszczak/margo/internal/layoutaudit"
+	"github.com/jjanuszczak/margo/internal/layoutsplit"
 	"github.com/jjanuszczak/margo/internal/manifest"
 	"github.com/jjanuszczak/margo/internal/output/html"
 	"github.com/jjanuszczak/margo/internal/output/pdf"
@@ -68,6 +69,35 @@ func layoutAuditArtifacts(path, selector, label string, activeTheme theme.Metada
 func applyLayoutFit(path string, activeTheme theme.Metadata) error {
 	enabled, minScale := activeTheme.FitSettings()
 	return layoutaudit.ApplyFit(path, layoutaudit.FitPolicy{Enabled: enabled, MinScale: minScale})
+}
+
+func attachSplitProposals(report *diagnostics.Report, slides []deck.Slide) {
+	for index := range report.Items {
+		item := &report.Items[index]
+		if item.Code != "layout_overflow" || item.Meta == nil {
+			continue
+		}
+		slideIndex, ok := item.Meta["slide_index"].(int)
+		if !ok || slideIndex < 0 || slideIndex >= len(slides) {
+			continue
+		}
+		proposals := layoutsplit.Propose(slides[slideIndex])
+		if len(proposals) == 0 {
+			continue
+		}
+		metadata := make([]map[string]any, 0, len(proposals))
+		for _, proposal := range proposals {
+			metadata = append(metadata, map[string]any{
+				"after_line":      proposal.AfterLine,
+				"boundary":        proposal.Boundary,
+				"confidence":      proposal.Confidence,
+				"reason":          proposal.Reason,
+				"estimated_parts": proposal.EstimatedParts,
+			})
+		}
+		item.Meta["split_proposals"] = metadata
+		item.Meta["split_mode"] = "proposal_only"
+	}
 }
 
 func profileSuffix(profile theme.ResponsiveProfile, print bool) string {
@@ -1856,6 +1886,7 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			}
 			buildDiagnostics.Items = append(buildDiagnostics.Items, auditReport.Items...)
 		}
+		attachSplitProposals(&buildDiagnostics, model.Slides)
 		if err := diagnosticui.WriteReport(root.Dir, buildDiagnostics); err != nil {
 			return fmt.Errorf("write diagnostics report: %w", err)
 		}

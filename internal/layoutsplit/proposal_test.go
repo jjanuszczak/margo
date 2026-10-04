@@ -1,0 +1,23 @@
+package layoutsplit
+
+import (
+	"testing"
+
+	"github.com/jjanuszczak/margo/internal/deck"
+)
+
+func TestProposeRanksExplicitAndRecommendedBoundaries(t *testing.T) {
+	proposals := Propose(deck.Slide{BodyMarkdown: "# Interview map\n\nIntro\n\n## Executive and commercial\n\n- CEO\n\n<!-- margo: split -->\n\n## Control and field execution\n\n- Risk"})
+	if len(proposals) != 3 {
+		t.Fatalf("expected three proposals, got %d", len(proposals))
+	}
+	if proposals[0].Confidence != "explicit" || proposals[0].Boundary != "explicit split marker" {
+		t.Fatalf("expected explicit proposal first, got %#v", proposals[0])
+	}
+}
+
+func TestProposeSkipsUnsafeSlides(t *testing.T) {
+	if got := Propose(deck.Slide{BodyMarkdown: "# One\n\nOnly one section"}); got != nil {
+		t.Fatalf("expected no proposals, got %#v", got)
+	}
+}
