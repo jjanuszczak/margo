@@ -356,6 +356,20 @@ notes and assets. For a deck with arbitrary descriptive bundle names, Margo
 keeps those paths stable and only updates sequence metadata. Pass `--renumber`
 to explicitly rename such a deck into positional bundle names.
 
+### Apply an approved layout split
+
+When a layout diagnostic includes a split proposal, apply it explicitly:
+
+```bash
+../bin/margo slide split 04-customer-story --proposal 1
+```
+
+The proposal number is the ranked candidate shown in the Layout panel or
+`dist/margo-diagnostics.json`. Margo creates a second slide bundle, updates the
+sequence, preserves assets, keeps notes with the first part, and moves the
+original bundle to `.margo-trash`. Normal `build` and `serve` commands never
+apply split proposals automatically.
+
 ### Move or delete a slide
 
 Move a slide to a new position with the same placement selectors:

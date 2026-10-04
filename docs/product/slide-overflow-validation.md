@@ -149,6 +149,15 @@ complete.
   field execution`; Control hypotheses remains a fit-only result.
 - Automatic content rewriting and slide creation remain out of scope until
   boundary quality and author approval flows are defined.
+- An explicit approval command now applies a selected proposal with
+  `margo slide split <slide-bundle> --proposal <number>`. Normal builds never
+  apply proposals automatically.
+- Applying a proposal creates a second slide bundle, updates manifest order
+  when a manifest exists, preserves referenced assets, keeps notes with the
+  first part, and moves the original bundle to `.margo-trash` for recovery.
+- The command refuses slides whose authored source differs after include or
+  preprocessing expansion, because line-level proposal coordinates are not
+  safe to apply to transformed content.
 
 ### Phase 2 contract example
 
