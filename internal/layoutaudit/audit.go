@@ -45,9 +45,10 @@ type FitPolicy struct {
 }
 
 type result struct {
-	Findings    []finding    `json:"findings"`
-	Adjustments []adjustment `json:"adjustments"`
-	Structures  []structure  `json:"structures"`
+	Findings     []finding     `json:"findings"`
+	Adjustments  []adjustment  `json:"adjustments"`
+	Structures   []structure   `json:"structures"`
+	Remediations []remediation `json:"remediations"`
 }
 
 type adjustment struct {
@@ -73,6 +74,12 @@ type structure struct {
 	Title  string `json:"title"`
 	Code   string `json:"code"`
 	Reason string `json:"reason"`
+}
+
+type remediation struct {
+	Index int    `json:"index"`
+	Title string `json:"title"`
+	Kind  string `json:"kind"`
 }
 
 var auditAttribute = regexp.MustCompile(`data-margo-layout-audit="([^"]+)"`)
@@ -166,6 +173,24 @@ func Run(artifacts []Artifact) (diagnostics.Report, error) {
 					"title":       title,
 					"profile":     artifact.Profile,
 					"reason":      item.Reason,
+				},
+			})
+		}
+		for _, item := range parsed.Remediations {
+			title := item.Title
+			if title == "" {
+				title = fmt.Sprintf("slide %d", item.Index+1)
+			}
+			report.Add(diagnostics.Diagnostic{
+				Severity: diagnostics.SeverityInfo,
+				Code:     "layout_remediation",
+				Message:  fmt.Sprintf("%s (%s) applied theme remediation %q", title, artifact.Profile, item.Kind),
+				Path:     artifact.Path,
+				Meta: map[string]any{
+					"slide_index": item.Index,
+					"title":       title,
+					"profile":     artifact.Profile,
+					"kind":        item.Kind,
 				},
 			})
 		}
@@ -354,6 +379,7 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
   const slides = Array.from(document.querySelectorAll(selector));
   const findings = [];
   const structures = [];
+  const remediations = [];
   const visible = element => {
     const style = window.getComputedStyle(element);
     const rect = element.getBoundingClientRect();
@@ -407,7 +433,7 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
       });
     }
   };
-  const remediateStructure = slide => {
+  const remediateStructure = (slide, index) => {
     if (!structuralRemediation) return;
     const layout = slide.querySelector('.two-column-slide');
     if (!layout) return;
@@ -417,6 +443,7 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
     if (columns.filter(hasContent).length === 1 && columns.filter(column => !hasContent(column)).length === 1) {
       layout.style.gridTemplateColumns = '1fr';
       layout.dataset.margoStructuralRemediation = 'collapse_empty_column';
+      remediations.push({ index, title: titleFor(slide), kind: 'collapse_empty_column' });
     }
   };
   const fit = (slide, index) => {
@@ -440,7 +467,7 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
         slides.forEach(item => { item.style.display = 'none'; });
         slide.style.display = 'block';
       }
-      remediateStructure(slide);
+      remediateStructure(slide, index);
       const adjustment = fit(slide, index);
       if (adjustment) adjustments.push(adjustment);
       const largest = measure(slide);
@@ -453,7 +480,7 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
         if (style === null) item.removeAttribute('style'); else item.setAttribute('style', style);
       });
     });
-    document.documentElement.setAttribute('data-margo-layout-audit', encodeURIComponent(JSON.stringify({ findings, adjustments, structures })));
+    document.documentElement.setAttribute('data-margo-layout-audit', encodeURIComponent(JSON.stringify({ findings, adjustments, structures, remediations })));
   };
   const waitForAssets = async () => {
     if (document.fonts?.ready) await document.fonts.ready;

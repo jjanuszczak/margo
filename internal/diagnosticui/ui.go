@@ -45,7 +45,7 @@ func WriteReport(projectRoot string, report diagnostics.Report) error {
 func InjectPanel(path string, report diagnostics.Report) error {
 	hasLayoutDiagnostic := false
 	for _, item := range report.Items {
-		if item.Code == "layout_overflow" || item.Code == "layout_fit" || item.Code == "layout_structure" {
+		if item.Code == "layout_overflow" || item.Code == "layout_fit" || item.Code == "layout_structure" || item.Code == "layout_remediation" {
 			hasLayoutDiagnostic = true
 			break
 		}
@@ -74,7 +74,7 @@ func InjectPanel(path string, report diagnostics.Report) error {
 	staticRows := strings.Builder{}
 	layoutWarningCount := 0
 	for _, item := range report.Items {
-		if item.Code != "layout_overflow" && item.Code != "layout_fit" && item.Code != "layout_structure" {
+		if item.Code != "layout_overflow" && item.Code != "layout_fit" && item.Code != "layout_structure" && item.Code != "layout_remediation" {
 			continue
 		}
 		if item.Code == "layout_overflow" || item.Code == "layout_structure" {
@@ -99,6 +99,9 @@ func InjectPanel(path string, report diagnostics.Report) error {
 		}
 		if item.Code == "layout_structure" {
 			suggestion = "Use a full-width layout or populate both layout regions before reducing type size."
+		}
+		if item.Code == "layout_remediation" {
+			suggestion = "The theme contract approved this generated-output correction; authored content was unchanged."
 		}
 		if item.Code == "layout_overflow" && item.Meta != nil {
 			if proposals, ok := item.Meta["split_proposals"].([]map[string]any); ok && len(proposals) > 0 {
@@ -133,7 +136,7 @@ func InjectPanel(path string, report diagnostics.Report) error {
 .margo-layout-diagnostics-header h2 { margin: 0; font-size: 1rem; }
 .margo-layout-diagnostics-close { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 1.25rem; }
 .margo-layout-diagnostic { display: block; width: 100%%; margin: .6rem 0; padding: .65rem; border: 0; border-left: .25rem solid #b42318; background: #fff1f0; color: inherit; cursor: pointer; text-align: left; }
-.margo-layout-diagnostic[data-code="layout_fit"] { border-left-color: #067647; background: #ecfdf3; }
+.margo-layout-diagnostic[data-code="layout_fit"], .margo-layout-diagnostic[data-code="layout_remediation"] { border-left-color: #067647; background: #ecfdf3; }
 .margo-layout-diagnostic button { border: 0; padding: 0; background: transparent; color: inherit; cursor: pointer; text-align: left; }
 .margo-layout-diagnostic strong, .margo-layout-diagnostic span, .margo-layout-diagnostic small { display: block; }
 .margo-layout-diagnostic small { margin-top: .25rem; opacity: .75; }
@@ -147,7 +150,7 @@ func InjectPanel(path string, report diagnostics.Report) error {
 (() => {
   const payloadNode = document.querySelector('script[type="application/json"][data-margo-diagnostics]');
   const payload = JSON.parse((payloadNode && payloadNode.textContent) || '{"items":[]}');
-	const relevant = (payload.items || []).filter(item => item.code === 'layout_overflow' || item.code === 'layout_fit' || item.code === 'layout_structure');
+	const relevant = (payload.items || []).filter(item => item.code === 'layout_overflow' || item.code === 'layout_fit' || item.code === 'layout_structure' || item.code === 'layout_remediation');
   if (!relevant.length) return;
   const fallback = document.querySelector('[data-margo-layout-fallback]');
   if (fallback) fallback.remove();
@@ -176,6 +179,7 @@ func InjectPanel(path string, report diagnostics.Report) error {
 	const suggestionFor = item => {
 		if (item.code === 'layout_fit') return 'Automatic fitting was applied within the theme limit.';
 		if (item.code === 'layout_structure') return 'Use a full-width layout or populate both layout regions before reducing type size.';
+		if (item.code === 'layout_remediation') return 'The theme contract approved this generated-output correction; authored content was unchanged.';
 		const proposals = item.meta && item.meta.split_proposals;
 		if (proposals && proposals.length) {
 			const command = proposals[0].command ? ' Review and run: ' + proposals[0].command : '';

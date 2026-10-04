@@ -83,3 +83,26 @@ func TestInjectPanelIncludesStructuralLayoutWarnings(t *testing.T) {
 		}
 	}
 }
+
+func TestInjectPanelIncludesRemediationInfo(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "fixture.html")
+	if err := os.WriteFile(path, []byte("<html><body><main><div class=\"controls\"></div></main></body></html>"), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	report := diagnostics.Report{Items: []diagnostics.Diagnostic{{
+		Severity: diagnostics.SeverityInfo,
+		Code:     "layout_remediation",
+		Message:  "Interview map applied theme remediation",
+		Meta:     map[string]any{"slide_index": 3, "title": "Interview map"},
+	}}}
+	if err := InjectPanel(path, report); err != nil {
+		t.Fatalf("InjectPanel() error = %v", err)
+	}
+	output, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	if !strings.Contains(string(output), "authored content was unchanged") {
+		t.Fatalf("expected remediation guidance, got %q", output)
+	}
+}

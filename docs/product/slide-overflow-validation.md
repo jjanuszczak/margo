@@ -160,7 +160,8 @@ complete.
   in a layout contract region. When declared, generated interactive and print
   artifacts collapse that empty region before fitting and auditing. Older or
   inferred contracts remain warning-only until a theme owner explicitly opts
-  in.
+  in. A `layout_remediation` info diagnostic records the correction and makes
+  clear that authored content was unchanged.
 - An explicit approval command now applies a selected proposal with
   `margo slide split <slide-bundle> --proposal <number>`. Normal builds never
   apply proposals automatically.
