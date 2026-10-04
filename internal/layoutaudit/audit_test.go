@@ -36,6 +36,9 @@ func TestAppendAuditScriptIncludesBoundedFitPolicy(t *testing.T) {
 			t.Fatalf("expected fitting script to contain %q, got %q", needle, output)
 		}
 	}
+	if !strings.Contains(output, "layout_structure") || !strings.Contains(output, "two-column layout reserves an empty column") {
+		t.Fatalf("expected structural layout detection in audit script, got %q", output)
+	}
 }
 
 func TestApplyFitInjectsRuntimeScript(t *testing.T) {
@@ -62,13 +65,16 @@ func TestAppendAuditScriptRequiresBody(t *testing.T) {
 }
 
 func TestParseResults(t *testing.T) {
-	output := []byte(`<html data-margo-layout-audit="%7B%22findings%22%3A%5B%7B%22index%22%3A1%2C%22title%22%3A%22Too%20long%22%2C%22direction%22%3A%22bottom%22%2C%22amount%22%3A24%2C%22mechanism%22%3A%22descendant%22%7D%5D%7D"></html>`)
+	output := []byte(`<html data-margo-layout-audit="%7B%22findings%22%3A%5B%7B%22index%22%3A1%2C%22title%22%3A%22Too%20long%22%2C%22direction%22%3A%22bottom%22%2C%22amount%22%3A24%2C%22mechanism%22%3A%22descendant%22%7D%5D%2C%22structures%22%3A%5B%7B%22index%22%3A2%2C%22title%22%3A%22Wrong%20layout%22%2C%22code%22%3A%22layout_structure%22%2C%22reason%22%3A%22empty%20column%22%7D%5D%7D"></html>`)
 	parsed, err := parseResults(output)
 	if err != nil {
 		t.Fatalf("parseResults() error = %v", err)
 	}
 	if len(parsed.Findings) != 1 || parsed.Findings[0].Index != 1 || parsed.Findings[0].Amount != 24 {
 		t.Fatalf("unexpected findings: %#v", parsed.Findings)
+	}
+	if len(parsed.Structures) != 1 || parsed.Structures[0].Code != "layout_structure" {
+		t.Fatalf("unexpected structures: %#v", parsed.Structures)
 	}
 }
 

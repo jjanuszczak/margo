@@ -45,7 +45,7 @@ func WriteReport(projectRoot string, report diagnostics.Report) error {
 func InjectPanel(path string, report diagnostics.Report) error {
 	hasLayoutDiagnostic := false
 	for _, item := range report.Items {
-		if item.Code == "layout_overflow" || item.Code == "layout_fit" {
+		if item.Code == "layout_overflow" || item.Code == "layout_fit" || item.Code == "layout_structure" {
 			hasLayoutDiagnostic = true
 			break
 		}
@@ -72,13 +72,13 @@ func InjectPanel(path string, report diagnostics.Report) error {
 		return fmt.Errorf("encode interactive diagnostics: %w", err)
 	}
 	staticRows := strings.Builder{}
-	overflowCount := 0
+	layoutWarningCount := 0
 	for _, item := range report.Items {
-		if item.Code != "layout_overflow" && item.Code != "layout_fit" {
+		if item.Code != "layout_overflow" && item.Code != "layout_fit" && item.Code != "layout_structure" {
 			continue
 		}
-		if item.Code == "layout_overflow" {
-			overflowCount++
+		if item.Code == "layout_overflow" || item.Code == "layout_structure" {
+			layoutWarningCount++
 		}
 		slideIndex := -1
 		title := "Layout diagnostic"
@@ -96,6 +96,9 @@ func InjectPanel(path string, report diagnostics.Report) error {
 		suggestion := "Review the content or theme contract."
 		if item.Code == "layout_fit" {
 			suggestion = "Automatic fitting was applied within the theme limit."
+		}
+		if item.Code == "layout_structure" {
+			suggestion = "Use a full-width layout or populate both layout regions before reducing type size."
 		}
 		if item.Code == "layout_overflow" && item.Meta != nil {
 			if proposals, ok := item.Meta["split_proposals"].([]map[string]any); ok && len(proposals) > 0 {
@@ -141,7 +144,7 @@ func InjectPanel(path string, report diagnostics.Report) error {
 (() => {
   const payloadNode = document.querySelector('script[type="application/json"][data-margo-diagnostics]');
   const payload = JSON.parse((payloadNode && payloadNode.textContent) || '{"items":[]}');
-  const relevant = (payload.items || []).filter(item => item.code === 'layout_overflow' || item.code === 'layout_fit');
+	const relevant = (payload.items || []).filter(item => item.code === 'layout_overflow' || item.code === 'layout_fit' || item.code === 'layout_structure');
   if (!relevant.length) return;
   const fallback = document.querySelector('[data-margo-layout-fallback]');
   if (fallback) fallback.remove();
@@ -167,8 +170,9 @@ func InjectPanel(path string, report diagnostics.Report) error {
   const slides = Array.from(document.querySelectorAll('.slide'));
   const metaFor = item => item.meta || {};
   const titleFor = item => metaFor(item).title || 'Slide ' + ((Number(metaFor(item).slide_index) || 0) + 1);
-  const suggestionFor = item => {
-    if (item.code === 'layout_fit') return 'Automatic fitting was applied within the theme limit.';
+	const suggestionFor = item => {
+		if (item.code === 'layout_fit') return 'Automatic fitting was applied within the theme limit.';
+		if (item.code === 'layout_structure') return 'Use a full-width layout or populate both layout regions before reducing type size.';
     const proposals = item.meta && item.meta.split_proposals;
     if (proposals && proposals.length) return 'Suggested split ' + proposals[0].boundary + ' (proposal only).';
     return 'Review the content or theme contract.';
@@ -196,7 +200,7 @@ func InjectPanel(path string, report diagnostics.Report) error {
   close.addEventListener('click', () => { panel.hidden = true; button.setAttribute('aria-expanded', 'false'); });
 })();
 </script>
-`, overflowCount, staticRows.String(), string(payload))
+`, layoutWarningCount, staticRows.String(), string(payload))
 	output := make([]byte, 0, len(document)+len(panel))
 	output = append(output, document[:insertionPosition]...)
 	output = append(output, panel...)

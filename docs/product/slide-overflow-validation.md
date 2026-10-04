@@ -149,6 +149,10 @@ complete.
   field execution`; Control hypotheses remains a fit-only result.
 - Automatic content rewriting and slide creation remain out of scope until
   boundary quality and author approval flows are defined.
+- Structural layout checks now flag a two-column slide that reserves one empty
+  column while all authored content occupies the other. The diagnostic points
+  authors toward a full-width layout or populating both regions before fitting
+  or splitting. This remains a warning and never rewrites slide front matter.
 - An explicit approval command now applies a selected proposal with
   `margo slide split <slide-bundle> --proposal <number>`. Normal builds never
   apply proposals automatically.

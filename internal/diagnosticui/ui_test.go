@@ -51,3 +51,28 @@ func TestInjectPanelSkipsNonLayoutDiagnostics(t *testing.T) {
 		t.Fatalf("InjectPanel() error = %v", err)
 	}
 }
+
+func TestInjectPanelIncludesStructuralLayoutWarnings(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "fixture.html")
+	if err := os.WriteFile(path, []byte("<html><body><main><div class=\"controls\"></div></main></body></html>"), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	report := diagnostics.Report{Items: []diagnostics.Diagnostic{{
+		Severity: diagnostics.SeverityWarning,
+		Code:     "layout_structure",
+		Message:  "Interview map has a structural layout issue",
+		Meta:     map[string]any{"slide_index": 3, "title": "Interview map"},
+	}}}
+	if err := InjectPanel(path, report); err != nil {
+		t.Fatalf("InjectPanel() error = %v", err)
+	}
+	output, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	for _, needle := range []string{"layout_structure", "full-width layout", "data-margo-slide-index=\"3\""} {
+		if !strings.Contains(string(output), needle) {
+			t.Fatalf("expected injected HTML to contain %q", needle)
+		}
+	}
+}

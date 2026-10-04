@@ -46,6 +46,7 @@ type FitPolicy struct {
 type result struct {
 	Findings    []finding    `json:"findings"`
 	Adjustments []adjustment `json:"adjustments"`
+	Structures  []structure  `json:"structures"`
 }
 
 type adjustment struct {
@@ -64,6 +65,13 @@ type finding struct {
 	ClientWidth  float64 `json:"clientWidth"`
 	ScrollHeight float64 `json:"scrollHeight"`
 	ClientHeight float64 `json:"clientHeight"`
+}
+
+type structure struct {
+	Index  int    `json:"index"`
+	Title  string `json:"title"`
+	Code   string `json:"code"`
+	Reason string `json:"reason"`
 }
 
 var auditAttribute = regexp.MustCompile(`data-margo-layout-audit="([^"]+)"`)
@@ -139,6 +147,24 @@ func Run(artifacts []Artifact) (diagnostics.Report, error) {
 					"title":       title,
 					"profile":     artifact.Profile,
 					"scale":       item.Scale,
+				},
+			})
+		}
+		for _, item := range parsed.Structures {
+			title := item.Title
+			if title == "" {
+				title = fmt.Sprintf("slide %d", item.Index+1)
+			}
+			report.Add(diagnostics.Diagnostic{
+				Severity: diagnostics.SeverityWarning,
+				Code:     item.Code,
+				Message:  fmt.Sprintf("%s (%s) has a structural layout issue: %s", title, artifact.Profile, item.Reason),
+				Path:     artifact.Path,
+				Meta: map[string]any{
+					"slide_index": item.Index,
+					"title":       title,
+					"profile":     artifact.Profile,
+					"reason":      item.Reason,
 				},
 			})
 		}
@@ -321,6 +347,7 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
   const fitMinScale = %f;
   const slides = Array.from(document.querySelectorAll(selector));
   const findings = [];
+  const structures = [];
   const visible = element => {
     const style = window.getComputedStyle(element);
     const rect = element.getBoundingClientRect();
@@ -357,6 +384,23 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
     });
     return largest;
   };
+  const inspectStructure = (slide, index) => {
+    const layout = slide.querySelector('.two-column-slide');
+    if (!layout) return;
+    const columns = Array.from(layout.querySelectorAll(':scope > .column'));
+    if (columns.length !== 2) return;
+    const hasContent = column => Array.from(column.querySelectorAll('*')).some(element => visible(element));
+    const populated = columns.filter(hasContent).length;
+    const empty = columns.filter(column => !hasContent(column)).length;
+    if (populated === 1 && empty === 1) {
+      structures.push({
+        index,
+        title: titleFor(slide),
+        code: 'layout_structure',
+        reason: 'a two-column layout reserves an empty column while all authored content occupies the other column; use a full-width layout or populate both regions'
+      });
+    }
+  };
   const fit = (slide, index) => {
     if (!fitEnabled) return null;
     const region = slide.querySelector('.slide-body, .print-slide-body');
@@ -384,12 +428,13 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
       largest.forEach(({ amount, mechanism }, direction) => {
         findings.push({ index, title: titleFor(slide), direction, amount, mechanism, scrollWidth: slide.scrollWidth, clientWidth: slide.clientWidth, scrollHeight: slide.scrollHeight, clientHeight: slide.clientHeight });
       });
+      inspectStructure(slide, index);
       slides.forEach((item, itemIndex) => {
         const style = before[itemIndex];
         if (style === null) item.removeAttribute('style'); else item.setAttribute('style', style);
       });
     });
-    document.documentElement.setAttribute('data-margo-layout-audit', encodeURIComponent(JSON.stringify({ findings, adjustments })));
+    document.documentElement.setAttribute('data-margo-layout-audit', encodeURIComponent(JSON.stringify({ findings, adjustments, structures })));
   };
   const waitForAssets = async () => {
     if (document.fonts?.ready) await document.fonts.ready;
