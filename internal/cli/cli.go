@@ -53,15 +53,15 @@ func layoutAuditArtifacts(path, selector, label string, activeTheme theme.Metada
 	fitEnabled, fitMinScale := activeTheme.FitSettings()
 	for _, profile := range profiles {
 		artifacts = append(artifacts, layoutaudit.Artifact{
-			Path:                  path,
-			Profile:               profile.Name + profileSuffix(profile, print),
-			SlideSelector:         selector,
-			SlideLabel:            label,
-			ViewportWidth:         profile.Width,
-			ViewportHeight:        profile.Height,
-			AllowVerticalScroll:   profile.AllowVerticalScroll,
-			Fit:                   &layoutaudit.FitPolicy{Enabled: fitEnabled, MinScale: fitMinScale},
-			StructuralRemediation: activeTheme.StructuralRemediationEnabled(),
+			Path:                path,
+			Profile:             profile.Name + profileSuffix(profile, print),
+			SlideSelector:       selector,
+			SlideLabel:          label,
+			ViewportWidth:       profile.Width,
+			ViewportHeight:      profile.Height,
+			AllowVerticalScroll: profile.AllowVerticalScroll,
+			Fit:                 &layoutaudit.FitPolicy{Enabled: fitEnabled, MinScale: fitMinScale},
+			StructuralPolicies:  activeTheme.StructuralRemediationPolicies(),
 		})
 	}
 	return artifacts
@@ -73,7 +73,7 @@ func applyLayoutFit(path string, activeTheme theme.Metadata) error {
 }
 
 func applyLayoutRemediation(path string, activeTheme theme.Metadata) error {
-	return layoutaudit.ApplyStructuralRemediation(path, activeTheme.StructuralRemediationEnabled())
+	return layoutaudit.ApplyStructuralRemediation(path, activeTheme.StructuralRemediationPolicies())
 }
 
 func attachSplitProposals(report *diagnostics.Report, slides []deck.Slide) {

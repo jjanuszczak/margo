@@ -63,7 +63,7 @@ func TestApplyStructuralRemediationInjectsRuntimeScript(t *testing.T) {
 	if err := os.WriteFile(path, []byte("<html><body><section class=\"two-column-slide\"></section></body></html>"), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
-	if err := ApplyStructuralRemediation(path, true); err != nil {
+	if err := ApplyStructuralRemediation(path, []string{"collapse_empty_column", "widen_columns"}); err != nil {
 		t.Fatalf("ApplyStructuralRemediation() error = %v", err)
 	}
 	output, err := os.ReadFile(path)

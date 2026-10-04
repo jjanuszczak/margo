@@ -28,15 +28,15 @@ const (
 
 // Artifact describes a generated HTML surface to inspect.
 type Artifact struct {
-	Path                  string
-	Profile               string
-	SlideSelector         string
-	SlideLabel            string
-	ViewportWidth         int
-	ViewportHeight        int
-	AllowVerticalScroll   bool
-	Fit                   *FitPolicy
-	StructuralRemediation bool
+	Path                string
+	Profile             string
+	SlideSelector       string
+	SlideLabel          string
+	ViewportWidth       int
+	ViewportHeight      int
+	AllowVerticalScroll bool
+	Fit                 *FitPolicy
+	StructuralPolicies  []string
 }
 
 type FitPolicy struct {
@@ -365,9 +365,9 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
 			fitMinScale = 0.8
 		}
 	}
-	structuralRemediation, err := json.Marshal(artifact.StructuralRemediation)
+	structuralPolicies, err := json.Marshal(artifact.StructuralPolicies)
 	if err != nil {
-		return nil, fmt.Errorf("encode structural remediation policy: %w", err)
+		return nil, fmt.Errorf("encode structural remediation policies: %w", err)
 	}
 	script := fmt.Sprintf(`<script>
 (() => {
@@ -375,7 +375,7 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
   const allowVerticalScroll = %s;
   const fitEnabled = %t;
   const fitMinScale = %f;
-  const structuralRemediation = %s;
+  const structuralPolicies = %s;
   const slides = Array.from(document.querySelectorAll(selector));
   const findings = [];
   const structures = [];
@@ -434,7 +434,7 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
     }
   };
   const remediateStructure = (slide, index) => {
-    if (!structuralRemediation) return;
+    if (!structuralPolicies.includes('collapse_empty_column')) return;
     const layout = slide.querySelector('.two-column-slide');
     if (!layout) return;
     const columns = Array.from(layout.querySelectorAll(':scope > .column'));
@@ -445,6 +445,15 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
       layout.dataset.margoStructuralRemediation = 'collapse_empty_column';
       remediations.push({ index, title: titleFor(slide), kind: 'collapse_empty_column' });
     }
+  };
+  const remediateColumnWidth = (slide, index) => {
+    if (!structuralPolicies.includes('widen_columns')) return;
+    slide.querySelectorAll('.shortcode-columns').forEach(columns => {
+      columns.style.width = '100%%';
+      columns.style.maxWidth = '100%%';
+      columns.dataset.margoStructuralRemediation = 'widen_columns';
+      remediations.push({ index, title: titleFor(slide), kind: 'widen_columns' });
+    });
   };
   const fit = (slide, index) => {
     if (!fitEnabled) return null;
@@ -468,6 +477,7 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
         slide.style.display = 'block';
       }
       remediateStructure(slide, index);
+      remediateColumnWidth(slide, index);
       const adjustment = fit(slide, index);
       if (adjustment) adjustments.push(adjustment);
       const largest = measure(slide);
@@ -489,7 +499,7 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
   };
   waitForAssets();
 })();
-</script>`, string(selector), string(allowVerticalScroll), fitEnabled, fitMinScale, string(structuralRemediation))
+</script>`, string(selector), string(allowVerticalScroll), fitEnabled, fitMinScale, string(structuralPolicies))
 	prelude := []byte(`<script>window.setInterval = () => 0; window.fetch = () => Promise.reject(new Error('layout audit'));</script>`)
 	withPrelude := make([]byte, 0, len(document)+len(prelude))
 	withPrelude = append(withPrelude, document[:headPosition]...)
@@ -570,10 +580,10 @@ func ApplyFit(path string, policy FitPolicy) error {
 	return nil
 }
 
-// ApplyStructuralRemediation adds only the theme-approved empty-column
-// correction to a generated artifact. It never changes authored content.
-func ApplyStructuralRemediation(path string, enabled bool) error {
-	if !enabled {
+// ApplyStructuralRemediation adds only theme-approved presentation corrections
+// to a generated artifact. It never changes authored content.
+func ApplyStructuralRemediation(path string, policies []string) error {
+	if len(policies) == 0 {
 		return nil
 	}
 	document, err := os.ReadFile(path)
@@ -584,8 +594,13 @@ func ApplyStructuralRemediation(path string, enabled bool) error {
 	if bodyPosition < 0 {
 		return errors.New("structural remediation artifact does not contain a closing body tag")
 	}
-	script := []byte(`<script data-margo-structural-remediation>
+	encodedPolicies, err := json.Marshal(policies)
+	if err != nil {
+		return fmt.Errorf("encode structural remediation policies: %w", err)
+	}
+	script := []byte(fmt.Sprintf(`<script data-margo-structural-remediation>
 (() => {
+  const policies = %s;
   const visible = element => {
     const style = window.getComputedStyle(element);
     const rect = element.getBoundingClientRect();
@@ -595,14 +610,19 @@ func ApplyStructuralRemediation(path string, enabled bool) error {
     const columns = Array.from(layout.querySelectorAll(':scope > .column'));
     if (columns.length !== 2) return;
     const hasContent = column => Array.from(column.querySelectorAll('*')).some(element => visible(element));
-    if (columns.filter(hasContent).length === 1 && columns.filter(column => !hasContent(column)).length === 1) {
+    if (policies.includes('collapse_empty_column') && columns.filter(hasContent).length === 1 && columns.filter(column => !hasContent(column)).length === 1) {
       layout.style.gridTemplateColumns = '1fr';
       layout.dataset.margoStructuralRemediation = 'collapse_empty_column';
     }
   });
+  if (policies.includes('widen_columns')) document.querySelectorAll('.shortcode-columns').forEach(columns => {
+    columns.style.width = '100%%';
+    columns.style.maxWidth = '100%%';
+    columns.dataset.margoStructuralRemediation = 'widen_columns';
+  });
 })();
 </script>
-`)
+`, string(encodedPolicies)))
 	result := make([]byte, 0, len(document)+len(script))
 	result = append(result, document[:bodyPosition]...)
 	result = append(result, script...)

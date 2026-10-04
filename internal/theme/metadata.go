@@ -1,5 +1,7 @@
 package theme
 
+import "sort"
+
 type Metadata struct {
 	Name            string              `yaml:"name"`
 	Version         string              `yaml:"version"`
@@ -112,17 +114,27 @@ func (m Metadata) FitSettings() (enabled bool, minScale float64) {
 // StructuralRemediationEnabled reports whether the theme explicitly permits
 // Margo to correct a known empty layout region in generated output.
 func (m Metadata) StructuralRemediationEnabled() bool {
+	return len(m.StructuralRemediationPolicies()) > 0
+}
+
+func (m Metadata) StructuralRemediationPolicies() []string {
 	if m.LayoutContract == nil {
-		return false
+		return nil
 	}
+	seen := map[string]bool{}
 	for _, layout := range m.LayoutContract.Layouts {
 		for _, region := range layout.Regions {
-			if region.StructuralPolicy == "collapse_empty_column" {
-				return true
+			if region.StructuralPolicy != "" {
+				seen[region.StructuralPolicy] = true
 			}
 		}
 	}
-	return false
+	policies := make([]string, 0, len(seen))
+	for policy := range seen {
+		policies = append(policies, policy)
+	}
+	sort.Strings(policies)
+	return policies
 }
 
 type PPTXMetadata struct {
