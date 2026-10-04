@@ -11,7 +11,7 @@ complete.
 
 - [x] Phase 1: browser-backed detection for interactive and print output
 - [x] Phase 2: theme layout contracts and responsive profiles
-- [ ] Phase 3: bounded, theme-approved automatic fitting
+- [x] Phase 3: bounded, theme-approved automatic fitting
 - [ ] Phase 4: agent-facing diagnostics and semantic-change proposals
 - [ ] Phase 5: explicit and boundary-aware semantic splitting
 
@@ -34,7 +34,7 @@ complete.
 | --- | --- | --- | --- | --- |
 | 1 | Complete | Complete | Complete | Detection only; warnings do not fail the build. Verified on the reference deck for interactive and print HTML. |
 | 2 | Complete | Complete | Complete | Includes contract bootstrap for new themes and explicit migration for older themes; generated contracts are inferred and review-required. |
-| 3 | Pending | Pending | Pending | Re-measure after every bounded adjustment. |
+| 3 | Complete | Complete | Complete | Opt-in fitting is bounded by `min_scale`, re-measured after each adjustment, and preserves warnings when the floor is reached. |
 | 4 | Pending | Pending | Pending | Agent proposals must not silently mutate semantic content. |
 | 5 | Pending | Pending | Pending | Splitting must use explicit or safe semantic boundaries. |
 
@@ -99,6 +99,23 @@ complete.
   explicitly permitted.
 - Verification: focused theme, layout-audit, CLI, and scaffold tests pass;
   full-suite and representative deck checks pass for the implementation.
+
+## Phase 3 implementation notes
+
+- Regions with `overflow_policy: warn` remain observation-only. Automatic
+  fitting requires an explicit `overflow_policy: fit` declaration.
+- Fitting applies a generic region zoom to `.slide-body` or
+  `.print-slide-body`, re-measures after each five-percent step, and stops at
+  the declared `min_scale` floor.
+- The same fitting behavior is injected into interactive HTML and print HTML,
+  so preview, PDF, and PNG generation use the approved adjustment.
+- A `layout_fit` informational diagnostic reports the resulting scale. Any
+  overflow remaining at the floor is still reported as `layout_overflow`.
+- Phase 3 does not alter Markdown, rewrite content, reduce semantics, or split
+  slides. Those remain later phases.
+- RFC-wiki test result: `Control hypotheses` fit at approximately 66% scale;
+  `Interview map` reached its 65% floor and retained a 39px warning. Both
+  interactive and print surfaces completed successfully.
 
 ### Phase 2 contract example
 

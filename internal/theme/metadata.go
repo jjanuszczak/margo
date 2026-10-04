@@ -83,6 +83,31 @@ func (m Metadata) ResponsiveProfiles() []ResponsiveProfile {
 	return append([]ResponsiveProfile(nil), m.Responsive.Profiles...)
 }
 
+// FitSettings returns the most conservative fitting bound declared by any
+// theme region that explicitly opts into automatic fitting.
+func (m Metadata) FitSettings() (enabled bool, minScale float64) {
+	minScale = 1
+	if m.LayoutContract == nil {
+		return false, minScale
+	}
+	for _, layout := range m.LayoutContract.Layouts {
+		for _, region := range layout.Regions {
+			if region.OverflowPolicy != "fit" {
+				continue
+			}
+			enabled = true
+			scale := region.MinScale
+			if scale <= 0 {
+				scale = 0.8
+			}
+			if scale < minScale {
+				minScale = scale
+			}
+		}
+	}
+	return enabled, minScale
+}
+
 type PPTXMetadata struct {
 	SlideSize string                `yaml:"slide_size"`
 	Fonts     PPTXFonts             `yaml:"fonts"`
