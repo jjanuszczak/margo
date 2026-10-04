@@ -156,6 +156,11 @@ complete.
   column while all authored content occupies the other. The diagnostic points
   authors toward a full-width layout or populating both regions before fitting
   or splitting. This remains a warning and never rewrites slide front matter.
+- New starter themes may opt into `structural_policy: collapse_empty_column`
+  in a layout contract region. When declared, generated interactive and print
+  artifacts collapse that empty region before fitting and auditing. Older or
+  inferred contracts remain warning-only until a theme owner explicitly opts
+  in.
 - An explicit approval command now applies a selected proposal with
   `margo slide split <slide-bundle> --proposal <number>`. Normal builds never
   apply proposals automatically.
