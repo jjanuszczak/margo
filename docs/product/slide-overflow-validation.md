@@ -13,7 +13,7 @@ complete.
 - [x] Phase 2: theme layout contracts and responsive profiles
 - [x] Phase 3: bounded, theme-approved automatic fitting
 - [x] Phase 4: agent-facing diagnostics and semantic-change proposals
-- [ ] Phase 5: explicit and boundary-aware semantic splitting
+- [x] Phase 5: explicit and boundary-aware semantic splitting
 
 ## Working rules
 
@@ -36,7 +36,7 @@ complete.
 | 2 | Complete | Complete | Complete | Includes contract bootstrap for new themes and explicit migration for older themes; generated contracts are inferred and review-required. |
 | 3 | Complete | Complete | Complete | Opt-in fitting is bounded by `min_scale`, re-measured after each adjustment, and preserves warnings when the floor is reached. |
 | 4 | Complete | Complete | Complete | Generated diagnostics JSON and an interactive Layout panel expose warnings, fitting actions, and next-step guidance without changing authored content. |
-| 5 | Pending | Pending | Pending | Splitting must use explicit or safe semantic boundaries. |
+| 5 | Complete | Complete | Complete | Proposal-only diagnostics, explicit approval, boundary validation, structural remediation, and representative RFC-wiki regression are complete. |
 
 ## Phase 1 exit criteria
 
@@ -134,8 +134,8 @@ complete.
 
 ## Phase 5 implementation notes
 
-- The first Phase 5 slice is proposal-only. It does not rewrite Markdown or
-  create slides.
+- Phase 5 keeps semantic changes explicit. Normal builds never rewrite Markdown
+  or create slides automatically.
 - Split proposals recognize explicit `<!-- margo: split -->` or
   `<!-- margo-split -->` markers and heading-level boundaries that preserve
   complete Markdown sections.
@@ -150,8 +150,8 @@ complete.
   command for the selected proposal.
 - RFC-wiki verification proposes splitting Interview map before `Control and
   field execution`; Control hypotheses remains a fit-only result.
-- Automatic content rewriting and slide creation remain out of scope until
-  boundary quality and author approval flows are defined.
+- Automatic content rewriting remains intentionally out of scope. The explicit
+  approval command is the author review boundary for creating a new slide.
 - Structural layout checks now flag a two-column slide that reserves one empty
   column while all authored content occupies the other. The diagnostic points
   authors toward a full-width layout or populating both regions before fitting
@@ -172,6 +172,10 @@ complete.
 - The command refuses slides whose authored source differs after include or
   preprocessing expansion, because line-level proposal coordinates are not
   safe to apply to transformed content.
+- Representative RFC-wiki regression restored the original empty-column
+  layout in an isolated copy, enabled the structural remediation policy, and
+  confirmed remediation diagnostics with no remaining overflow findings while
+  leaving the authored source unchanged.
 
 ### Phase 2 contract example
 
