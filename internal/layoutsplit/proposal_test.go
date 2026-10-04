@@ -21,3 +21,11 @@ func TestProposeSkipsUnsafeSlides(t *testing.T) {
 		t.Fatalf("expected no proposals, got %#v", got)
 	}
 }
+
+func TestProposeSkipsBoundariesInsideFencedCode(t *testing.T) {
+	slide := deck.Slide{BodyMarkdown: "# Example\n\n```md\n## Not a section\n<!-- margo: split -->\n```\n\n## Real section\n\nContent"}
+	proposals := Propose(slide)
+	if len(proposals) != 1 || proposals[0].Boundary != "before Real section" {
+		t.Fatalf("expected only the real heading boundary, got %#v", proposals)
+	}
+}

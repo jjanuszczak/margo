@@ -18,6 +18,7 @@ type Proposal struct {
 }
 
 var headingPattern = regexp.MustCompile(`^#{1,3}\s+(.+?)\s*#*\s*$`)
+var fencePattern = regexp.MustCompile(`^\s*(` + "```" + `|~~~)`)
 
 // Propose returns explicit or heading-based split boundaries without changing
 // the authored slide. The result is intentionally conservative and limited to
@@ -29,8 +30,16 @@ func Propose(slide deck.Slide) []Proposal {
 	}
 
 	var proposals []Proposal
+	inFence := false
 	for index, raw := range lines {
 		line := strings.TrimSpace(raw)
+		if fencePattern.MatchString(line) {
+			inFence = !inFence
+			continue
+		}
+		if inFence {
+			continue
+		}
 		if strings.EqualFold(line, "<!-- margo: split -->") || strings.EqualFold(line, "<!-- margo-split -->") {
 			if index > 0 && index < len(lines)-1 {
 				proposals = append(proposals, Proposal{
