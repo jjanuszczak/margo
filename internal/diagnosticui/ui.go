@@ -57,9 +57,13 @@ func InjectPanel(path string, report diagnostics.Report) error {
 	if err != nil {
 		return fmt.Errorf("read interactive diagnostics artifact: %w", err)
 	}
-	bodyPosition := strings.LastIndex(string(document), "</body>")
-	if bodyPosition < 0 {
-		return fmt.Errorf("interactive diagnostics artifact has no closing body tag")
+	documentText := string(document)
+	insertionPosition := strings.LastIndex(documentText, "</main>")
+	if insertionPosition < 0 {
+		insertionPosition = strings.LastIndex(documentText, "</body>")
+	}
+	if insertionPosition < 0 {
+		return fmt.Errorf("interactive diagnostics artifact has no closing main or body tag")
 	}
 	payload, err := json.Marshal(struct {
 		Items []diagnostics.Diagnostic `json:"items"`
@@ -97,7 +101,7 @@ func InjectPanel(path string, report diagnostics.Report) error {
 		staticRows.WriteString(html.EscapeString(item.Code))
 		staticRows.WriteString(`" data-margo-slide-index="`)
 		staticRows.WriteString(fmt.Sprintf("%d", slideIndex))
-		staticRows.WriteString(`" onclick="(function(){var i=Number(this.getAttribute('data-margo-slide-index')),s=document.querySelectorAll('.slide'),d=document.querySelectorAll('[data-slide-dot]');for(var n=0;n<s.length;n++){s[n].classList.toggle('active',n===i)}for(var n=0;n<d.length;n++){if(n===i){d[n].setAttribute('aria-current','true')}else{d[n].removeAttribute('aria-current')}}var notes=document.querySelector('.slide-notes');if(notes){notes.hidden=true}if(s[i]&&s[i].scrollIntoView){s[i].scrollIntoView({behavior:'smooth',block:'nearest'})}})()"><strong>`)
+		staticRows.WriteString(`"><strong>`)
 		staticRows.WriteString(html.EscapeString(title))
 		staticRows.WriteString(`</strong><span>`)
 		staticRows.WriteString(html.EscapeString(item.Message))
@@ -128,7 +132,7 @@ func InjectPanel(path string, report diagnostics.Report) error {
 <script type="application/json" data-margo-diagnostics>%s</script>
 <script data-margo-diagnostics-ui>
 (() => {
-  const payloadNode = document.querySelector('[data-margo-diagnostics]');
+  const payloadNode = document.querySelector('script[type="application/json"][data-margo-diagnostics]');
   const payload = JSON.parse((payloadNode && payloadNode.textContent) || '{"items":[]}');
   const relevant = (payload.items || []).filter(item => item.code === 'layout_overflow' || item.code === 'layout_fit');
   if (!relevant.length) return;
@@ -182,9 +186,9 @@ func InjectPanel(path string, report diagnostics.Report) error {
 </script>
 `, overflowCount, staticRows.String(), string(payload))
 	output := make([]byte, 0, len(document)+len(panel))
-	output = append(output, document[:bodyPosition]...)
+	output = append(output, document[:insertionPosition]...)
 	output = append(output, panel...)
-	output = append(output, document[bodyPosition:]...)
+	output = append(output, document[insertionPosition:]...)
 	if err := os.WriteFile(path, output, 0o644); err != nil {
 		return fmt.Errorf("write interactive diagnostics artifact: %w", err)
 	}
