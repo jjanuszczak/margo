@@ -50,14 +50,15 @@ type LayoutReservedSpace struct {
 }
 
 type LayoutRegion struct {
-	Name           string  `yaml:"name"`
-	Role           string  `yaml:"role"`
-	MaxLines       int     `yaml:"max_lines,omitempty"`
-	MinFontSize    float64 `yaml:"min_font_size,omitempty"`
-	MinScale       float64 `yaml:"min_scale,omitempty"`
-	OverflowPolicy string  `yaml:"overflow_policy,omitempty"`
-	Flexible       bool    `yaml:"flexible,omitempty"`
-	AllowSplit     bool    `yaml:"allow_split,omitempty"`
+	Name             string  `yaml:"name"`
+	Role             string  `yaml:"role"`
+	MaxLines         int     `yaml:"max_lines,omitempty"`
+	MinFontSize      float64 `yaml:"min_font_size,omitempty"`
+	MinScale         float64 `yaml:"min_scale,omitempty"`
+	OverflowPolicy   string  `yaml:"overflow_policy,omitempty"`
+	Flexible         bool    `yaml:"flexible,omitempty"`
+	AllowSplit       bool    `yaml:"allow_split,omitempty"`
+	StructuralPolicy string  `yaml:"structural_policy,omitempty"`
 }
 
 // ResponsiveContract declares the viewport profiles a theme promises to
@@ -106,6 +107,22 @@ func (m Metadata) FitSettings() (enabled bool, minScale float64) {
 		}
 	}
 	return enabled, minScale
+}
+
+// StructuralRemediationEnabled reports whether the theme explicitly permits
+// Margo to correct a known empty layout region in generated output.
+func (m Metadata) StructuralRemediationEnabled() bool {
+	if m.LayoutContract == nil {
+		return false
+	}
+	for _, layout := range m.LayoutContract.Layouts {
+		for _, region := range layout.Regions {
+			if region.StructuralPolicy == "collapse_empty_column" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 type PPTXMetadata struct {

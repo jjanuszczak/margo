@@ -28,14 +28,15 @@ const (
 
 // Artifact describes a generated HTML surface to inspect.
 type Artifact struct {
-	Path                string
-	Profile             string
-	SlideSelector       string
-	SlideLabel          string
-	ViewportWidth       int
-	ViewportHeight      int
-	AllowVerticalScroll bool
-	Fit                 *FitPolicy
+	Path                  string
+	Profile               string
+	SlideSelector         string
+	SlideLabel            string
+	ViewportWidth         int
+	ViewportHeight        int
+	AllowVerticalScroll   bool
+	Fit                   *FitPolicy
+	StructuralRemediation bool
 }
 
 type FitPolicy struct {
@@ -339,12 +340,17 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
 			fitMinScale = 0.8
 		}
 	}
+	structuralRemediation, err := json.Marshal(artifact.StructuralRemediation)
+	if err != nil {
+		return nil, fmt.Errorf("encode structural remediation policy: %w", err)
+	}
 	script := fmt.Sprintf(`<script>
 (() => {
   const selector = %s;
   const allowVerticalScroll = %s;
   const fitEnabled = %t;
   const fitMinScale = %f;
+  const structuralRemediation = %s;
   const slides = Array.from(document.querySelectorAll(selector));
   const findings = [];
   const structures = [];
@@ -401,6 +407,18 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
       });
     }
   };
+  const remediateStructure = slide => {
+    if (!structuralRemediation) return;
+    const layout = slide.querySelector('.two-column-slide');
+    if (!layout) return;
+    const columns = Array.from(layout.querySelectorAll(':scope > .column'));
+    if (columns.length !== 2) return;
+    const hasContent = column => Array.from(column.querySelectorAll('*')).some(element => visible(element));
+    if (columns.filter(hasContent).length === 1 && columns.filter(column => !hasContent(column)).length === 1) {
+      layout.style.gridTemplateColumns = '1fr';
+      layout.dataset.margoStructuralRemediation = 'collapse_empty_column';
+    }
+  };
   const fit = (slide, index) => {
     if (!fitEnabled) return null;
     const region = slide.querySelector('.slide-body, .print-slide-body');
@@ -422,6 +440,7 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
         slides.forEach(item => { item.style.display = 'none'; });
         slide.style.display = 'block';
       }
+      remediateStructure(slide);
       const adjustment = fit(slide, index);
       if (adjustment) adjustments.push(adjustment);
       const largest = measure(slide);
@@ -443,7 +462,7 @@ func appendAuditScript(document []byte, artifact Artifact) ([]byte, error) {
   };
   waitForAssets();
 })();
-</script>`, string(selector), string(allowVerticalScroll), fitEnabled, fitMinScale)
+</script>`, string(selector), string(allowVerticalScroll), fitEnabled, fitMinScale, string(structuralRemediation))
 	prelude := []byte(`<script>window.setInterval = () => 0; window.fetch = () => Promise.reject(new Error('layout audit'));</script>`)
 	withPrelude := make([]byte, 0, len(document)+len(prelude))
 	withPrelude = append(withPrelude, document[:headPosition]...)
@@ -520,6 +539,49 @@ func ApplyFit(path string, policy FitPolicy) error {
 	result = append(result, document[bodyPosition:]...)
 	if err := os.WriteFile(path, result, 0o644); err != nil {
 		return fmt.Errorf("write fit artifact: %w", err)
+	}
+	return nil
+}
+
+// ApplyStructuralRemediation adds only the theme-approved empty-column
+// correction to a generated artifact. It never changes authored content.
+func ApplyStructuralRemediation(path string, enabled bool) error {
+	if !enabled {
+		return nil
+	}
+	document, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read structural remediation artifact: %w", err)
+	}
+	bodyPosition := bytes.LastIndex(document, []byte("</body>"))
+	if bodyPosition < 0 {
+		return errors.New("structural remediation artifact does not contain a closing body tag")
+	}
+	script := []byte(`<script data-margo-structural-remediation>
+(() => {
+  const visible = element => {
+    const style = window.getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+  };
+  document.querySelectorAll('.two-column-slide').forEach(layout => {
+    const columns = Array.from(layout.querySelectorAll(':scope > .column'));
+    if (columns.length !== 2) return;
+    const hasContent = column => Array.from(column.querySelectorAll('*')).some(element => visible(element));
+    if (columns.filter(hasContent).length === 1 && columns.filter(column => !hasContent(column)).length === 1) {
+      layout.style.gridTemplateColumns = '1fr';
+      layout.dataset.margoStructuralRemediation = 'collapse_empty_column';
+    }
+  });
+})();
+</script>
+`)
+	result := make([]byte, 0, len(document)+len(script))
+	result = append(result, document[:bodyPosition]...)
+	result = append(result, script...)
+	result = append(result, document[bodyPosition:]...)
+	if err := os.WriteFile(path, result, 0o644); err != nil {
+		return fmt.Errorf("write structural remediation artifact: %w", err)
 	}
 	return nil
 }

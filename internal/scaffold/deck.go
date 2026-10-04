@@ -912,6 +912,7 @@ layout_contract:
           min_scale: 0.8
           overflow_policy: warn
           flexible: true
+          structural_policy: collapse_empty_column
 responsive:
   profiles:
     - name: desktop
@@ -1078,6 +1079,7 @@ layout_contract:
           min_scale: 0.8
           overflow_policy: warn
           flexible: true
+          structural_policy: collapse_empty_column
 responsive:
   profiles:
     - name: desktop

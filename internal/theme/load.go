@@ -289,6 +289,9 @@ func validateLayoutContract(contract *LayoutContract, path string) error {
 			if policy := strings.TrimSpace(region.OverflowPolicy); policy != "" && policy != "warn" && policy != "fit" && policy != "split" && policy != "ask" {
 				return &Error{Path: path, Message: fmt.Sprintf("theme layout_contract region %q in layout %q has unsupported overflow_policy %q", regionName, name, region.OverflowPolicy)}
 			}
+			if policy := strings.TrimSpace(region.StructuralPolicy); policy != "" && policy != "collapse_empty_column" {
+				return &Error{Path: path, Message: fmt.Sprintf("theme layout_contract region %q in layout %q has unsupported structural_policy %q", regionName, name, policy)}
+			}
 		}
 	}
 	return nil

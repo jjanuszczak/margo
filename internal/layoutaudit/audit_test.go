@@ -58,6 +58,23 @@ func TestApplyFitInjectsRuntimeScript(t *testing.T) {
 	}
 }
 
+func TestApplyStructuralRemediationInjectsRuntimeScript(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "index.html")
+	if err := os.WriteFile(path, []byte("<html><body><section class=\"two-column-slide\"></section></body></html>"), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	if err := ApplyStructuralRemediation(path, true); err != nil {
+		t.Fatalf("ApplyStructuralRemediation() error = %v", err)
+	}
+	output, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	if !strings.Contains(string(output), "data-margo-structural-remediation") || !strings.Contains(string(output), "collapse_empty_column") {
+		t.Fatalf("expected structural remediation script, got %q", output)
+	}
+}
+
 func TestAppendAuditScriptRequiresBody(t *testing.T) {
 	if _, err := appendAuditScript([]byte("<html></html>"), Artifact{SlideSelector: "main .slide"}); err == nil {
 		t.Fatal("expected missing body error")

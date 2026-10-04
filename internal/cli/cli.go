@@ -53,14 +53,15 @@ func layoutAuditArtifacts(path, selector, label string, activeTheme theme.Metada
 	fitEnabled, fitMinScale := activeTheme.FitSettings()
 	for _, profile := range profiles {
 		artifacts = append(artifacts, layoutaudit.Artifact{
-			Path:                path,
-			Profile:             profile.Name + profileSuffix(profile, print),
-			SlideSelector:       selector,
-			SlideLabel:          label,
-			ViewportWidth:       profile.Width,
-			ViewportHeight:      profile.Height,
-			AllowVerticalScroll: profile.AllowVerticalScroll,
-			Fit:                 &layoutaudit.FitPolicy{Enabled: fitEnabled, MinScale: fitMinScale},
+			Path:                  path,
+			Profile:               profile.Name + profileSuffix(profile, print),
+			SlideSelector:         selector,
+			SlideLabel:            label,
+			ViewportWidth:         profile.Width,
+			ViewportHeight:        profile.Height,
+			AllowVerticalScroll:   profile.AllowVerticalScroll,
+			Fit:                   &layoutaudit.FitPolicy{Enabled: fitEnabled, MinScale: fitMinScale},
+			StructuralRemediation: activeTheme.StructuralRemediationEnabled(),
 		})
 	}
 	return artifacts
@@ -69,6 +70,10 @@ func layoutAuditArtifacts(path, selector, label string, activeTheme theme.Metada
 func applyLayoutFit(path string, activeTheme theme.Metadata) error {
 	enabled, minScale := activeTheme.FitSettings()
 	return layoutaudit.ApplyFit(path, layoutaudit.FitPolicy{Enabled: enabled, MinScale: minScale})
+}
+
+func applyLayoutRemediation(path string, activeTheme theme.Metadata) error {
+	return layoutaudit.ApplyStructuralRemediation(path, activeTheme.StructuralRemediationEnabled())
 }
 
 func attachSplitProposals(report *diagnostics.Report, slides []deck.Slide) {
@@ -2057,6 +2062,9 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 				diagnostics.WriteReport(stdout, report)
 			}
 			buildDiagnostics.Items = append(buildDiagnostics.Items, report.Items...)
+			if err := applyLayoutRemediation(filepath.Join(root.Dir, html.OutputFile), activeTheme); err != nil {
+				return fmt.Errorf("apply html layout remediation: %w", err)
+			}
 			if err := applyLayoutFit(filepath.Join(root.Dir, html.OutputFile), activeTheme); err != nil {
 				return fmt.Errorf("apply html layout fit: %w", err)
 			}
@@ -2084,6 +2092,9 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 				diagnostics.WriteReport(stdout, report)
 			}
 			buildDiagnostics.Items = append(buildDiagnostics.Items, report.Items...)
+			if err := applyLayoutRemediation(filepath.Join(root.Dir, printhtml.OutputFile), activeTheme); err != nil {
+				return fmt.Errorf("apply print layout remediation: %w", err)
+			}
 			if err := applyLayoutFit(filepath.Join(root.Dir, printhtml.OutputFile), activeTheme); err != nil {
 				return fmt.Errorf("apply print layout fit: %w", err)
 			}
