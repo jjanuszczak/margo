@@ -76,25 +76,34 @@ func InjectPanel(path string, report diagnostics.Report) error {
 		if item.Code == "layout_overflow" {
 			overflowCount++
 		}
+		slideIndex := -1
 		title := "Layout diagnostic"
 		if item.Meta != nil {
 			if value, ok := item.Meta["title"].(string); ok && value != "" {
 				title = value
+			}
+			switch value := item.Meta["slide_index"].(type) {
+			case int:
+				slideIndex = value
+			case float64:
+				slideIndex = int(value)
 			}
 		}
 		suggestion := "Review the content, theme contract, or a future split proposal."
 		if item.Code == "layout_fit" {
 			suggestion = "Automatic fitting was applied within the theme limit."
 		}
-		staticRows.WriteString(`<div class="margo-layout-diagnostic" data-code="`)
+		staticRows.WriteString(`<button type="button" class="margo-layout-diagnostic" data-code="`)
 		staticRows.WriteString(html.EscapeString(item.Code))
-		staticRows.WriteString(`"><strong>`)
+		staticRows.WriteString(`" data-margo-slide-index="`)
+		staticRows.WriteString(fmt.Sprintf("%d", slideIndex))
+		staticRows.WriteString(`" onclick="(function(){var i=Number(this.getAttribute('data-margo-slide-index')),s=document.querySelectorAll('.slide'),d=document.querySelectorAll('[data-slide-dot]');for(var n=0;n<s.length;n++){s[n].classList.toggle('active',n===i)}for(var n=0;n<d.length;n++){if(n===i){d[n].setAttribute('aria-current','true')}else{d[n].removeAttribute('aria-current')}}var notes=document.querySelector('.slide-notes');if(notes){notes.hidden=true}if(s[i]&&s[i].scrollIntoView){s[i].scrollIntoView({behavior:'smooth',block:'nearest'})}})()"><strong>`)
 		staticRows.WriteString(html.EscapeString(title))
 		staticRows.WriteString(`</strong><span>`)
 		staticRows.WriteString(html.EscapeString(item.Message))
 		staticRows.WriteString(`</span><small>`)
 		staticRows.WriteString(html.EscapeString(suggestion))
-		staticRows.WriteString(`</small></div>`)
+		staticRows.WriteString(`</small></button>`)
 	}
 	panel := fmt.Sprintf(`<style data-margo-diagnostics>
 .margo-layout-diagnostics-button { position: relative; }
@@ -106,7 +115,7 @@ func InjectPanel(path string, report diagnostics.Report) error {
 .margo-layout-diagnostics-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .75rem; }
 .margo-layout-diagnostics-header h2 { margin: 0; font-size: 1rem; }
 .margo-layout-diagnostics-close { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 1.25rem; }
-.margo-layout-diagnostic { margin: .6rem 0; padding: .65rem; border-left: .25rem solid #b42318; background: #fff1f0; }
+.margo-layout-diagnostic { display: block; width: 100%%; margin: .6rem 0; padding: .65rem; border: 0; border-left: .25rem solid #b42318; background: #fff1f0; color: inherit; cursor: pointer; text-align: left; }
 .margo-layout-diagnostic[data-code="layout_fit"] { border-left-color: #067647; background: #ecfdf3; }
 .margo-layout-diagnostic button { border: 0; padding: 0; background: transparent; color: inherit; cursor: pointer; text-align: left; }
 .margo-layout-diagnostic strong, .margo-layout-diagnostic span, .margo-layout-diagnostic small { display: block; }

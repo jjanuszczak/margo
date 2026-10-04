@@ -35,7 +35,7 @@ func TestWriteReportAndInjectPanel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read HTML fixture: %v", err)
 	}
-	for _, needle := range []string{"data-margo-diagnostics-ui", "Layout diagnostics", "Interview map", "data-margo-diagnostics"} {
+	for _, needle := range []string{"data-margo-diagnostics-ui", "Layout diagnostics", "Interview map", "data-margo-diagnostics", "data-margo-slide-index=\"0\""} {
 		if !strings.Contains(string(output), needle) {
 			t.Fatalf("expected injected HTML to contain %q", needle)
 		}
