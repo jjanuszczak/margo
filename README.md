@@ -49,6 +49,7 @@ Working today:
 - `margo new theme <name>`
 - `margo new theme <name> blank`
 - `margo theme update <name>`
+- `margo theme contract init [theme-name]`
 
 Implemented in the content model:
 - YAML config parsing

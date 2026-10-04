@@ -12,6 +12,7 @@ import (
 	"github.com/jjanuszczak/margo/internal/content"
 	"github.com/jjanuszczak/margo/internal/manifest"
 	"github.com/jjanuszczak/margo/internal/scaffold"
+	"github.com/jjanuszczak/margo/internal/theme"
 )
 
 func TestParseBuildLikeArgs(t *testing.T) {
@@ -41,6 +42,21 @@ func TestParseBuildLikeArgs(t *testing.T) {
 	}
 	if port != "" {
 		t.Fatalf("expected empty build port, got %q", port)
+	}
+}
+
+func TestLayoutAuditArtifactsUsesResponsiveProfiles(t *testing.T) {
+	active := theme.Metadata{Responsive: &theme.ResponsiveContract{Profiles: []theme.ResponsiveProfile{
+		{Name: "desktop", Width: 1920, Height: 1080, Mode: "fixed_canvas"},
+		{Name: "mobile", Width: 390, Height: 844, Mode: "reflow", AllowVerticalScroll: true},
+	}}}
+	interactive := layoutAuditArtifacts("dist/html/index.html", "main .slide", "interactive HTML", active, false)
+	if len(interactive) != 2 || interactive[1].ViewportWidth != 390 || !interactive[1].AllowVerticalScroll {
+		t.Fatalf("unexpected interactive audit profiles: %#v", interactive)
+	}
+	print := layoutAuditArtifacts("dist/pdf/print.html", "main .print-slide", "print HTML", active, true)
+	if len(print) != 1 || print[0].Profile != "desktop print" || print[0].ViewportHeight != 1080 {
+		t.Fatalf("unexpected print audit profiles: %#v", print)
 	}
 }
 

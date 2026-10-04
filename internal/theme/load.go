@@ -189,6 +189,12 @@ func validateMetadata(meta Metadata, path string) error {
 	if err := validatePPTXMetadata(meta.PPTX, path); err != nil {
 		return err
 	}
+	if err := validateLayoutContract(meta.LayoutContract, path); err != nil {
+		return err
+	}
+	if err := validateResponsiveContract(meta.Responsive, path); err != nil {
+		return err
+	}
 	seen := map[string]struct{}{}
 	for _, option := range meta.ConfigOptions {
 		name := strings.TrimSpace(option.Name)
@@ -247,6 +253,74 @@ func validateMetadata(meta Metadata, path string) error {
 					Message: fmt.Sprintf("theme config option %q default: %v", name, err),
 				}
 			}
+		}
+	}
+	return nil
+}
+
+func validateLayoutContract(contract *LayoutContract, path string) error {
+	if contract == nil {
+		return nil
+	}
+	if contract.Slide.Width <= 0 || contract.Slide.Height <= 0 {
+		return &Error{Path: path, Message: "theme layout_contract slide width and height must be positive"}
+	}
+	for name, layout := range contract.Layouts {
+		if strings.TrimSpace(name) == "" {
+			return &Error{Path: path, Message: "theme layout_contract layout names are required"}
+		}
+		reserved := layout.Reserved
+		if reserved.Top < 0 || reserved.Right < 0 || reserved.Bottom < 0 || reserved.Left < 0 {
+			return &Error{Path: path, Message: fmt.Sprintf("theme layout_contract layout %q reserved space cannot be negative", name)}
+		}
+		seen := map[string]struct{}{}
+		for _, region := range layout.Regions {
+			regionName := strings.TrimSpace(region.Name)
+			if regionName == "" {
+				return &Error{Path: path, Message: fmt.Sprintf("theme layout_contract layout %q region names are required", name)}
+			}
+			if _, ok := seen[regionName]; ok {
+				return &Error{Path: path, Message: fmt.Sprintf("duplicate theme layout_contract region %q in layout %q", regionName, name)}
+			}
+			seen[regionName] = struct{}{}
+			if region.MaxLines < 0 || region.MinFontSize < 0 || region.MinScale < 0 || region.MinScale > 1 {
+				return &Error{Path: path, Message: fmt.Sprintf("theme layout_contract region %q in layout %q has invalid sizing limits", regionName, name)}
+			}
+			if policy := strings.TrimSpace(region.OverflowPolicy); policy != "" && policy != "warn" && policy != "fit" && policy != "split" && policy != "ask" {
+				return &Error{Path: path, Message: fmt.Sprintf("theme layout_contract region %q in layout %q has unsupported overflow_policy %q", regionName, name, region.OverflowPolicy)}
+			}
+			if policy := strings.TrimSpace(region.StructuralPolicy); policy != "" && policy != "collapse_empty_column" && policy != "widen_columns" {
+				return &Error{Path: path, Message: fmt.Sprintf("theme layout_contract region %q in layout %q has unsupported structural_policy %q", regionName, name, policy)}
+			}
+		}
+	}
+	return nil
+}
+
+func validateResponsiveContract(contract *ResponsiveContract, path string) error {
+	if contract == nil {
+		return nil
+	}
+	if len(contract.Profiles) == 0 {
+		return &Error{Path: path, Message: "theme responsive contract requires at least one profile"}
+	}
+	seen := map[string]struct{}{}
+	for _, profile := range contract.Profiles {
+		name := strings.TrimSpace(profile.Name)
+		if name == "" {
+			return &Error{Path: path, Message: "theme responsive profile names are required"}
+		}
+		if _, ok := seen[name]; ok {
+			return &Error{Path: path, Message: fmt.Sprintf("duplicate theme responsive profile %q", name)}
+		}
+		seen[name] = struct{}{}
+		if profile.Width <= 0 || profile.Height <= 0 {
+			return &Error{Path: path, Message: fmt.Sprintf("theme responsive profile %q width and height must be positive", name)}
+		}
+		switch strings.TrimSpace(profile.Mode) {
+		case "fixed_canvas", "reflow":
+		default:
+			return &Error{Path: path, Message: fmt.Sprintf("theme responsive profile %q has unsupported mode %q", name, profile.Mode)}
 		}
 	}
 	return nil

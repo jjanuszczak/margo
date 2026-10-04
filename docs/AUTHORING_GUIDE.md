@@ -271,6 +271,17 @@ To bootstrap or inspect a theme’s PPTX contract:
 
 The optional contract lives at `themes/<name>/pptx/theme.yaml`. It declares PowerPoint-specific fonts, colors, assets, and layout metadata while the HTML theme remains unchanged.
 
+To bootstrap the slide layout and responsive contract for an older theme, run:
+
+```bash
+../bin/margo theme contract init [theme-name]
+```
+
+The command preserves the existing theme metadata and adds an inferred,
+`review_required` contract. Review the generated `layout_contract` and
+`responsive.profiles` before using them as input for future automatic fitting
+or splitting. New themes created by Margo include a starter contract directly.
+
 Layout geometry is expressed in inches. For example:
 
 ```yaml
@@ -344,6 +355,20 @@ the resulting rename map and preserves all files inside each bundle, including
 notes and assets. For a deck with arbitrary descriptive bundle names, Margo
 keeps those paths stable and only updates sequence metadata. Pass `--renumber`
 to explicitly rename such a deck into positional bundle names.
+
+### Apply an approved layout split
+
+When a layout diagnostic includes a split proposal, apply it explicitly:
+
+```bash
+../bin/margo slide split 04-customer-story --proposal 1
+```
+
+The proposal number is the ranked candidate shown in the Layout panel or
+`dist/margo-diagnostics.json`. Margo creates a second slide bundle, updates the
+sequence, preserves assets, keeps notes with the first part, and moves the
+original bundle to `.margo-trash`. Normal `build` and `serve` commands never
+apply split proposals automatically.
 
 ### Move or delete a slide
 

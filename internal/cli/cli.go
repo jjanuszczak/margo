@@ -19,6 +19,9 @@ import (
 	"github.com/jjanuszczak/margo/internal/deck"
 	"github.com/jjanuszczak/margo/internal/deploy"
 	"github.com/jjanuszczak/margo/internal/diagnostics"
+	"github.com/jjanuszczak/margo/internal/diagnosticui"
+	"github.com/jjanuszczak/margo/internal/layoutaudit"
+	"github.com/jjanuszczak/margo/internal/layoutsplit"
 	"github.com/jjanuszczak/margo/internal/manifest"
 	"github.com/jjanuszczak/margo/internal/output/html"
 	"github.com/jjanuszczak/margo/internal/output/pdf"
@@ -39,6 +42,84 @@ import (
 type commandError struct {
 	message string
 	report  diagnostics.Report
+}
+
+func layoutAuditArtifacts(path, selector, label string, activeTheme theme.Metadata, print bool) []layoutaudit.Artifact {
+	profiles := activeTheme.ResponsiveProfiles()
+	if print {
+		profiles = []theme.ResponsiveProfile{printAuditProfile(profiles)}
+	}
+	artifacts := make([]layoutaudit.Artifact, 0, len(profiles))
+	fitEnabled, fitMinScale := activeTheme.FitSettings()
+	for _, profile := range profiles {
+		artifacts = append(artifacts, layoutaudit.Artifact{
+			Path:                path,
+			Profile:             profile.Name + profileSuffix(profile, print),
+			SlideSelector:       selector,
+			SlideLabel:          label,
+			ViewportWidth:       profile.Width,
+			ViewportHeight:      profile.Height,
+			AllowVerticalScroll: profile.AllowVerticalScroll,
+			Fit:                 &layoutaudit.FitPolicy{Enabled: fitEnabled, MinScale: fitMinScale},
+			StructuralPolicies:  activeTheme.StructuralRemediationPolicies(),
+		})
+	}
+	return artifacts
+}
+
+func applyLayoutFit(path string, activeTheme theme.Metadata) error {
+	enabled, minScale := activeTheme.FitSettings()
+	return layoutaudit.ApplyFit(path, layoutaudit.FitPolicy{Enabled: enabled, MinScale: minScale})
+}
+
+func applyLayoutRemediation(path string, activeTheme theme.Metadata) error {
+	return layoutaudit.ApplyStructuralRemediation(path, activeTheme.StructuralRemediationPolicies())
+}
+
+func attachSplitProposals(report *diagnostics.Report, slides []deck.Slide) {
+	for index := range report.Items {
+		item := &report.Items[index]
+		if item.Code != "layout_overflow" || item.Meta == nil {
+			continue
+		}
+		slideIndex, ok := item.Meta["slide_index"].(int)
+		if !ok || slideIndex < 0 || slideIndex >= len(slides) {
+			continue
+		}
+		proposals := layoutsplit.Propose(slides[slideIndex])
+		if len(proposals) == 0 {
+			continue
+		}
+		metadata := make([]map[string]any, 0, len(proposals))
+		for proposalIndex, proposal := range proposals {
+			metadata = append(metadata, map[string]any{
+				"after_line":      proposal.AfterLine,
+				"boundary":        proposal.Boundary,
+				"confidence":      proposal.Confidence,
+				"reason":          proposal.Reason,
+				"estimated_parts": proposal.EstimatedParts,
+				"command":         fmt.Sprintf("margo slide split %s --proposal %d", slides[slideIndex].ID, proposalIndex+1),
+			})
+		}
+		item.Meta["split_proposals"] = metadata
+		item.Meta["split_mode"] = "proposal_only"
+	}
+}
+
+func profileSuffix(profile theme.ResponsiveProfile, print bool) string {
+	if print {
+		return " print"
+	}
+	return " interactive"
+}
+
+func printAuditProfile(profiles []theme.ResponsiveProfile) theme.ResponsiveProfile {
+	for _, profile := range profiles {
+		if strings.EqualFold(profile.Name, "desktop") {
+			return profile
+		}
+	}
+	return profiles[0]
 }
 
 func (e commandError) Error() string {
@@ -373,9 +454,58 @@ func runThemeCommand(args []string, stdout io.Writer) error {
 		return runThemeList(stdout)
 	case "pptx":
 		return runThemePPTX(args[1:], stdout)
+	case "contract":
+		return runThemeContract(args[1:], stdout)
 	default:
 		return fmt.Errorf("unknown theme subcommand %q", args[0])
 	}
+}
+
+func runThemeContract(args []string, stdout io.Writer) error {
+	if len(args) < 1 || args[0] != "init" || len(args) > 2 {
+		return errors.New("theme contract requires init and an optional theme name")
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working directory: %w", err)
+	}
+	root, err := project.Discover(wd)
+	if err != nil {
+		return fmt.Errorf("theme contract init requires a Margo project root: %w", err)
+	}
+	themeName := ""
+	if len(args) == 2 {
+		themeName = strings.TrimSpace(args[1])
+		if themeName == "" || strings.HasPrefix(themeName, "--") {
+			return errors.New("theme contract init theme name cannot be empty or an option")
+		}
+	} else {
+		raw, loadErr := config.LoadRaw(root.ConfigPath)
+		if loadErr != nil {
+			return loadErr
+		}
+		parsed, parseErr := config.Parse(raw)
+		if parseErr != nil {
+			return parseErr
+		}
+		themeName = parsed.Config.Theme.Name
+	}
+	active, err := theme.Load(root.Dir, themeName)
+	if err != nil {
+		return err
+	}
+	generated, err := theme.GenerateContract(active.RootDir, active)
+	if err != nil {
+		return err
+	}
+	metadataPath := filepath.Join(active.RootDir, theme.ThemeMetadataFile)
+	if !generated {
+		fmt.Fprintf(stdout, "theme contract already exists at %s\n", metadataPath)
+		return nil
+	}
+	fmt.Fprintf(stdout, "created inferred theme contract at %s\n", metadataPath)
+	fmt.Fprintln(stdout, "review status: required before relying on automatic fitting or splitting")
+	return nil
 }
 
 func runThemePPTX(args []string, stdout io.Writer) error {
@@ -582,7 +712,7 @@ type insertSlideOptions struct {
 
 func runSlideCommand(args []string, stdout io.Writer) error {
 	if len(args) == 0 {
-		return errors.New("usage: margo slide <insert|move|delete> ...")
+		return errors.New("usage: margo slide <insert|move|delete|split> ...")
 	}
 	switch args[0] {
 	case "insert":
@@ -591,9 +721,224 @@ func runSlideCommand(args []string, stdout io.Writer) error {
 		return runSlideMove(args[1:], stdout)
 	case "delete":
 		return runSlideDelete(args[1:], stdout)
+	case "split":
+		return runSlideSplit(args[1:], stdout)
 	default:
 		return fmt.Errorf("unknown slide command %q", args[0])
 	}
+}
+
+func runSlideSplit(args []string, stdout io.Writer) error {
+	slideID, proposalIndex, err := parseSlideSplitArgs(args)
+	if err != nil {
+		return err
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	root, err := project.Discover(wd)
+	if err != nil {
+		return fmt.Errorf("slide split requires a Margo project root: %w", err)
+	}
+	slides, hasManifest, err := loadResolvedSlides(root.Dir)
+	if err != nil {
+		return err
+	}
+	targetIndex := -1
+	for index, slide := range slides {
+		if slide.ID == slideID {
+			targetIndex = index
+			break
+		}
+	}
+	if targetIndex < 0 {
+		return fmt.Errorf("slide split target %q was not found", slideID)
+	}
+	slide := slides[targetIndex]
+	proposals := layoutsplit.Propose(slide)
+	if proposalIndex < 1 || proposalIndex > len(proposals) {
+		return fmt.Errorf("slide split proposal %d is outside the %d available proposals for %q", proposalIndex, len(proposals), slideID)
+	}
+	proposal := proposals[proposalIndex-1]
+	indexPath := filepath.Join(slide.BundlePath, "index.md")
+	sourceBytes, err := os.ReadFile(indexPath)
+	if err != nil {
+		return fmt.Errorf("read slide source: %w", err)
+	}
+	left, right, err := splitSlideSource(string(sourceBytes), slide.BodyMarkdown, proposal)
+	if err != nil {
+		return err
+	}
+	secondID := slideID + "-part-2"
+	secondPath := filepath.Join(root.Dir, "slides", secondID)
+	if _, err := os.Stat(secondPath); err == nil {
+		return fmt.Errorf("split target already exists: %s", secondID)
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("check split target %q: %w", secondID, err)
+	}
+	tempRoot, err := os.MkdirTemp(filepath.Join(root.Dir, "slides"), ".margo-split-")
+	if err != nil {
+		return fmt.Errorf("create split staging directory: %w", err)
+	}
+	defer os.RemoveAll(tempRoot)
+	partOne := filepath.Join(tempRoot, slideID)
+	partTwo := filepath.Join(tempRoot, secondID)
+	if err := os.MkdirAll(partOne, 0o755); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(partTwo, 0o755); err != nil {
+		return err
+	}
+	if err := copyBundleExtras(slide.BundlePath, partOne, nil); err != nil {
+		return fmt.Errorf("preserve original slide assets and notes: %w", err)
+	}
+	if err := copyBundleExtras(slide.BundlePath, partTwo, slide.Assets); err != nil {
+		return fmt.Errorf("copy split slide assets: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(partOne, "index.md"), []byte(left), 0o644); err != nil {
+		return fmt.Errorf("write first split slide: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(partTwo, "index.md"), []byte(right), 0o644); err != nil {
+		return fmt.Errorf("write second split slide: %w", err)
+	}
+	trashPath, err := moveSlideToTrash(root.Dir, slideID)
+	if err != nil {
+		return fmt.Errorf("backup original slide: %w", err)
+	}
+	if err := os.Rename(partOne, filepath.Join(root.Dir, "slides", slideID)); err != nil {
+		_ = os.Rename(trashPath, filepath.Join(root.Dir, "slides", slideID))
+		return fmt.Errorf("install first split slide: %w", err)
+	}
+	if err := os.Rename(partTwo, secondPath); err != nil {
+		_ = os.Rename(filepath.Join(root.Dir, "slides", slideID), trashPath)
+		_ = os.Rename(trashPath, filepath.Join(root.Dir, "slides", slideID))
+		return fmt.Errorf("install second split slide: %w", err)
+	}
+	orderedIDs := make([]string, 0, len(slides)+1)
+	for index, existing := range slides {
+		if index == targetIndex {
+			orderedIDs = append(orderedIDs, slideID, secondID)
+			continue
+		}
+		orderedIDs = append(orderedIDs, existing.ID)
+	}
+	if err := rewriteSlideOrders(root.Dir, orderedIDs); err != nil {
+		return fmt.Errorf("update split slide order: %w", err)
+	}
+	if hasManifest {
+		if err := manifest.Save(root.Dir, manifest.File{Slides: orderedIDs}); err != nil {
+			return fmt.Errorf("save split slide manifest: %w", err)
+		}
+	}
+	fmt.Fprintf(stdout, "applied split proposal %d to %s: created %s\n", proposalIndex, slideID, secondID)
+	fmt.Fprintf(stdout, "boundary: %s\n", proposal.Boundary)
+	fmt.Fprintf(stdout, "original backed up at %s\n", trashPath)
+	return nil
+}
+
+func parseSlideSplitArgs(args []string) (string, int, error) {
+	var slideID string
+	proposal := 0
+	for index := 0; index < len(args); index++ {
+		switch args[index] {
+		case "--proposal":
+			if index+1 >= len(args) {
+				return "", 0, errors.New("slide split requires a value for --proposal")
+			}
+			value, parseErr := strconv.Atoi(args[index+1])
+			if parseErr != nil || value < 1 {
+				return "", 0, fmt.Errorf("slide split proposal %q must be a positive integer", args[index+1])
+			}
+			proposal = value
+			index++
+		default:
+			if strings.HasPrefix(args[index], "--") {
+				return "", 0, fmt.Errorf("unknown slide split option %q", args[index])
+			}
+			if slideID != "" {
+				return "", 0, errors.New("slide split accepts exactly one slide bundle name")
+			}
+			slideID = args[index]
+		}
+	}
+	if slideID == "" {
+		return "", 0, errors.New("slide split requires a slide bundle name")
+	}
+	if proposal == 0 {
+		return "", 0, errors.New("slide split requires --proposal <number>")
+	}
+	return slideID, proposal, nil
+}
+
+func splitSlideSource(source, parsedBody string, proposal layoutsplit.Proposal) (string, string, error) {
+	bodyStart := 0
+	prefix := ""
+	if strings.HasPrefix(source, "---\n") {
+		separator := strings.Index(source[4:], "\n---\n")
+		if separator < 0 {
+			return "", "", errors.New("slide split source has unclosed front matter")
+		}
+		separator += 4
+		prefix = source[:separator+5]
+		bodyStart = separator + 5
+	}
+	rawBody := strings.TrimSpace(strings.ReplaceAll(source[bodyStart:], "\r\n", "\n"))
+	if rawBody != strings.TrimSpace(strings.ReplaceAll(parsedBody, "\r\n", "\n")) {
+		return "", "", errors.New("slide split refuses sources changed by includes or preprocessing; add an explicit split marker after expansion")
+	}
+	lines := strings.Split(rawBody, "\n")
+	if proposal.AfterLine <= 0 || proposal.AfterLine >= len(lines) {
+		return "", "", fmt.Errorf("slide split boundary line %d is outside the source", proposal.AfterLine)
+	}
+	leftLines := lines[:proposal.AfterLine]
+	rightStart := proposal.AfterLine
+	if proposal.Boundary == "explicit split marker" {
+		rightStart++
+	}
+	if rightStart >= len(lines) {
+		return "", "", errors.New("slide split boundary leaves no content for the second slide")
+	}
+	rightLines := lines[rightStart:]
+	leftBody := strings.TrimSpace(strings.Join(leftLines, "\n"))
+	rightBody := strings.TrimSpace(strings.Join(rightLines, "\n"))
+	if leftBody == "" || rightBody == "" {
+		return "", "", errors.New("slide split requires non-empty content on both sides of the boundary")
+	}
+	return prefix + leftBody + "\n", prefix + rightBody + "\n", nil
+}
+
+func copyBundleExtras(source, destination string, selected []string) error {
+	allowed := map[string]bool{}
+	if selected != nil {
+		for _, asset := range selected {
+			allowed[filepath.Clean(filepath.FromSlash(asset))] = true
+		}
+	}
+	return filepath.Walk(source, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		rel, err := filepath.Rel(source, path)
+		if err != nil {
+			return err
+		}
+		if rel == "." || rel == "index.md" || info.IsDir() {
+			return nil
+		}
+		if selected != nil && !allowed[filepath.Clean(rel)] {
+			return nil
+		}
+		target := filepath.Join(destination, rel)
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			return err
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(target, data, info.Mode().Perm())
+	})
 }
 
 func runSlideInsert(args []string, stdout io.Writer) error {
@@ -1707,6 +2052,7 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 		renderPDF := name == "build" && parsed.Config.Outputs.PDF
 		renderPNG := name == "build" && parsed.Config.Outputs.PNG
 		renderPPTX := name == "build" && parsed.Config.Outputs.PPTX
+		var buildDiagnostics diagnostics.Report
 		if parsed.Config.Outputs.HTML {
 			report, err := html.Write(root.Dir, model, activeTheme)
 			if err != nil {
@@ -1715,6 +2061,27 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			if len(report.Items) > 0 {
 				diagnostics.WriteReport(stdout, report)
 			}
+			buildDiagnostics.Items = append(buildDiagnostics.Items, report.Items...)
+			if err := applyLayoutRemediation(filepath.Join(root.Dir, html.OutputFile), activeTheme); err != nil {
+				return fmt.Errorf("apply html layout remediation: %w", err)
+			}
+			if err := applyLayoutFit(filepath.Join(root.Dir, html.OutputFile), activeTheme); err != nil {
+				return fmt.Errorf("apply html layout fit: %w", err)
+			}
+			auditReport, err := layoutaudit.Run(layoutAuditArtifacts(
+				filepath.Join(root.Dir, html.OutputFile),
+				"main .slide, main .print-slide, main > .deck > section, main [data-slide-index]",
+				"interactive HTML",
+				activeTheme,
+				false,
+			))
+			if err != nil {
+				return fmt.Errorf("audit html layout: %w", err)
+			}
+			if len(auditReport.Items) > 0 {
+				diagnostics.WriteReport(stdout, auditReport)
+			}
+			buildDiagnostics.Items = append(buildDiagnostics.Items, auditReport.Items...)
 		}
 		if renderPDF || renderPNG {
 			report, err := printhtml.Write(root.Dir, model, activeTheme)
@@ -1723,6 +2090,36 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			}
 			if len(report.Items) > 0 {
 				diagnostics.WriteReport(stdout, report)
+			}
+			buildDiagnostics.Items = append(buildDiagnostics.Items, report.Items...)
+			if err := applyLayoutRemediation(filepath.Join(root.Dir, printhtml.OutputFile), activeTheme); err != nil {
+				return fmt.Errorf("apply print layout remediation: %w", err)
+			}
+			if err := applyLayoutFit(filepath.Join(root.Dir, printhtml.OutputFile), activeTheme); err != nil {
+				return fmt.Errorf("apply print layout fit: %w", err)
+			}
+			auditReport, err := layoutaudit.Run(layoutAuditArtifacts(
+				filepath.Join(root.Dir, printhtml.OutputFile),
+				"main .print-slide, main .slide, main > .deck > section, main [data-slide-index]",
+				"print HTML",
+				activeTheme,
+				true,
+			))
+			if err != nil {
+				return fmt.Errorf("audit print layout: %w", err)
+			}
+			if len(auditReport.Items) > 0 {
+				diagnostics.WriteReport(stdout, auditReport)
+			}
+			buildDiagnostics.Items = append(buildDiagnostics.Items, auditReport.Items...)
+		}
+		attachSplitProposals(&buildDiagnostics, model.Slides)
+		if err := diagnosticui.WriteReport(root.Dir, buildDiagnostics); err != nil {
+			return fmt.Errorf("write diagnostics report: %w", err)
+		}
+		if parsed.Config.Outputs.HTML {
+			if err := diagnosticui.InjectPanel(filepath.Join(root.Dir, html.OutputFile), buildDiagnostics); err != nil {
+				return fmt.Errorf("inject diagnostics panel: %w", err)
 			}
 		}
 		if renderPDF {
@@ -1872,6 +2269,7 @@ func writeHelp(w io.Writer) {
 	fmt.Fprintln(w, "  margo theme import <archive.margot> [--name <local-name>] [--activate]")
 	fmt.Fprintln(w, "  margo theme update <name>")
 	fmt.Fprintln(w, "  margo theme list")
+	fmt.Fprintln(w, "  margo theme contract init [theme-name]")
 	fmt.Fprintln(w, "  margo upgrade --plan|--apply")
 	fmt.Fprintln(w, "  margo skills install brand-theme --scope user|project [--plan]")
 	fmt.Fprintln(w, "  margo deploy github-pages [--workflow-name <name>] [--margo-version <version>] [--replace]")
@@ -1880,6 +2278,7 @@ func writeHelp(w io.Writer) {
 	fmt.Fprintln(w, "  margo slide insert <name> (--before <slide> | --after <slide> | --position <n>) [--archetype <name>] [--renumber]")
 	fmt.Fprintln(w, "  margo slide move <slide> (--before <slide> | --after <slide> | --position <n>) [--renumber]")
 	fmt.Fprintln(w, "  margo slide delete <slide> [--renumber]")
+	fmt.Fprintln(w, "  margo slide split <slide> --proposal <number>")
 	fmt.Fprintln(w, "  margo new note <name> --slide <slide-bundle>")
 	fmt.Fprintln(w, "  margo new theme <name> [--blank]")
 }
