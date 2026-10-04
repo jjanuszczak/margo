@@ -15,11 +15,12 @@ const (
 )
 
 type Diagnostic struct {
-	Severity Severity
-	Code     string
-	Message  string
-	Path     string
-	Line     int
+	Severity Severity       `json:"severity"`
+	Code     string         `json:"code"`
+	Message  string         `json:"message"`
+	Path     string         `json:"path,omitempty"`
+	Line     int            `json:"line,omitempty"`
+	Meta     map[string]any `json:"meta,omitempty"`
 }
 
 type Report struct {

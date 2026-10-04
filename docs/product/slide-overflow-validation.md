@@ -12,7 +12,7 @@ complete.
 - [x] Phase 1: browser-backed detection for interactive and print output
 - [x] Phase 2: theme layout contracts and responsive profiles
 - [x] Phase 3: bounded, theme-approved automatic fitting
-- [ ] Phase 4: agent-facing diagnostics and semantic-change proposals
+- [x] Phase 4: agent-facing diagnostics and semantic-change proposals
 - [ ] Phase 5: explicit and boundary-aware semantic splitting
 
 ## Working rules
@@ -35,7 +35,7 @@ complete.
 | 1 | Complete | Complete | Complete | Detection only; warnings do not fail the build. Verified on the reference deck for interactive and print HTML. |
 | 2 | Complete | Complete | Complete | Includes contract bootstrap for new themes and explicit migration for older themes; generated contracts are inferred and review-required. |
 | 3 | Complete | Complete | Complete | Opt-in fitting is bounded by `min_scale`, re-measured after each adjustment, and preserves warnings when the floor is reached. |
-| 4 | Pending | Pending | Pending | Agent proposals must not silently mutate semantic content. |
+| 4 | Complete | Complete | Complete | Generated diagnostics JSON and an interactive Layout panel expose warnings, fitting actions, and next-step guidance without changing authored content. |
 | 5 | Pending | Pending | Pending | Splitting must use explicit or safe semantic boundaries. |
 
 ## Phase 1 exit criteria
@@ -116,6 +116,21 @@ complete.
 - RFC-wiki test result: `Control hypotheses` fit at approximately 66% scale;
   `Interview map` reached its 65% floor and retained a 39px warning. Both
   interactive and print surfaces completed successfully.
+
+## Phase 4 implementation notes
+
+- Builds and serve rebuilds publish a canonical report at
+  `dist/margo-diagnostics.json` using atomic replacement.
+- Interactive HTML receives a Layout control beside the existing navigation
+  controls when layout findings exist. The panel shows the affected slide,
+  profile, measured overflow or fit scale, and a suggested next action.
+- Selecting a diagnostic navigates to the affected slide. Terminal output
+  remains available for agents and CI.
+- Reports are derived build output and are never written into slide bundles.
+- RFC-wiki verification produced six structured layout items and the serve
+  smoke test showed the same diagnostics during a live rebuild.
+- Stale-preview indicators and richer agent semantic-change proposals remain
+  candidates for a later refinement; this phase does not rewrite content.
 
 ### Phase 2 contract example
 

@@ -19,6 +19,7 @@ import (
 	"github.com/jjanuszczak/margo/internal/deck"
 	"github.com/jjanuszczak/margo/internal/deploy"
 	"github.com/jjanuszczak/margo/internal/diagnostics"
+	"github.com/jjanuszczak/margo/internal/diagnosticui"
 	"github.com/jjanuszczak/margo/internal/layoutaudit"
 	"github.com/jjanuszczak/margo/internal/manifest"
 	"github.com/jjanuszczak/margo/internal/output/html"
@@ -1800,6 +1801,7 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 		renderPDF := name == "build" && parsed.Config.Outputs.PDF
 		renderPNG := name == "build" && parsed.Config.Outputs.PNG
 		renderPPTX := name == "build" && parsed.Config.Outputs.PPTX
+		var buildDiagnostics diagnostics.Report
 		if parsed.Config.Outputs.HTML {
 			report, err := html.Write(root.Dir, model, activeTheme)
 			if err != nil {
@@ -1808,6 +1810,7 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			if len(report.Items) > 0 {
 				diagnostics.WriteReport(stdout, report)
 			}
+			buildDiagnostics.Items = append(buildDiagnostics.Items, report.Items...)
 			if err := applyLayoutFit(filepath.Join(root.Dir, html.OutputFile), activeTheme); err != nil {
 				return fmt.Errorf("apply html layout fit: %w", err)
 			}
@@ -1824,6 +1827,7 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			if len(auditReport.Items) > 0 {
 				diagnostics.WriteReport(stdout, auditReport)
 			}
+			buildDiagnostics.Items = append(buildDiagnostics.Items, auditReport.Items...)
 		}
 		if renderPDF || renderPNG {
 			report, err := printhtml.Write(root.Dir, model, activeTheme)
@@ -1833,6 +1837,7 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			if len(report.Items) > 0 {
 				diagnostics.WriteReport(stdout, report)
 			}
+			buildDiagnostics.Items = append(buildDiagnostics.Items, report.Items...)
 			if err := applyLayoutFit(filepath.Join(root.Dir, printhtml.OutputFile), activeTheme); err != nil {
 				return fmt.Errorf("apply print layout fit: %w", err)
 			}
@@ -1848,6 +1853,15 @@ func runBuildLikeCommand(name string, args []string, stdout io.Writer) error {
 			}
 			if len(auditReport.Items) > 0 {
 				diagnostics.WriteReport(stdout, auditReport)
+			}
+			buildDiagnostics.Items = append(buildDiagnostics.Items, auditReport.Items...)
+		}
+		if err := diagnosticui.WriteReport(root.Dir, buildDiagnostics); err != nil {
+			return fmt.Errorf("write diagnostics report: %w", err)
+		}
+		if parsed.Config.Outputs.HTML {
+			if err := diagnosticui.InjectPanel(filepath.Join(root.Dir, html.OutputFile), buildDiagnostics); err != nil {
+				return fmt.Errorf("inject diagnostics panel: %w", err)
 			}
 		}
 		if renderPDF {

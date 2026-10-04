@@ -114,6 +114,14 @@ func Run(artifacts []Artifact) (diagnostics.Report, error) {
 					formatPixels(item.Amount),
 					item.Mechanism),
 				Path: artifact.Path,
+				Meta: map[string]any{
+					"slide_index": item.Index,
+					"title":       title,
+					"profile":     artifact.Profile,
+					"direction":   item.Direction,
+					"amount":      item.Amount,
+					"mechanism":   item.Mechanism,
+				},
 			})
 		}
 		for _, item := range parsed.Adjustments {
@@ -126,6 +134,12 @@ func Run(artifacts []Artifact) (diagnostics.Report, error) {
 				Code:     "layout_fit",
 				Message:  fmt.Sprintf("%s (%s) fitted to %.0f%% scale", title, artifact.Profile, item.Scale*100),
 				Path:     artifact.Path,
+				Meta: map[string]any{
+					"slide_index": item.Index,
+					"title":       title,
+					"profile":     artifact.Profile,
+					"scale":       item.Scale,
+				},
 			})
 		}
 	}
