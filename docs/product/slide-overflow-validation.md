@@ -139,6 +139,8 @@ complete.
 - Split proposals recognize explicit `<!-- margo: split -->` or
   `<!-- margo-split -->` markers and heading-level boundaries that preserve
   complete Markdown sections.
+- Proposal scanning ignores fenced code, nested or indented Markdown blocks,
+  and headings that are not separated from the preceding content.
 - Candidates are ranked with explicit markers first, level-two section
   boundaries next, and other heading boundaries after that. At most three
   candidates are attached to an overflow diagnostic.
