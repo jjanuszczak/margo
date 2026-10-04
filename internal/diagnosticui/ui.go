@@ -3,6 +3,7 @@ package diagnosticui
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"os"
 	"path/filepath"
 	"strings"
@@ -66,9 +67,40 @@ func InjectPanel(path string, report diagnostics.Report) error {
 	if err != nil {
 		return fmt.Errorf("encode interactive diagnostics: %w", err)
 	}
+	staticRows := strings.Builder{}
+	overflowCount := 0
+	for _, item := range report.Items {
+		if item.Code != "layout_overflow" && item.Code != "layout_fit" {
+			continue
+		}
+		if item.Code == "layout_overflow" {
+			overflowCount++
+		}
+		title := "Layout diagnostic"
+		if item.Meta != nil {
+			if value, ok := item.Meta["title"].(string); ok && value != "" {
+				title = value
+			}
+		}
+		suggestion := "Review the content, theme contract, or a future split proposal."
+		if item.Code == "layout_fit" {
+			suggestion = "Automatic fitting was applied within the theme limit."
+		}
+		staticRows.WriteString(`<div class="margo-layout-diagnostic" data-code="`)
+		staticRows.WriteString(html.EscapeString(item.Code))
+		staticRows.WriteString(`"><strong>`)
+		staticRows.WriteString(html.EscapeString(title))
+		staticRows.WriteString(`</strong><span>`)
+		staticRows.WriteString(html.EscapeString(item.Message))
+		staticRows.WriteString(`</span><small>`)
+		staticRows.WriteString(html.EscapeString(suggestion))
+		staticRows.WriteString(`</small></div>`)
+	}
 	panel := fmt.Sprintf(`<style data-margo-diagnostics>
 .margo-layout-diagnostics-button { position: relative; }
 .margo-layout-diagnostics-count { display: inline-flex; min-width: 1.2em; justify-content: center; margin-left: .25em; padding: .05em .35em; border-radius: 999px; background: #b42318; color: #fff; font-size: .8em; }
+.margo-layout-diagnostics-fallback { position: fixed; z-index: 1000; right: 1rem; bottom: 1rem; width: min(34rem, calc(100vw - 2rem)); max-height: min(70vh, 42rem); overflow: auto; padding: .5rem; border: 1px solid #ccd; border-radius: .75rem; background: Canvas; color: CanvasText; box-shadow: 0 1rem 3rem rgb(0 0 0 / 20%%); }
+.margo-layout-diagnostics-fallback summary { cursor: pointer; padding: .5rem; font-weight: 600; }
 .margo-layout-diagnostics-panel { position: fixed; z-index: 1000; right: 1rem; bottom: 1rem; width: min(34rem, calc(100vw - 2rem)); max-height: min(70vh, 42rem); overflow: auto; padding: 1rem; border: 1px solid #ccd; border-radius: .75rem; background: Canvas; color: CanvasText; box-shadow: 0 1rem 3rem rgb(0 0 0 / 20%%); }
 .margo-layout-diagnostics-panel[hidden] { display: none; }
 .margo-layout-diagnostics-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .75rem; }
@@ -80,12 +112,19 @@ func InjectPanel(path string, report diagnostics.Report) error {
 .margo-layout-diagnostic strong, .margo-layout-diagnostic span, .margo-layout-diagnostic small { display: block; }
 .margo-layout-diagnostic small { margin-top: .25rem; opacity: .75; }
 </style>
+<details class="margo-layout-diagnostics-fallback" data-margo-layout-fallback>
+  <summary class="slide-nav margo-layout-diagnostics-button">Layout<span class="margo-layout-diagnostics-count">%d</span></summary>
+  %s
+</details>
 <script type="application/json" data-margo-diagnostics>%s</script>
 <script data-margo-diagnostics-ui>
 (() => {
-  const payload = JSON.parse(document.querySelector('[data-margo-diagnostics]')?.textContent || '{"items":[]}');
+  const payloadNode = document.querySelector('[data-margo-diagnostics]');
+  const payload = JSON.parse((payloadNode && payloadNode.textContent) || '{"items":[]}');
   const relevant = (payload.items || []).filter(item => item.code === 'layout_overflow' || item.code === 'layout_fit');
   if (!relevant.length) return;
+  const fallback = document.querySelector('[data-margo-layout-fallback]');
+  if (fallback) fallback.remove();
   const controls = document.querySelector('.controls') || document.querySelector('.deck');
   if (!controls) return;
   const button = document.createElement('button');
@@ -106,7 +145,8 @@ func InjectPanel(path string, report diagnostics.Report) error {
   document.body.append(panel);
   const list = panel.querySelector('[data-margo-diagnostics-items]');
   const slides = Array.from(document.querySelectorAll('.slide'));
-  const titleFor = item => item.meta?.title || 'Slide ' + ((Number(item.meta?.slide_index) || 0) + 1);
+  const metaFor = item => item.meta || {};
+  const titleFor = item => metaFor(item).title || 'Slide ' + ((Number(metaFor(item).slide_index) || 0) + 1);
   const suggestionFor = item => item.code === 'layout_fit' ? 'Automatic fitting was applied within the theme limit.' : 'Review the content, theme contract, or a future split proposal.';
   relevant.forEach(item => {
     const row = document.createElement('div');
@@ -116,7 +156,7 @@ func InjectPanel(path string, report diagnostics.Report) error {
     jump.type = 'button';
     jump.innerHTML = '<strong>' + titleFor(item) + '</strong><span>' + (item.message || '') + '</span><small>' + suggestionFor(item) + '</small>';
     jump.addEventListener('click', () => {
-      const slide = slides[Number(item.meta?.slide_index)];
+      const slide = slides[Number(metaFor(item).slide_index)];
       if (slide) {
         slides.forEach(candidate => candidate.classList.remove('active'));
         slide.classList.add('active');
@@ -131,7 +171,7 @@ func InjectPanel(path string, report diagnostics.Report) error {
   close.addEventListener('click', () => { panel.hidden = true; button.setAttribute('aria-expanded', 'false'); });
 })();
 </script>
-`, string(payload))
+`, overflowCount, staticRows.String(), string(payload))
 	output := make([]byte, 0, len(document)+len(panel))
 	output = append(output, document[:bodyPosition]...)
 	output = append(output, panel...)
