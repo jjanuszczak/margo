@@ -410,9 +410,58 @@ func runThemeCommand(args []string, stdout io.Writer) error {
 		return runThemeList(stdout)
 	case "pptx":
 		return runThemePPTX(args[1:], stdout)
+	case "contract":
+		return runThemeContract(args[1:], stdout)
 	default:
 		return fmt.Errorf("unknown theme subcommand %q", args[0])
 	}
+}
+
+func runThemeContract(args []string, stdout io.Writer) error {
+	if len(args) < 1 || args[0] != "init" || len(args) > 2 {
+		return errors.New("theme contract requires init and an optional theme name")
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working directory: %w", err)
+	}
+	root, err := project.Discover(wd)
+	if err != nil {
+		return fmt.Errorf("theme contract init requires a Margo project root: %w", err)
+	}
+	themeName := ""
+	if len(args) == 2 {
+		themeName = strings.TrimSpace(args[1])
+		if themeName == "" || strings.HasPrefix(themeName, "--") {
+			return errors.New("theme contract init theme name cannot be empty or an option")
+		}
+	} else {
+		raw, loadErr := config.LoadRaw(root.ConfigPath)
+		if loadErr != nil {
+			return loadErr
+		}
+		parsed, parseErr := config.Parse(raw)
+		if parseErr != nil {
+			return parseErr
+		}
+		themeName = parsed.Config.Theme.Name
+	}
+	active, err := theme.Load(root.Dir, themeName)
+	if err != nil {
+		return err
+	}
+	generated, err := theme.GenerateContract(active.RootDir, active)
+	if err != nil {
+		return err
+	}
+	metadataPath := filepath.Join(active.RootDir, theme.ThemeMetadataFile)
+	if !generated {
+		fmt.Fprintf(stdout, "theme contract already exists at %s\n", metadataPath)
+		return nil
+	}
+	fmt.Fprintf(stdout, "created inferred theme contract at %s\n", metadataPath)
+	fmt.Fprintln(stdout, "review status: required before relying on automatic fitting or splitting")
+	return nil
 }
 
 func runThemePPTX(args []string, stdout io.Writer) error {
@@ -1935,6 +1984,7 @@ func writeHelp(w io.Writer) {
 	fmt.Fprintln(w, "  margo theme import <archive.margot> [--name <local-name>] [--activate]")
 	fmt.Fprintln(w, "  margo theme update <name>")
 	fmt.Fprintln(w, "  margo theme list")
+	fmt.Fprintln(w, "  margo theme contract init [theme-name]")
 	fmt.Fprintln(w, "  margo upgrade --plan|--apply")
 	fmt.Fprintln(w, "  margo skills install brand-theme --scope user|project [--plan]")
 	fmt.Fprintln(w, "  margo deploy github-pages [--workflow-name <name>] [--margo-version <version>] [--replace]")

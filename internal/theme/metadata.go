@@ -6,6 +6,7 @@ type Metadata struct {
 	Description     string              `yaml:"description"`
 	ConfigOptions   []ConfigOption      `yaml:"config_options"`
 	PPTX            *PPTXMetadata       `yaml:"pptx,omitempty"`
+	Contract        *ContractMetadata   `yaml:"contract,omitempty"`
 	LayoutContract  *LayoutContract     `yaml:"layout_contract,omitempty"`
 	Responsive      *ResponsiveContract `yaml:"responsive,omitempty"`
 	Source          *Source             `yaml:"source,omitempty"`
@@ -16,6 +17,12 @@ type Metadata struct {
 	PrintDeckLayout string
 	SlideLayouts    map[string]string
 	Partials        map[string]string
+}
+
+type ContractMetadata struct {
+	Source      string `yaml:"source,omitempty"`
+	Status      string `yaml:"status,omitempty"`
+	GeneratedBy string `yaml:"generated_by,omitempty"`
 }
 
 // LayoutContract describes the theme's canonical slide geometry and the

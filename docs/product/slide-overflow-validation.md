@@ -33,7 +33,7 @@ complete.
 | Phase | Implementation | Tests | Representative deck checks | Notes |
 | --- | --- | --- | --- | --- |
 | 1 | Complete | Complete | Complete | Detection only; warnings do not fail the build. Verified on the reference deck for interactive and print HTML. |
-| 2 | Complete | Complete | Complete | Optional theme contract is validated at load time; declared interactive profiles are audited, while print uses the desktop profile. |
+| 2 | Complete | Complete | Complete | Includes contract bootstrap for new themes and explicit migration for older themes; generated contracts are inferred and review-required. |
 | 3 | Pending | Pending | Pending | Re-measure after every bounded adjustment. |
 | 4 | Pending | Pending | Pending | Agent proposals must not silently mutate semantic content. |
 | 5 | Pending | Pending | Pending | Splitting must use explicit or safe semantic boundaries. |
@@ -86,8 +86,19 @@ complete.
   feature remains optional so existing themes are not broken during migration.
 - No automatic fitting, font mutation, content rewriting, or slide splitting
   is part of this phase.
+- New starter themes include a baseline contract. Existing themes can use
+  `margo theme contract init [theme-name]` to generate one explicitly. The
+  command refuses to overwrite an existing contract and marks generated values
+  as `source: inferred` and `status: review_required`.
+- Contract inference uses PPTX slide size, theme CSS aspect ratio, slide
+  padding, body font size, layout files, and responsive media queries. These
+  are conservative starting assumptions, not a substitute for theme review.
+- RFC-wiki migration verification generated a contract for `rfc-corporate` and
+  rebuilt the deck successfully. Desktop overflow findings were preserved;
+  the inferred mobile reflow profile was audited with vertical scrolling
+  explicitly permitted.
 - Verification: focused theme, layout-audit, CLI, and scaffold tests pass;
-  full-suite and representative deck checks remain required before merging.
+  full-suite and representative deck checks pass for the implementation.
 
 ### Phase 2 contract example
 
