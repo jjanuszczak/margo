@@ -40,6 +40,9 @@ func Propose(slide deck.Slide) []Proposal {
 		if inFence {
 			continue
 		}
+		if leadingWhitespace(raw) > 3 {
+			continue
+		}
 		if strings.EqualFold(line, "<!-- margo: split -->") || strings.EqualFold(line, "<!-- margo-split -->") {
 			if index > 0 && index < len(lines)-1 {
 				proposals = append(proposals, Proposal{
@@ -53,7 +56,7 @@ func Propose(slide deck.Slide) []Proposal {
 			continue
 		}
 		match := headingPattern.FindStringSubmatch(line)
-		if len(match) != 2 || index < 2 || index >= len(lines)-1 {
+		if len(match) != 2 || index < 2 || index >= len(lines)-1 || strings.TrimSpace(lines[index-1]) != "" {
 			continue
 		}
 		level := len(line) - len(strings.TrimLeft(line, "#"))
@@ -104,4 +107,19 @@ func abs(value int) int {
 		return -value
 	}
 	return value
+}
+
+func leadingWhitespace(value string) int {
+	count := 0
+	for _, character := range value {
+		switch character {
+		case ' ':
+			count++
+		case '\t':
+			return 4
+		default:
+			return count
+		}
+	}
+	return count
 }

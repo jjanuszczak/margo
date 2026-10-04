@@ -29,3 +29,11 @@ func TestProposeSkipsBoundariesInsideFencedCode(t *testing.T) {
 		t.Fatalf("expected only the real heading boundary, got %#v", proposals)
 	}
 }
+
+func TestProposeSkipsNestedAndUnseparatedHeadings(t *testing.T) {
+	slide := deck.Slide{BodyMarkdown: "# Example\n\n- ## Nested heading\n\n## Real section\n\nContent\n## Unsafe heading\n\nMore content"}
+	proposals := Propose(slide)
+	if len(proposals) != 1 || proposals[0].Boundary != "before Real section" {
+		t.Fatalf("expected only the separated top-level heading, got %#v", proposals)
+	}
+}
