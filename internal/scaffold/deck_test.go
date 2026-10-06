@@ -18,7 +18,7 @@ func TestCreateDeckIncludesAgentGuidanceAndSkills(t *testing.T) {
 
 	expected := map[string][]string{
 		"AGENTS.md":                           {"# Margo Deck Agent Guide", "Do not edit generated dist/ output.", "## Where custom components live", "shortcodes/<name>.html", "partials/<name>.html", "assets/css/<name>.css", "themes/<theme-name>/shortcodes/", "Deck-local shortcodes and partials override theme entries"},
-		filepath.Join(".agents", "README.md"): {"margo-deck-authoring", "margo-theme-authoring", "margo-error-triage", "margo-brand-theme"},
+		filepath.Join(".agents", "README.md"): {"margo-deck-authoring", "margo-theme-authoring", "margo-layout-contract", "margo-error-triage", "margo-brand-theme"},
 		filepath.Join(".agents", "skills", "margo-brand-theme", "SKILL.md"): {
 			"name: margo-brand-theme",
 			"Do not create theme files until the user approves",
@@ -55,6 +55,16 @@ func TestCreateDeckIncludesAgentGuidanceAndSkills(t *testing.T) {
 		},
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "theme-contract.md"): {
 			"Keep presentation-specific markup, class composition, and styling in theme templates and CSS.",
+		},
+		filepath.Join(".agents", "skills", "margo-layout-contract", "SKILL.md"): {
+			"name: margo-layout-contract",
+			"bounded fitting",
+			"Treat content rewrites, slide splits, and changes to semantic structure as proposals",
+		},
+		filepath.Join(".agents", "skills", "margo-layout-contract", "references", "layout-contract.md"): {
+			"Layout contract workflow",
+			"source: inferred",
+			"A proposal is not an authorization to mutate content.",
 		},
 		filepath.Join(".agents", "skills", "margo-github-pages", "SKILL.md"): {
 			"Configure or review GitHub Pages deployment for a Margo deck.",

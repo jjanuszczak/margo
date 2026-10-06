@@ -50,6 +50,8 @@ func CreateDeck(opts DeckOptions) error {
 		filepath.Join(".agents", "skills", "margo-deck-authoring", "references", "commands.md"):        scaffoldCommandReference(),
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "SKILL.md"):                        scaffoldThemeAuthoringSkill(),
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "theme-contract.md"): scaffoldThemeContract(),
+		filepath.Join(".agents", "skills", "margo-layout-contract", "SKILL.md"):                         scaffoldLayoutContractSkill(),
+		filepath.Join(".agents", "skills", "margo-layout-contract", "references", "layout-contract.md"): scaffoldLayoutContractReference(),
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "commands.md"):       scaffoldCommandReference(),
 		filepath.Join(".agents", "skills", "margo-github-pages", "SKILL.md"):                           scaffoldGitHubPagesSkill(),
 		filepath.Join(".agents", "skills", "margo-error-triage", "SKILL.md"):                           scaffoldErrorTriageSkill(),
@@ -147,6 +149,8 @@ func AgentFiles() map[string]string {
 		filepath.Join(".agents", "skills", "margo-deck-authoring", "references", "commands.md"):        scaffoldCommandReference(),
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "SKILL.md"):                        scaffoldThemeAuthoringSkill(),
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "theme-contract.md"): scaffoldThemeContract(),
+		filepath.Join(".agents", "skills", "margo-layout-contract", "SKILL.md"):                         scaffoldLayoutContractSkill(),
+		filepath.Join(".agents", "skills", "margo-layout-contract", "references", "layout-contract.md"): scaffoldLayoutContractReference(),
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "commands.md"):       scaffoldCommandReference(),
 		filepath.Join(".agents", "skills", "margo-github-pages", "SKILL.md"):                           scaffoldGitHubPagesSkill(),
 		filepath.Join(".agents", "skills", "margo-error-triage", "SKILL.md"):                           scaffoldErrorTriageSkill(),
@@ -199,7 +203,7 @@ This directory is a Margo deck project. Read this file before changing deck cont
 
 ## Agent resources
 
-Read .agents/README.md to choose the right repository-local skill. The deck-authoring skill covers normal slide work, upgrades, and packaging. The theme-authoring skill covers custom theme work. The brand-theme skill covers evidence-backed brand-theme creation. The GitHub Pages skill covers deployment setup. The error-triage skill covers reported build, rendering, preview, and export failures.
+Read .agents/README.md to choose the right repository-local skill. The deck-authoring skill covers normal slide work, upgrades, and packaging. The theme-authoring skill covers custom theme work. The layout-contract skill covers layout capacity, overflow diagnostics, bounded fitting, and reviewed proposals. The brand-theme skill covers evidence-backed brand-theme creation. The GitHub Pages skill covers deployment setup. The error-triage skill covers reported build, rendering, preview, and export failures.
 `
 }
 
@@ -212,6 +216,7 @@ This directory contains repository-local, documentation-only skills for this dec
 
 - margo-deck-authoring: use for creating, editing, reviewing, building, or packaging this deck.
 - margo-theme-authoring: use only when creating, modifying, installing, importing, or reviewing a deck theme.
+- margo-layout-contract: use when creating, reviewing, or adjusting a theme layout contract, diagnosing overflow, fitting within declared bounds, or preparing a layout proposal.
 - margo-github-pages: use when configuring or reviewing GitHub Pages deployment for this deck.
 - margo-error-triage: use when diagnosing a Margo build, serve, rendering, or export failure before proposing a repair or report.
 - margo-brand-theme: use when turning approved brand material into a Margo theme. It requires approval of a design direction before it creates theme files.
@@ -367,11 +372,82 @@ name: margo-theme-authoring
 description: Create, modify, install, import, package, or review a Margo deck theme. Use for layouts, partials, shortcodes, theme assets, and theme selection. Do not use for ordinary slide-content changes unless the requested result requires a theme change.
 ---
 
-1. Read AGENTS.md and references/theme-contract.md before changing a theme.
+1. Read AGENTS.md, the local margo-layout-contract skill, and references/theme-contract.md before changing a theme.
 2. Read references/commands.md before running a Margo command.
 3. Put theme layouts in themes/<theme-name>/layouts/, theme partials in themes/<theme-name>/partials/, and theme shortcodes in themes/<theme-name>/shortcodes/. Keep deck-specific partials and shortcodes at the project root in partials/ and shortcodes/.
 4. Keep rendering shape in templates and CSS. Do not add presentation-specific behavior to the Margo engine when template composition can express it.
-5. Validate the theme and build the deck after a theme change. Check interactive and print-oriented outputs when the change affects rendering.
+5. Use margo-layout-contract for capacity rules, overflow diagnostics, fitting bounds, and proposal review. Do not invent layout capacity rules inside a theme implementation.
+6. Validate the theme and build the deck after a theme change. Check interactive and print-oriented outputs when the change affects rendering.
+`
+}
+
+func scaffoldLayoutContractSkill() string {
+	return `---
+name: margo-layout-contract
+description: Create, infer, review, and maintain the operational layout contract for a Margo theme. Use for layout capacity, overflow diagnostics, bounded fitting, structural remediation, and reviewed split or rewrite proposals. Do not use for brand discovery or ordinary theme styling.
+---
+
+1. Read AGENTS.md and references/layout-contract.md before changing a layout contract.
+2. Inspect the active theme, its layout templates, CSS, inferred or migrated contract metadata, and both interactive and print-oriented output before proposing changes.
+3. Treat the existing theme layout_contract and responsive profiles in theme.yaml as the current source of truth. Preserve source and status metadata; inferred values are provisional until reviewed.
+4. Separate reusable theme capabilities from deck-specific preferences. Keep theme capacity and fitting bounds in the theme contract. Record deck-specific preferences in a future deck policy only when the project has an explicit policy file; do not invent one silently.
+5. Use the existing layout diagnostics, fitting, structural-remediation, and split-proposal vocabulary. Do not create a parallel diagnostic or remediation model.
+6. Apply only fitting operations explicitly allowed by the contract. Respect min_scale and minimum typography bounds, re-measure after each change, and keep a diagnostic record of the action.
+7. Treat content rewrites, slide splits, and changes to semantic structure as proposals. Show the affected source, finding, alternatives, tradeoffs, and exact approval command before applying them.
+8. Check interactive HTML and print HTML/PDF independently. Record PPTX differences separately when the theme declares a PPTX contract.
+9. Update the contract only when the evidence supports the change. Explain whether the value is inferred, reviewed, or author-approved, and run the smallest relevant tests and representative deck build.
+`
+}
+
+func scaffoldLayoutContractReference() string {
+	return `# Layout contract workflow
+
+## Ownership
+
+The layout contract describes what a theme can safely carry and how Margo may respond when content exceeds that capacity. It is separate from brand evidence and separate from the required theme entrypoints.
+
+- ` + "`theme.yaml`" + `: theme identity, required entrypoints, layout_contract, and responsive profiles.
+- ` + "`layout_contract`" + `: slide geometry, layout regions, capacity hints, fitting bounds, overflow policy, and approved structural policy.
+- ` + "`responsive.profiles`" + `: declared viewport dimensions, fixed-canvas or reflow behavior, and vertical-scroll permission.
+- inferred values: generated by ` + "`margo theme contract init`" + ` and marked ` + "`source: inferred`" + ` and ` + "`status: review_required`" + `.
+
+## Review sequence
+
+1. Read the existing contract and identify inferred, reviewed, and missing values.
+2. Inspect the owning layout and CSS selectors for each region. Do not assume a region exists because a name appears in a proposal.
+3. Build the deck and compare interactive HTML, print HTML/PDF, and any enabled responsive profiles.
+4. Record findings by slide, layout, region, profile, direction, and measured overflow.
+5. Prefer the smallest approved response: spacing, media sizing, an approved variant, bounded fitting, structural remediation, then a split or content proposal.
+6. Ask for approval before changing authored content, creating slides, lowering declared minimums, or adding a new structural policy.
+
+## Contract example
+
+~~~yaml
+contract:
+  source: reviewed
+  status: approved
+layout_contract:
+  slide: { width: 1920, height: 1080 }
+  layouts:
+    default:
+      regions:
+        - name: content
+          role: body
+          min_font_size: 18
+          min_scale: 0.8
+          overflow_policy: fit
+          flexible: true
+          allow_split: true
+responsive:
+  profiles:
+    - { name: desktop, width: 1920, height: 1080, mode: fixed_canvas }
+~~~
+
+Do not copy this blindly. Match the actual layout markup, CSS, content density, and output requirements.
+
+## Proposal format
+
+Every proposal should state the slide and source path, active layout, affected region, diagnostic code, current measurement, contract rule, candidate fixes, output impact, approval requirement, exact files to change, and verification commands. A proposal is not an authorization to mutate content.
 `
 }
 
@@ -381,11 +457,11 @@ name: margo-brand-theme
 description: Turn approved brand guidelines, websites, or visual references into an editable Margo theme. Use only for brand-theme creation or refreshes. Do not create theme files until the user approves the proposed design direction.
 ---
 
-1. Read AGENTS.md, references/workflow.md, references/evidence.md, references/component-contract.md, and the local margo-theme-authoring skill before acting.
+1. Read AGENTS.md, references/workflow.md, references/evidence.md, references/component-contract.md, the local margo-theme-authoring skill, and the local margo-layout-contract skill before acting.
 2. Classify design confidence, source authority, asset/packaging rights, and supported component specificity separately. Do not claim high fidelity without authoritative evidence.
 3. Audit inherited theme styles before copying a base theme: border radii, shadows, gradients, card/pill controls, and media treatment. Choose a blank theme or a reset layer, then record intentional exceptions.
 4. Produce a concise design-direction review with the brand component contract, proposed shortcode/API list, token sheet, layout storyboard, output-support matrix, assumptions, and licensing constraints. Stop for explicit approval.
-5. After approval, create an editable theme under themes/<brand>/ with layouts, partials, shortcodes, assets, theme.yaml, and a PPTX contract. Keep presentation decisions in templates and CSS. Do not add brand-specific behavior to the Margo engine.
+5. After approval, create an editable theme under themes/<brand>/ with layouts, partials, shortcodes, assets, theme.yaml, a reviewed layout contract, and a PPTX contract. Use margo-layout-contract to define capacity and fitting behavior. Keep presentation decisions in templates and CSS. Do not add brand-specific behavior to the Margo engine.
 6. Verify each branded selector against rendered HTML or the owning template, scan final CSS for non-compliant inherited styles, and prove every custom component visually in HTML and print HTML/PDF.
 7. For each component, implement a PPTX-safe equivalent or record a visible fallback/unsupported decision before delivery. Classify PDF runtime failures by owner, preserve unaffected artifacts, and do not change output configuration without approval.
 8. Deliver the evidence manifest, brand component contract, design decision log, proof matrix, exact runtime limitations, and a .margot archive.

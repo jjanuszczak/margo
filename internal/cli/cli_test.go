@@ -674,6 +674,7 @@ func TestRunNewDeckThenBuildStarterDeck(t *testing.T) {
 		filepath.Join(".agents", "README.md"),
 		filepath.Join(".agents", "skills", "margo-deck-authoring", "SKILL.md"),
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "SKILL.md"),
+		filepath.Join(".agents", "skills", "margo-layout-contract", "SKILL.md"),
 		filepath.Join(".agents", "skills", "margo-brand-theme", "SKILL.md"),
 	} {
 		if _, err := os.Stat(filepath.Join(projectRoot, rel)); err != nil {
@@ -743,6 +744,7 @@ func TestRunInitIncludesAgentGuidanceAndSkills(t *testing.T) {
 		filepath.Join(".agents", "README.md"),
 		filepath.Join(".agents", "skills", "margo-deck-authoring", "SKILL.md"),
 		filepath.Join(".agents", "skills", "margo-theme-authoring", "SKILL.md"),
+		filepath.Join(".agents", "skills", "margo-layout-contract", "SKILL.md"),
 		filepath.Join(".agents", "skills", "margo-brand-theme", "SKILL.md"),
 	} {
 		if _, err := os.Stat(filepath.Join(projectRoot, rel)); err != nil {
