@@ -1,6 +1,8 @@
 # Homebrew Packaging
 
-This document is for maintainers setting up and shipping Homebrew support for `margo`.
+This document is for maintainers shipping Homebrew support for the `margo` CLI.
+The formula does not install the desktop app; see the [desktop guide](../desktop/README.md)
+for app builds and platform prerequisites.
 
 ## Recommended v1 Approach
 

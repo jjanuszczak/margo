@@ -1,0 +1,58 @@
+name: Desktop
+on:
+  pull_request:
+    paths: ['desktop/**', 'internal/**', 'cmd/**', 'go.*', '.github/workflows/desktop.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Linux system dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      - run: npm ci
+        working-directory: desktop
+      - run: npm test
+        working-directory: desktop
+      - run: go test ./...
+      - name: Build macOS app
+        if: runner.os == 'macOS'
+        run: npm run build -- --bundles app
+        working-directory: desktop
+      - name: Build Linux package
+        if: runner.os == 'Linux'
+        run: npm run build -- --bundles deb
+        working-directory: desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: margo-desktop-${{ runner.os }}
+          path: |
+            desktop/src-tauri/target/release/bundle/macos/*.app
+            desktop/src-tauri/target/release/bundle/deb/*.deb
+  arch:
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    steps:
+      - name: Arch build dependencies
+        run: pacman -Syu --noconfirm --needed git go rust nodejs npm webkit2gtk-4.1 openssl appmenu-gtk-module libappindicator-gtk3 librsvg xdotool
+      - uses: actions/checkout@v4
+      - run: npm ci && npm test && npm run engine && npm run web:build
+        working-directory: desktop
+      - run: cargo build --locked --features custom-protocol
+        working-directory: desktop/src-tauri

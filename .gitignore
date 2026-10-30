@@ -38,3 +38,9 @@ examples/get-brand-deck/
 
 # Skill evaluation reports
 skills/*/evals/reports/
+
+# Desktop app build artifacts
+desktop/node_modules/
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
+desktop/src-tauri/binaries/

@@ -10,6 +10,33 @@ This guide explains how to use the current `margo` prototype to:
 
 This reflects the repo's current implementation, not the long-term product vision.
 
+## Desktop authoring
+
+The optional desktop app opens the same folder containing `margo.yaml` that the
+CLI uses. Create a deck with the CLI, then choose **Open project** in the app.
+The app edits the existing Markdown files and uses Margo's Go renderer for previews
+and exports. There is no conversion step when switching between app, CLI, Git, or
+another editor. See the [desktop setup guide](../desktop/README.md) for builds on
+macOS and Omarchy/Arch Linux and the current platform acceptance limits.
+
+Use the left thumbnail list or **Overview** to select slides. The preview fits the
+pane as the window or divider resizes. Edit the full source in Monaco below it;
+auto-save waits 800 ms, or turn it off and use Cmd/Ctrl+S. A failed render leaves the
+last successful preview marked stale. External changes reload clean source files;
+unsaved text gets conflict controls instead of being overwritten.
+
+**+ Note** creates a Markdown file under the current bundle's `notes/` directory
+and opens its source and rendered preview. Choose existing notes from the source
+menu. **Preview notes** inspects the slide's notes, and **Back to slide** restores
+the slide preview. Theme note controls still follow the [notes configuration](#notes).
+**Insert media** copies a local image/video into the bundle and inserts a reference.
+
+Use the header for light/dark/system app appearance; choose an independent editor
+theme in the source toolbar. These settings do not restyle the deck. The app also
+supports slide creation, duplication, reorder, delete-to-trash, presentation review,
+and HTML/PDF/PPTX export. Theme creation, publishing, archive packaging, and other
+advanced workflows remain available through the CLI described below.
+
 ## 1. Build the CLI
 
 From the repo root:
@@ -490,6 +517,10 @@ Open with the customer story.
 ```
 
 Supported fields are `id`, `title`, `order`, `visibility` (`visible` or `hidden`), `draft`, `kind`, `tags`, and `language`. IDs must be unique within a slide bundle. Hidden notes are omitted from generated HTML; draft notes appear in `serve` but are excluded from a normal `build`.
+
+In the desktop app, **+ Note** creates this same bundle file. Selecting a note
+opens its source and rendered preview; saving refreshes that preview. The desktop
+reader works even when the published theme's Notes controls are disabled.
 
 Create a note scaffold with:
 

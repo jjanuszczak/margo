@@ -4,6 +4,30 @@ Git tags are the release trigger and GitHub Releases are the canonical source
 for prebuilt binaries and checksums. The Homebrew tap and `go install` are
 secondary installation paths for the same tagged source.
 
+These release and Homebrew procedures currently ship the Go CLI. They do not
+package or install the desktop app.
+
+## Desktop app packaging
+
+The Rust + Tauri app bundles a Go engine built from the same checkout. On macOS,
+install the prerequisites in the [desktop guide](../desktop/README.md), then run:
+
+```bash
+cd desktop
+npm ci
+npm test
+npm run build -- --bundles app
+```
+
+The result is `desktop/src-tauri/target/release/bundle/macos/Margo.app`. Keep its
+bundled engine intact. Use the native Arch instructions in the desktop guide for
+Omarchy; the Desktop workflow also defines Ubuntu package and Arch compile checks.
+
+Before distributing an app, review the [desktop acceptance limits](../desktop/README.md#current-validation-boundaries)
+and verify actual CI and native platform results. Signing/notarization, automated
+updates, and desktop artifacts attached to tagged releases are not configured.
+The CLI `scripts/release.sh` workflow remains separate.
+
 ## Before tagging
 
 Run the full test suite and a local package build:

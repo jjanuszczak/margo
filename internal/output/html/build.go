@@ -37,14 +37,20 @@ type renderedSnippets struct {
 }
 
 func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) (diagnostics.Report, error) {
-	if err := os.MkdirAll(filepath.Join(projectRoot, OutputDir), 0o755); err != nil {
+	return WriteTo(projectRoot, OutputDir, model, activeTheme)
+}
+
+// WriteTo renders the canonical interactive output into a caller-owned directory
+// relative to projectRoot. Desktop previews use a temporary output outside the deck.
+func WriteTo(projectRoot, outputDir string, model deck.Model, activeTheme theme.Metadata) (diagnostics.Report, error) {
+	if err := os.MkdirAll(filepath.Join(projectRoot, outputDir), 0o755); err != nil {
 		return diagnostics.Report{}, fmt.Errorf("create html output directory: %w", err)
 	}
-	if err := stageAssets(projectRoot, model.Slides); err != nil {
+	if err := render.StageAssets(projectRoot, outputDir, model.Slides); err != nil {
 		return diagnostics.Report{}, fmt.Errorf("stage html assets: %w", err)
 	}
 
-	file, err := os.Create(filepath.Join(projectRoot, OutputFile))
+	file, err := os.Create(filepath.Join(projectRoot, outputDir, "index.html"))
 	if err != nil {
 		return diagnostics.Report{}, fmt.Errorf("create html output file: %w", err)
 	}
@@ -54,7 +60,7 @@ func Write(projectRoot string, model deck.Model, activeTheme theme.Metadata) (di
 	if err != nil {
 		return diagnostics.Report{}, err
 	}
-	if err := render.StageThemeAssets(projectRoot, OutputDir, activeTheme); err != nil {
+	if err := render.StageThemeAssets(projectRoot, outputDir, activeTheme); err != nil {
 		return diagnostics.Report{}, fmt.Errorf("stage theme assets: %w", err)
 	}
 	logo, logoReport := resolveDeckLogo(projectRoot, model.Config.Deck.Logo)

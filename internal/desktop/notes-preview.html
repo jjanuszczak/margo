@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<title>Notes · {{.Title}}</title>
+<style>
+:root{color-scheme:light dark;font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:light-dark(#202b38,#e8e8e6);background:light-dark(#fff,#202125)}
+body{margin:0;padding:24px 32px;overflow-wrap:anywhere}main{max-width:850px;margin:auto}header{border-bottom:1px solid #8886;padding-bottom:12px;margin-bottom:20px}header p{margin:0;font-size:13px;opacity:.7}h1{font-size:22px;margin:0}h2{font-size:19px}article+article{border-top:1px solid #8886;margin-top:28px;padding-top:12px}pre{overflow:auto;background:#8882;padding:12px}code{font-family:ui-monospace,monospace}img{max-width:100%;height:auto}table{border-collapse:collapse}td,th{border:1px solid #8886;padding:6px}a{color:light-dark(#12634f,#8eddbb)}small{opacity:.7}
+</style>
+</head>
+<body><main><header><h1>{{.Title}}</h1><p>Notes preview · {{if .NotesEnabled}}Slide note controls enabled{{else}}To show notes in the deck, enable presentation.navigation.notes and use a theme with note controls.{{end}}</p></header>
+{{range .Notes}}<article><h2>{{.Name}}</h2>{{if .Draft}}<small>Draft note</small>{{end}}{{if eq .Visibility "hidden"}}<small>Hidden note · excluded from published output</small>{{end}}{{.Body}}</article>{{else}}<p>No notes for this slide.</p>{{end}}
+</main></body></html>

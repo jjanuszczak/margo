@@ -160,6 +160,8 @@ func dispatch(args []string, stdout io.Writer, stderr io.Writer) error {
 	case "version":
 		fmt.Fprintf(stdout, "%s %s\n", version.Name, version.Current())
 		return nil
+	case "desktop-engine":
+		return runDesktopEngine()
 	case "build":
 		return runBuildLikeCommand("build", args[1:], stdout)
 	case "serve":
