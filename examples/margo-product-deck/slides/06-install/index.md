@@ -21,3 +21,5 @@ MacOS and Linux users can also install through the personal Homebrew tap:
 `brew install jjanuszczak/margo/margo`
 
 For prebuilt binaries, download the archive for your platform from the [GitHub Releases](https://github.com/jjanuszczak/margo/releases) page and verify it with the published checksums.txt file.
+
+The optional desktop companion targets macOS and Omarchy/Arch Linux; it creates or opens the same project folders used by the CLI.

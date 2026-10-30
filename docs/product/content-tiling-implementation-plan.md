@@ -1,6 +1,7 @@
 # Content Tiling Implementation Plan
 
-Status: proposed; no implementation included.
+Status: plan for the structured tiling model; limited nested-shortcode presets and
+desktop insertion UI exist separately. The canonical structured model is not implemented.
 Date: 2026-10-30.
 
 Related: [tiling PRD](./content-tiling-prd.md),
@@ -10,12 +11,20 @@ Related: [tiling PRD](./content-tiling-prd.md),
 
 ## 1. Objective and assumptions
 
+The current desktop **Tile content** action inserts nested `tiles`/`tile` shortcode
+source for Stack, BSP, Columns, Grid, and Track when the active theme already provides
+the shortcode templates and CSS. It does not mutate themes or implement the canonical
+tile model, source-safe tile editing, geometry contract, validation, or overflow
+diagnostics described in this plan. Treat that UI as an interim shortcode composer;
+the work below remains proposed and needs the product decisions in the PRD resolved.
+
 Implement optional content-body tiling using canonical Markdown and the Go engine,
 with consistent CLI, desktop, HTML, print/PDF, and basic editable PPTX behavior.
 
-The plan assumes whole-composition rebalancing when tiles change and desktop
-preset/proportion controls before draggable dividers. These remain open product
-decisions in the PRD. Resolve them before beginning implementation.
+For the proposed structured model, the plan assumes whole-composition rebalancing
+when tiles change and preset/proportion controls before draggable dividers. These
+remain open product decisions in the PRD and do not describe the interim nested
+shortcode composer. Resolve them before beginning structured-model implementation.
 
 Keep the first release constrained to one through six tiles, top-level tile blocks,
 and named presets. Do not introduce a general layout DSL or an editor-owned model.

@@ -8,15 +8,20 @@ is resolved by the implementation direction for issue #72; a competing Go-hosted
 prototype was not built. See the [runtime decision](../architecture/desktop-runtime.md)
 for the actual protocol, isolation boundary, measurements, and native checks.
 
-Working MVP slices include project lifecycle, snapshots, actual rendered thumbnails,
-fit-to-pane preview, source editing and undo, notes creation and preview, safe slide
-operations, media import, external-change reconciliation, overview, presentation
-review, and export entry points. App/editor appearance preferences are implemented.
+Working MVP slices include project creation through the canonical scaffold, optional
+Git theme import, project lifecycle, snapshots, actual rendered thumbnails, fit-to-pane
+preview, source editing and undo, notes creation and preview, safe slide operations,
+media import, external-change reconciliation, overview, presentation review, export
+entry points, a theme-gated graphical tiling shortcode editor, and contextual
+agent-skill prompt handoff. The native Projects menu and icon toolbar expose project,
+export, and view actions. App/editor appearance supports light/dark/system and the
+active Omarchy palette.
 
 The slices below retain the delivery and acceptance checklist. They are not all
-accepted: native Omarchy, startup/paint and memory measurements, full export fidelity,
-packaging/signing, and updates remain open. Settings panels, selected-slide
-presentation start, zoom presets, and export cancellation remain follow-up work.
+accepted: full Omarchy palette and Wayland acceptance, startup/paint and memory
+measurements, full export fidelity, packaging/signing, and updates remain open.
+Deck/theme settings panels, selected-slide presentation start, zoom presets, and
+export cancellation remain follow-up work.
 The [desktop guide](../../desktop/README.md) provides current commands and limits.
 
 ## 1. Purpose and delivery rule

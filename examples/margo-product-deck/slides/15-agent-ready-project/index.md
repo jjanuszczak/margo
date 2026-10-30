@@ -22,6 +22,7 @@ Agents work from source, build it, and return a clear diff, not a reconstructed 
 ### Guidance travels with the deck
 
 - Skills cover authoring, themes, brand-theme creation, Pages, and triage
+- The desktop app prepares a project-aware prompt with skill instructions and source paths
 - A portable deck archive includes its guidance
 - Safe upgrades preserve authored work and customized rules
 

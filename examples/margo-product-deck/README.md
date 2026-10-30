@@ -2,7 +2,7 @@
 
 This is Margo's public product deck. It is a complete Margo project, including a deck-local `margo-brand` theme, source slides, assets, and speaker notes.
 
-The source is deliberately part of the product story. It shows users how to structure a deck and gives contributors a compact acceptance fixture for the authoring, theme, output, and notes model.
+The source is deliberately part of the product story. It shows users how to structure a deck and gives contributors a compact acceptance fixture for the authoring, theme, output, and notes model. The workflow and capabilities slides also describe the current desktop companion, including theme-supported tiling and contextual agent-skill prompt handoff.
 
 ## Preview and build
 

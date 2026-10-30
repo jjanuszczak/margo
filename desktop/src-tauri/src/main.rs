@@ -201,6 +201,12 @@ async fn choose_path(webview: tauri::Webview, kind: String) -> Result<Option<Str
                 .pick_folder()
                 .await
         }
+        "project-parent" => {
+            rfd::AsyncFileDialog::new()
+                .set_title("Choose where to create the Margo project")
+                .pick_folder()
+                .await
+        }
         "media" => {
             rfd::AsyncFileDialog::new()
                 .add_filter(
@@ -363,6 +369,15 @@ async fn preview_layout(
     Ok(())
 }
 
+fn load_recent_projects(app: &tauri::AppHandle) -> Result<Vec<String>, String> {
+    let directory = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let file = directory.join("recent-projects.json");
+    Ok(fs::read(&file)
+        .ok()
+        .and_then(|b| serde_json::from_slice(&b).ok())
+        .unwrap_or_default())
+}
+
 #[tauri::command]
 fn recent_projects(
     webview: tauri::Webview,
@@ -373,10 +388,7 @@ fn recent_projects(
     let directory = app.path().app_data_dir().map_err(|e| e.to_string())?;
     fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
     let file = directory.join("recent-projects.json");
-    let mut recent: Vec<String> = fs::read(&file)
-        .ok()
-        .and_then(|b| serde_json::from_slice(&b).ok())
-        .unwrap_or_default();
+    let mut recent = load_recent_projects(&app)?;
     if let Some(root) = root {
         recent.retain(|p| p != &root);
         recent.insert(0, root);
@@ -387,7 +399,65 @@ fn recent_projects(
         )
         .map_err(|e| e.to_string())?;
     }
+    app.set_menu(editor_menu(&app, &recent).map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())?;
     Ok(recent)
+}
+
+#[tauri::command]
+fn omarchy_palette(webview: tauri::Webview) -> Result<Value, String> {
+    require_editor(&webview)?;
+    let Some(home) = std::env::var_os("HOME") else {
+        return Ok(json!({"available": false}));
+    };
+    let file = PathBuf::from(home).join(".local/state/omarchy/current/theme/colors.toml");
+    let Ok(contents) = fs::read_to_string(file) else {
+        return Ok(json!({"available": false}));
+    };
+
+    let mut mode = None;
+    let mut colors = serde_json::Map::new();
+    for line in contents.lines() {
+        let Some((key, raw_value)) = line.split_once('=') else {
+            continue;
+        };
+        let key = key.trim();
+        let value = raw_value
+            .trim()
+            .split(" #")
+            .next()
+            .unwrap_or("")
+            .trim()
+            .trim_matches('"');
+        if key == "mode" {
+            if value == "light" || value == "dark" {
+                mode = Some(value);
+            }
+        } else if matches!(
+            key,
+            "accent"
+                | "selection"
+                | "muted"
+                | "background"
+                | "dark_background"
+                | "darker_background"
+                | "lighter_background"
+                | "foreground"
+                | "red"
+                | "yellow"
+        ) && value.len() == 7
+            && value.starts_with('#')
+            && value[1..].bytes().all(|byte| byte.is_ascii_hexdigit())
+        {
+            colors.insert(key.to_string(), json!(value));
+        }
+    }
+
+    if let Some(mode) = mode {
+        Ok(json!({"available": true, "mode": mode, "colors": colors}))
+    } else {
+        Ok(json!({"available": false}))
+    }
 }
 
 #[tauri::command]
@@ -438,12 +508,70 @@ fn engine_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
 
 // WKWebView's native Undo menu does not use Monaco's model history.
 // Keep the platform menu, routing history actions to the focused editor instead.
-fn editor_menu(app: &tauri::AppHandle) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
-    use tauri::menu::{Menu, MenuItem, MenuItemKind};
+fn editor_menu(
+    app: &tauri::AppHandle,
+    recent: &[String],
+) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
+    use tauri::menu::{Menu, MenuItem, MenuItemKind, PredefinedMenuItem, Submenu};
     let menu = Menu::default(app)?;
-    for item in menu.items()? {
+    let new_project = MenuItem::with_id(
+        app,
+        "margo-new-project",
+        "New Project…",
+        true,
+        Some("CmdOrCtrl+N"),
+    )?;
+    let open_project = MenuItem::with_id(
+        app,
+        "margo-open-project",
+        "Open Project…",
+        true,
+        Some("CmdOrCtrl+O"),
+    )?;
+    let html = MenuItem::with_id(app, "margo-export-html", "HTML", true, None::<&str>)?;
+    let pdf = MenuItem::with_id(app, "margo-export-pdf", "PDF", true, None::<&str>)?;
+    let pptx = MenuItem::with_id(app, "margo-export-pptx", "PPTX", true, None::<&str>)?;
+    let export = Submenu::with_items(app, "Export", true, &[&html, &pdf, &pptx])?;
+
+    let projects = Submenu::new(app, "Projects", true)?;
+    projects.append(&new_project)?;
+    projects.append(&open_project)?;
+    projects.append(&PredefinedMenuItem::separator(app)?)?;
+    projects.append(&MenuItem::with_id(
+        app,
+        "margo-recent-heading",
+        "Recent Projects",
+        false,
+        None::<&str>,
+    )?)?;
+    if recent.is_empty() {
+        projects.append(&MenuItem::with_id(
+            app,
+            "margo-no-recent-projects",
+            "No Recent Projects",
+            false,
+            None::<&str>,
+        )?)?;
+    } else {
+        for (index, path) in recent.iter().enumerate() {
+            let label = format!("{}  —  {}", index + 1, path);
+            projects.append(&MenuItem::with_id(
+                app,
+                format!("margo-recent-{index}"),
+                label,
+                true,
+                None::<&str>,
+            )?)?;
+        }
+    }
+    projects.append(&PredefinedMenuItem::separator(app)?)?;
+    projects.append(&export)?;
+
+    let mut project_position = 0;
+    for (index, item) in menu.items()?.into_iter().enumerate() {
         if let MenuItemKind::Submenu(edit) = item {
             if edit.text()? == "Edit" {
+                project_position = index;
                 edit.remove_at(0)?;
                 edit.remove_at(0)?;
                 edit.insert(
@@ -458,6 +586,7 @@ fn editor_menu(app: &tauri::AppHandle) -> tauri::Result<tauri::menu::Menu<tauri:
             }
         }
     }
+    menu.insert(&projects, project_position)?;
     Ok(menu)
 }
 
@@ -476,7 +605,8 @@ fn main() {
                     prepare_linux_webview_overlay(app.handle())?;
                 }
             }
-            app.set_menu(editor_menu(app.handle())?)?;
+            let recent = load_recent_projects(app.handle()).map_err(std::io::Error::other)?;
+            app.set_menu(editor_menu(app.handle(), &recent)?)?;
             let path = engine_path(app.handle()).map_err(std::io::Error::other)?;
             let directory = app.path().app_log_dir()?;
             fs::create_dir_all(&directory)?;
@@ -505,12 +635,37 @@ fn main() {
             Ok(())
         })
         .on_menu_event(|app, event| {
-            let action = match event.id().as_ref() {
-                "margo-undo" => "undo",
-                "margo-redo" => "redo",
-                _ => return,
+            let id = event.id().as_ref();
+            let action = match id {
+                "margo-undo" | "margo-redo" => {
+                    let history_action = if id == "margo-undo" { "undo" } else { "redo" };
+                    let _ = app.emit_to("main", "margo-editor-history", history_action);
+                    return;
+                }
+                "margo-new-project" => json!({"action":"new-project"}),
+                "margo-open-project" => json!({"action":"open-project"}),
+                "margo-export-html" => json!({"action":"export","format":"html"}),
+                "margo-export-pdf" => json!({"action":"export","format":"pdf"}),
+                "margo-export-pptx" => json!({"action":"export","format":"pptx"}),
+                _ => {
+                    if let Some(index) = id
+                        .strip_prefix("margo-recent-")
+                        .and_then(|i| i.parse::<usize>().ok())
+                    {
+                        if let Ok(paths) = load_recent_projects(app) {
+                            if let Some(root) = paths.get(index) {
+                                let _ = app.emit_to(
+                                    "main",
+                                    "margo-native-menu",
+                                    json!({"action":"open-project","root":root}),
+                                );
+                            }
+                        }
+                    }
+                    return;
+                }
             };
-            let _ = app.emit_to("main", "margo-editor-history", action);
+            let _ = app.emit_to("main", "margo-native-menu", action);
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -523,6 +678,7 @@ fn main() {
             choose_path,
             preview_layout,
             recent_projects,
+            omarchy_palette,
             close_app
         ])
         .build(tauri::generate_context!())

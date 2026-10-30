@@ -10,6 +10,7 @@ This directory is a Margo deck project. Read this file before changing deck cont
 - Keep presentation markup, CSS, layouts, partials, and theme shortcodes under themes/<theme-name>/. Keep the Margo engine generic.
 - Do not edit generated dist/ output. Change source files and run Margo again.
 - Treat imported themes as trusted project code. Templates, shortcodes, and JavaScript can run during local builds and previews.
+- Keep desktop capability claims aligned with `../../desktop/README.md`: the app writes canonical project files, its tiling control requires theme support, and its agent-skill UI prepares a prompt but does not run an agent.
 
 ## Agent resources
 

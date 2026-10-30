@@ -21,16 +21,21 @@ Margo's differentiator remains the structured project and publishing system: sli
 
 ### Current implementation status
 
-The MVP implements project opening/recent folders, rendered thumbnails and overview,
-a preview that fits the pane on resize, Monaco source editing, named Markdown notes
-and rendered notes preview, conflict handling, slide operations, media insertion,
-presentation review, and HTML/PDF/PPTX export entry points. App appearance supports
-light/dark/system, with separate editor theme preferences. Files on disk remain the
-source of truth.
+The MVP implements new-project creation through the Go scaffold, optional Git theme
+import, project opening/recent folders, rendered thumbnails and overview, a preview
+that fits the pane on resize, Monaco source editing, named Markdown notes and rendered
+notes preview, conflict handling, slide operations, media insertion, presentation
+review, and HTML/PDF/PPTX export entry points. A graphical tiling control writes
+theme-supported nested shortcodes without changing the theme. Agent-skill handoff
+builds a contextual prompt for copying to an external agent; the app does not run an
+AI agent. The native Projects menu and icon toolbar expose project, export, and view
+actions. App appearance supports light/dark/system plus the active Omarchy palette,
+with separate editor theme preferences. Files on disk remain the source of truth.
 
-Apple Silicon macOS has local native verification. Omarchy runtime acceptance,
+Apple Silicon macOS has local native verification. The debug app has built and
+launched in an Omarchy session; full palette, dialog, Wayland, and export acceptance,
 performance/memory acceptance, signing/notarization, and automatic updates remain
-pending. Theme/settings panels, selected-slide presentation start, zoom presets,
+pending. Deck/theme settings panels, selected-slide presentation start, zoom presets,
 and export cancellation are not implemented. Requirements below describe intended
 scope, not a claim that every acceptance measure has passed. See the
 [desktop guide](../../desktop/README.md) for current usage and limits.
@@ -73,6 +78,7 @@ A Margo deck author who works with Markdown and Git, and wants a visual way to i
 ### Initial release scope
 
 - Open a project by selecting its root or `margo.yaml`; remember recent projects.
+- Create a new project with Margo's canonical scaffold and optionally install a Git-hosted theme.
 - Show slide navigation with title/summary, order, and visible state indicators for draft/hidden slides.
 - Show a live preview of the selected slide and a Markdown editor for its source.
 - Provide a full-deck overview/grid for selection and reordering.
@@ -82,6 +88,8 @@ A Margo deck author who works with Markdown and Git, and wants a visual way to i
 - Show build/render diagnostics, identify source paths, and offer a way to open them in the editor.
 - Detect external file changes, refresh clean buffers, and warn/reconcile when a file changed while its buffer has unsaved edits.
 - Provide a presentation preview mode for reviewing the rendered deck.
+- Offer a graphical tiling selector that inserts canonical nested tile shortcodes only when the active theme declares support; do not silently modify themes.
+- Provide a contextual prompt handoff for repository-local agent skills without embedding an agent runtime or provider.
 - Invoke Margo's supported build/export commands and report progress and errors.
 - Provide basic undo/redo for edits made in the current session, with clear save status. Source files remain the durable history; Git remains the project history.
 - Support the same operating systems targeted by the first Margo desktop release, selected during technical validation.
@@ -92,7 +100,6 @@ A Margo deck author who works with Markdown and Git, and wants a visual way to i
 - Theme development workflow with live refresh when CSS/templates change.
 - Richer diagnostics, source navigation, and accessibility checks.
 - Batch media import and additional safe authoring helpers.
-- Optional agent handoff affordances, such as opening a prompt/context file or showing changed files, without coupling the app to one agent provider.
 
 ### Out of scope
 

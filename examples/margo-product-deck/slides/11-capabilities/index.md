@@ -5,27 +5,26 @@ layout: content
 section: Workflow
 ---
 
-## A practical system, not a slide editor in disguise.
+## One project, with a CLI and a desktop companion.
 
-Content development and theme development are separate but can happen in the same workflow.
+Content development and theme development stay separate. The desktop app writes normal Margo source and previews through the same engine as the CLI.
 
 {{< columns >}}
 {{< column >}}
-### Content model
+### Project and CLI
 
-- YAML front matter
-- Slide bundles and local assets
-- Sections, drafts, hidden slides
-- Named speaker notes
-- Project-local includes
+- YAML front matter and slide bundles
+- Assets, notes, and includes
+- Create, build, serve, and export
+- Automate and publish with scripts
 {{< /column >}}
 {{< column >}}
-### Rendering and delivery
+### Desktop companion
 
-- Interactive HTML
-- Print-oriented HTML and PDF
-- PNG slides
-- Editable PPTX with clear limits
-- Vendored themes and portable archives
+- Create or open projects
+- Edit Markdown beside live previews
+- Insert theme-supported tile layouts
+- Prepare context-rich agent prompts
+- Follow the active Omarchy palette
 {{< /column >}}
 {{< /columns >}}

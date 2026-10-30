@@ -88,17 +88,25 @@ Use the product docs for intent and scope boundaries. Use the authoring guide fo
 ### Desktop app MVP
 
 - Rust + Tauri 2 shell with a bundled Go engine using a private JSON-lines protocol
-- project picker and recent projects; no separate installed CLI required
+- new-project wizard using the canonical Go scaffold, optional Git theme import,
+  project picker, and recent projects; no separate installed CLI required
 - rendered slide thumbnails, overview, and a preview that fits the pane on resize
 - Monaco Markdown editor with auto-save, manual save, per-file undo/redo, and conflict handling
 - named bundle note creation/editing and rendered notes preview
 - add, duplicate, reorder, and trash slides through shared CLI operations
 - local image/video insertion and HTML/PDF/PPTX export entry points
-- light, dark, and system app appearance with independent editor themes
+- graphical tiling UI that writes canonical nested shortcodes when the active
+  theme declares the required support; it does not modify themes automatically
+- agent-skill prompt handoff with project, theme, source-path, and skill context;
+  the app does not run an AI agent
+- native Projects menu, icon toolbar, and welcome actions for new/open projects
+- light, dark, system, and Omarchy palette appearance with independent editor themes
 
-Apple Silicon macOS builds and native workflows have been checked locally. Actual
-Omarchy/Hyprland runtime acceptance remains pending. CI build jobs are configured
-for macOS, Ubuntu/WebKitGTK, and Arch; configuration alone is not passing evidence.
+Apple Silicon macOS builds and native workflows have been checked locally. A debug
+build has also launched in an Omarchy session. Full Omarchy/Hyprland acceptance of
+palette matching, dialogs, Wayland geometry/focus, and exports remains pending. CI
+build jobs are configured for macOS, Ubuntu/WebKitGTK, and Arch; configuration alone
+is not passing evidence.
 
 ### Implemented but still rough
 
@@ -110,7 +118,7 @@ for macOS, Ubuntu/WebKitGTK, and Arch; configuration alone is not passing eviden
 ### Not done
 
 - full PPTX shortcode/theme parity
-- desktop theme/settings panels, selected-slide presentation start, export cancellation, and zoom presets
+- deck/theme settings panels, selected-slide presentation start, export cancellation, and zoom presets
 - signed/notarized desktop distribution and automatic updates
 - presenter mode
 - plugin architecture
@@ -134,7 +142,8 @@ As of now, the highest-risk product areas are:
 - desktop source safety, native preview geometry/focus, and Omarchy acceptance
 
 Recent additions that matter:
-- optional Tauri desktop app with Monaco, rendered thumbnails, notes preview, and appearance preferences
+- optional Tauri desktop app with project creation, Monaco, rendered thumbnails,
+  notes preview, tiling controls, agent-skill prompt handoff, and Omarchy palette support
 - theme-aware print templates
 - vendored theme installation via `theme add`
 - `serve --port` for non-default preview ports
@@ -205,8 +214,10 @@ the editor's native capabilities. Bundle the engine from the same checkout.
 
 The content model stores named-note paths relative to the bundle. Desktop source
 reads/saves require project-relative paths. Preserve that conversion in snapshots.
-App/editor appearance is independent of the deck's theme. Use the approved
-`assets/new-logo-*.png` wordmarks rather than creating replacement branding.
+App/editor appearance is independent of the deck's theme. On Omarchy, the app may
+read the active system palette for its own controls; this must not change deck
+rendering. Use the approved `assets/new-logo-*.png` wordmarks rather than creating
+replacement branding.
 
 ### 6. Favor explicit override models
 
@@ -231,6 +242,11 @@ skills/
 ### Agent Skills
 
 Predefined agent skills are stored in the `skills/` directory. These skills provide specialized workflows and domain expertise for Gemini CLI when working on the `margo` project.
+
+The desktop skill handoff reads the selected deck's `.agents/skills/` files and
+their declared Markdown references. It prepares a project-aware prompt for copying
+to an external agent; it does not launch an agent or grant that agent filesystem
+access.
 
 - **[github-issue-manager](./skills/github-issue-manager)**: Manages the creation of GitHub issues and development branches. Use this to start work on a new feature or bug fix.
 - **[git-workflow-lifecycle](./skills/git-workflow-lifecycle)**: Automates the end-to-end lifecycle of a feature branch, from submission (commit, push, PR) to cleanup.
