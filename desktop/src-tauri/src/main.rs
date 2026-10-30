@@ -1,5 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+#[cfg(target_os = "linux")]
+use gtk::gdk::prelude::DisplayExtManual;
+#[cfg(target_os = "linux")]
+use gtk::prelude::*;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::{
@@ -10,6 +14,100 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tauri::{Emitter, LogicalPosition, LogicalSize, Manager, WebviewBuilder, WebviewUrl};
+
+#[cfg(target_os = "linux")]
+static LINUX_WAYLAND: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+
+#[cfg(target_os = "linux")]
+fn linux_wayland() -> bool {
+    *LINUX_WAYLAND.get().unwrap_or(&false)
+}
+
+#[cfg(target_os = "linux")]
+fn prepare_linux_webview_overlay(app: &tauri::AppHandle) -> tauri::Result<()> {
+    let window = app.get_window("main").ok_or(tauri::Error::WindowNotFound)?;
+    let editor = app
+        .get_webview("main")
+        .ok_or(tauri::Error::WebviewNotFound)?;
+    let callback_window = window.clone();
+    editor.with_webview(move |platform| {
+        let container = callback_window
+            .default_vbox()
+            .expect("Margo's GTK window container is unavailable");
+        let editor = platform.inner();
+        if let Some(parent) = editor.parent() {
+            if let Ok(parent) = parent.downcast::<gtk::Container>() {
+                parent.remove(&editor);
+            }
+        }
+
+        let overlay = gtk::Overlay::new();
+        overlay.set_hexpand(true);
+        overlay.set_vexpand(true);
+        overlay.add(&editor);
+
+        let preview_layer = gtk::Fixed::new();
+        preview_layer.set_halign(gtk::Align::Start);
+        preview_layer.set_valign(gtk::Align::Start);
+        overlay.add_overlay(&preview_layer);
+
+        container.pack_start(&overlay, true, true, 0);
+        overlay.show_all();
+    })?;
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn position_linux_preview(
+    app: &tauri::AppHandle,
+    position: LogicalPosition<f64>,
+    size: LogicalSize<f64>,
+) -> tauri::Result<()> {
+    let window = app.get_window("main").ok_or(tauri::Error::WindowNotFound)?;
+    let preview = app
+        .get_webview("preview")
+        .ok_or(tauri::Error::WebviewNotFound)?;
+    preview.with_webview(move |platform| {
+        let container = window
+            .default_vbox()
+            .expect("Margo's GTK window container is unavailable");
+        let overlay = container
+            .children()
+            .into_iter()
+            .find_map(|child| child.downcast::<gtk::Overlay>().ok())
+            .expect("Margo's GTK preview overlay is unavailable");
+        let preview_layer = overlay
+            .children()
+            .into_iter()
+            .find_map(|child| child.downcast::<gtk::Fixed>().ok())
+            .expect("Margo's GTK preview layer is unavailable");
+        let preview = platform.inner();
+
+        let already_positioned = preview
+            .parent()
+            .and_then(|parent| parent.downcast::<gtk::Fixed>().ok())
+            .is_some_and(|parent| parent == preview_layer);
+        let x = position.x.round() as i32;
+        let y = position.y.round() as i32;
+        if !already_positioned {
+            if let Some(parent) = preview.parent() {
+                if let Ok(parent) = parent.downcast::<gtk::Container>() {
+                    parent.remove(&preview);
+                }
+            }
+            preview_layer.put(&preview, 0, 0);
+        }
+        let width = size.width.ceil() as i32;
+        let height = size.height.ceil() as i32;
+        preview_layer.set_margin_start(x);
+        preview_layer.set_margin_top(y);
+        preview_layer.set_size_request(width, height);
+        preview.set_size_request(width, height);
+        preview_layer.show();
+        preview.show();
+    })?;
+    Ok(())
+}
 
 struct Engine {
     child: Child,
@@ -212,12 +310,22 @@ async fn preview_layout(
     };
     if let Some(preview) = app.get_webview("preview") {
         if visible {
+            #[cfg(not(target_os = "linux"))]
             preview
                 .set_bounds(tauri::Rect {
                     position: position.into(),
                     size: size.into(),
                 })
                 .map_err(|e| e.to_string())?;
+            #[cfg(target_os = "linux")]
+            if !linux_wayland() {
+                preview
+                    .set_bounds(tauri::Rect {
+                        position: position.into(),
+                        size: size.into(),
+                    })
+                    .map_err(|e| e.to_string())?;
+            }
             preview.set_zoom(zoom).map_err(|e| e.to_string())?;
             if let Some(url) = parsed {
                 preview.navigate(url).map_err(|e| e.to_string())?;
@@ -247,6 +355,10 @@ async fn preview_layout(
             )
             .map_err(|e| e.to_string())?;
         preview.set_zoom(zoom).map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    if visible && linux_wayland() {
+        position_linux_preview(&app, position, size).map_err(|e| e.to_string())?;
     }
     Ok(())
 }
@@ -355,6 +467,15 @@ fn main() {
     let app = tauri::Builder::default()
         .manage(state)
         .setup(|app| {
+            #[cfg(target_os = "linux")]
+            {
+                let wayland = gtk::gdk::Display::default()
+                    .is_some_and(|display| display.backend().is_wayland());
+                let _ = LINUX_WAYLAND.set(wayland);
+                if wayland {
+                    prepare_linux_webview_overlay(app.handle())?;
+                }
+            }
             app.set_menu(editor_menu(app.handle())?)?;
             let path = engine_path(app.handle()).map_err(std::io::Error::other)?;
             let directory = app.path().app_log_dir()?;
