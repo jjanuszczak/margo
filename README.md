@@ -247,8 +247,10 @@ margo deploy github-pages --margo-version v0.3.0
 ```
 
 New deck scaffolds include repository-local agent guidance for deck authoring,
-theme work, brand-theme creation, GitHub Pages deployment, and error triage.
-Run `margo upgrade --plan` on an older deck to add missing guidance safely.
+theme work, tiled-content adoption, brand-theme creation, GitHub Pages deployment,
+and error triage. Run `margo upgrade --plan` on an older deck to preview missing
+guidance, then `margo upgrade --apply` to add it. Ask the deck's agent to use
+`margo-theme-tiling` to add tiled-content support to its active theme.
 Install the complete user-global brand-theme workflow with `margo skills install
 brand-theme --scope user`.
 

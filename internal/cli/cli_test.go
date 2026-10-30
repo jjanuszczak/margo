@@ -105,6 +105,30 @@ func TestRunUpgradePlanPreservesCustomGuidance(t *testing.T) {
 	}
 }
 
+func TestRunUpgradeApplyAddsMissingThemeTilingSkill(t *testing.T) {
+	projectRoot := filepath.Join(t.TempDir(), "deck")
+	if err := scaffold.CreateDeck(scaffold.DeckOptions{Name: "deck", TargetDir: projectRoot}); err != nil {
+		t.Fatal(err)
+	}
+	skillPath := filepath.Join(projectRoot, ".agents", "skills", "margo-theme-tiling", "SKILL.md")
+	if err := os.Remove(skillPath); err != nil {
+		t.Fatalf("remove tiling skill to simulate an older deck: %v", err)
+	}
+	restoreWD := withWorkingDir(t, projectRoot)
+	defer restoreWD()
+	var stdout, stderr bytes.Buffer
+	if code := Run([]string{"upgrade", "--apply"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("upgrade failed: %s", stderr.String())
+	}
+	content, err := os.ReadFile(skillPath)
+	if err != nil {
+		t.Fatalf("expected upgrade to add the tiling skill: %v", err)
+	}
+	if !strings.Contains(string(content), "name: margo-theme-tiling") {
+		t.Fatalf("unexpected tiling skill contents: %s", content)
+	}
+}
+
 func TestRunSkillsInstallProjectPlan(t *testing.T) {
 	projectRoot := filepath.Join(t.TempDir(), "deck")
 	if err := scaffold.CreateDeck(scaffold.DeckOptions{Name: "deck", TargetDir: projectRoot}); err != nil {

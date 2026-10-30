@@ -61,6 +61,7 @@ func TestReferenceDeckPrintBuildFlow(t *testing.T) {
 
 	for _, needle := range []string{
 		`class="margo-print color-mode-dark"`,
+		`class="margo-print-slide`,
 		`class="slide-shell content-slide"`,
 		`class="slide-shell title-slide"`,
 		`class="slide-shell section-slide"`,
@@ -72,6 +73,11 @@ func TestReferenceDeckPrintBuildFlow(t *testing.T) {
 		`Architecture View`,
 		`color-scheme: dark;`,
 		`A reasonably sized deck should still feel fast.`,
+		`Tiled Content`,
+		`class="shortcode-tiles shortcode-tiles-horizontal"`,
+		`--shortcode-tile-width: 65%;`,
+		`class="shortcode-tiles shortcode-tiles-vertical"`,
+		`--shortcode-tile-height: 50%;`,
 		`assets/shared-grid.svg`,
 		`slides/02-why/diagram.svg`,
 		`slides/05-customer-story/spotlight.svg`,
@@ -135,7 +141,7 @@ func TestReferenceDeckPrintBuildFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read staged theme css: %v", err)
 	}
-	for _, needle := range []string{`size: 13.333in 7.5in`, `page-break-after: always;`, `display: block !important`} {
+	for _, needle := range []string{`size: 13.333in 7.5in`, `page-break-after: always;`, `display: block !important`, `.margo-print .deck {`, `overflow: visible;`, `.margo-print .margo-print-slide`, `.margo-print .slide-shell`, `.margo-print .deck-footer`} {
 		if !strings.Contains(string(themeCSS), needle) {
 			t.Fatalf("expected staged theme css to contain %q", needle)
 		}

@@ -1,0 +1,3 @@
+{{ validateParams .Name .Params "width" "height" }}{{ $width := optionalParam .Params "width" }}{{ $height := optionalParam .Params "height" }}{{ if $width }}{{ $width = mustMatch .Name $width "width" "^(100|[1-9][0-9]?)%$" }}{{ end }}{{ if $height }}{{ $height = mustMatch .Name $height "height" "^(100|[1-9][0-9]?)%$" }}{{ end }}{{ requiredInner .Name .Inner }}<article class="shortcode-tile"{{ if or $width $height }} style="{{ if $width }}--shortcode-tile-width: {{ $width }};{{ end }}{{ if $height }}{{ if $width }} {{ end }}--shortcode-tile-height: {{ $height }};{{ end }}"{{ end }}>
+  {{ .Inner }}
+</article>

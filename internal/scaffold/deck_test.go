@@ -18,7 +18,13 @@ func TestCreateDeckIncludesAgentGuidanceAndSkills(t *testing.T) {
 
 	expected := map[string][]string{
 		"AGENTS.md":                           {"# Margo Deck Agent Guide", "Do not edit generated dist/ output.", "## Where custom components live", "shortcodes/<name>.html", "partials/<name>.html", "assets/css/<name>.css", "themes/<theme-name>/shortcodes/", "Deck-local shortcodes and partials override theme entries"},
-		filepath.Join(".agents", "README.md"): {"margo-deck-authoring", "margo-theme-authoring", "margo-layout-contract", "margo-error-triage", "margo-brand-theme"},
+		filepath.Join(".agents", "README.md"): {"margo-deck-authoring", "margo-theme-authoring", "margo-theme-tiling", "margo-layout-contract", "margo-error-triage", "margo-brand-theme"},
+		filepath.Join(".agents", "skills", "margo-theme-tiling", "SKILL.md"): {
+			"name: margo-theme-tiling",
+			"Add or adapt Margo's nested tiled-content shortcode support",
+			"Unspecified siblings divide the remaining space equally",
+			"Confirm the PDF contains all included slides on separate pages",
+		},
 		filepath.Join(".agents", "skills", "margo-brand-theme", "SKILL.md"): {
 			"name: margo-brand-theme",
 			"Do not create theme files until the user approves",
@@ -141,6 +147,18 @@ func TestThemeFilesIncludeRefinedThemeStructure(t *testing.T) {
 			t.Fatalf("expected column shortcode to support %q, got %q", needle, columnShortcode)
 		}
 	}
+	tilesShortcode := files[filepath.Join("themes", "default", "shortcodes", "tiles.html")]
+	for _, needle := range []string{"optionalParamOneOf .Params", "horizontal", "vertical", "shortcode-tiles"} {
+		if !strings.Contains(tilesShortcode, needle) {
+			t.Fatalf("expected tiles shortcode to contain %q, got %q", needle, tilesShortcode)
+		}
+	}
+	tileShortcode := files[filepath.Join("themes", "default", "shortcodes", "tile.html")]
+	for _, needle := range []string{"mustMatch", "shortcode-tile-width", "shortcode-tile-height", "$width =", "$height ="} {
+		if !strings.Contains(tileShortcode, needle) {
+			t.Fatalf("expected tile shortcode to contain %q, got %q", needle, tileShortcode)
+		}
+	}
 	if _, ok := files[filepath.Join("themes", "default", "assets", "katex.min.css")]; !ok {
 		t.Fatal("expected scaffolded theme to include KaTeX css asset")
 	}
@@ -182,7 +200,7 @@ func TestThemeFilesIncludeRefinedThemeStructure(t *testing.T) {
 	if strings.Contains(styles, "Theme-local styles can be added here later.") {
 		t.Fatal("expected scaffolded theme.css to contain real default theme styles")
 	}
-	for _, needle := range []string{"display: flex", "--shortcode-column-gap", "flex: 1 1 0", "container-type: inline-size", "--shortcode-column-font-size", "cqw", "flex-direction: column"} {
+	for _, needle := range []string{"display: flex", "--shortcode-column-gap", "flex: 1 1 0", "container-type: inline-size", "--shortcode-column-font-size", "shortcode-tiles-horizontal", "shortcode-tiles-vertical", "--shortcode-tile-width", "--shortcode-tile-height", "margo-print-slide", "overflow: visible", "display: block;", "cqw", "flex-direction: column"} {
 		if !strings.Contains(styles, needle) {
 			t.Fatalf("expected scaffolded theme styles to contain %q", needle)
 		}

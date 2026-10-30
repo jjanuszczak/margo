@@ -45,39 +45,39 @@ func CreateDeck(opts DeckOptions) error {
 		"margo.yaml":                          scaffoldConfig(opts.Name),
 		"AGENTS.md":                           scaffoldAgentsGuide(),
 		filepath.Join(".agents", "README.md"): scaffoldAgentsReadme(),
-		filepath.Join(".agents", "skills", "margo-deck-authoring", "SKILL.md"):                         scaffoldDeckAuthoringSkill(),
-		filepath.Join(".agents", "skills", "margo-deck-authoring", "references", "conventions.md"):     scaffoldDeckConventions(),
-		filepath.Join(".agents", "skills", "margo-deck-authoring", "references", "commands.md"):        scaffoldCommandReference(),
-		filepath.Join(".agents", "skills", "margo-theme-authoring", "SKILL.md"):                        scaffoldThemeAuthoringSkill(),
-		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "theme-contract.md"): scaffoldThemeContract(),
+		filepath.Join(".agents", "skills", "margo-deck-authoring", "SKILL.md"):                          scaffoldDeckAuthoringSkill(),
+		filepath.Join(".agents", "skills", "margo-deck-authoring", "references", "conventions.md"):      scaffoldDeckConventions(),
+		filepath.Join(".agents", "skills", "margo-deck-authoring", "references", "commands.md"):         scaffoldCommandReference(),
+		filepath.Join(".agents", "skills", "margo-theme-authoring", "SKILL.md"):                         scaffoldThemeAuthoringSkill(),
+		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "theme-contract.md"):  scaffoldThemeContract(),
 		filepath.Join(".agents", "skills", "margo-layout-contract", "SKILL.md"):                         scaffoldLayoutContractSkill(),
 		filepath.Join(".agents", "skills", "margo-layout-contract", "references", "layout-contract.md"): scaffoldLayoutContractReference(),
-		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "commands.md"):       scaffoldCommandReference(),
-		filepath.Join(".agents", "skills", "margo-github-pages", "SKILL.md"):                           scaffoldGitHubPagesSkill(),
-		filepath.Join(".agents", "skills", "margo-error-triage", "SKILL.md"):                           scaffoldErrorTriageSkill(),
-		filepath.Join(".agents", "skills", "margo-error-triage", "references", "triage.md"):            scaffoldErrorTriageWorkflow(),
-		filepath.Join(".agents", "skills", "margo-error-triage", "references", "evidence.md"):          scaffoldErrorTriageEvidence(),
-		filepath.Join(".agents", "skills", "margo-error-triage", "references", "reporting.md"):         scaffoldErrorTriageReporting(),
-		filepath.Join(".agents", "skills", "margo-error-triage", "references", "known-boundaries.md"):  scaffoldErrorTriageBoundaries(),
-		filepath.Join("slides", "01-title", "index.md"):                                                slideTitle(opts.Name),
-		filepath.Join("slides", "02-why", "index.md"):                                                  slideWhy(),
-		filepath.Join("slides", "03-section", "index.md"):                                              slideSection(),
-		filepath.Join("slides", "04-customer-story", "index.md"):                                       slideCustomerStory(),
-		filepath.Join("slides", "05-closing", "index.md"):                                              slideClosing(),
-		filepath.Join("archetypes", "default", "archetype.yaml"):                                       defaultArchetypeMetadata(),
-		filepath.Join("archetypes", "title", "archetype.yaml"):                                         titleArchetypeMetadata(),
-		filepath.Join("archetypes", "section", "archetype.yaml"):                                       sectionArchetypeMetadata(),
-		filepath.Join("archetypes", "agenda", "archetype.yaml"):                                        agendaArchetypeMetadata(),
-		filepath.Join("archetypes", "image", "archetype.yaml"):                                         imageArchetypeMetadata(),
-		filepath.Join("archetypes", "two-column", "archetype.yaml"):                                    twoColumnArchetypeMetadata(),
-		filepath.Join("archetypes", "media-right", "archetype.yaml"):                                   mediaRightArchetypeMetadata(),
-		filepath.Join("archetypes", "media-left", "archetype.yaml"):                                    mediaLeftArchetypeMetadata(),
-		filepath.Join("archetypes", "quote", "archetype.yaml"):                                         quoteArchetypeMetadata(),
-		filepath.Join("archetypes", "metric", "archetype.yaml"):                                        metricArchetypeMetadata(),
-		filepath.Join("archetypes", "closing", "archetype.yaml"):                                       closingArchetypeMetadata(),
-		filepath.Join("shortcodes", "eyebrow.html"):                                                    defaultDeckEyebrowShortcode(),
-		filepath.Join("assets", "company-logo.svg"):                                                    starterDeckLogoAsset(),
-		filepath.Join("assets", "shared-grid.svg"):                                                     starterDeckGridAsset(),
+		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "commands.md"):        scaffoldCommandReference(),
+		filepath.Join(".agents", "skills", "margo-github-pages", "SKILL.md"):                            scaffoldGitHubPagesSkill(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "SKILL.md"):                            scaffoldErrorTriageSkill(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "references", "triage.md"):             scaffoldErrorTriageWorkflow(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "references", "evidence.md"):           scaffoldErrorTriageEvidence(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "references", "reporting.md"):          scaffoldErrorTriageReporting(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "references", "known-boundaries.md"):   scaffoldErrorTriageBoundaries(),
+		filepath.Join("slides", "01-title", "index.md"):                                                 slideTitle(opts.Name),
+		filepath.Join("slides", "02-why", "index.md"):                                                   slideWhy(),
+		filepath.Join("slides", "03-section", "index.md"):                                               slideSection(),
+		filepath.Join("slides", "04-customer-story", "index.md"):                                        slideCustomerStory(),
+		filepath.Join("slides", "05-closing", "index.md"):                                               slideClosing(),
+		filepath.Join("archetypes", "default", "archetype.yaml"):                                        defaultArchetypeMetadata(),
+		filepath.Join("archetypes", "title", "archetype.yaml"):                                          titleArchetypeMetadata(),
+		filepath.Join("archetypes", "section", "archetype.yaml"):                                        sectionArchetypeMetadata(),
+		filepath.Join("archetypes", "agenda", "archetype.yaml"):                                         agendaArchetypeMetadata(),
+		filepath.Join("archetypes", "image", "archetype.yaml"):                                          imageArchetypeMetadata(),
+		filepath.Join("archetypes", "two-column", "archetype.yaml"):                                     twoColumnArchetypeMetadata(),
+		filepath.Join("archetypes", "media-right", "archetype.yaml"):                                    mediaRightArchetypeMetadata(),
+		filepath.Join("archetypes", "media-left", "archetype.yaml"):                                     mediaLeftArchetypeMetadata(),
+		filepath.Join("archetypes", "quote", "archetype.yaml"):                                          quoteArchetypeMetadata(),
+		filepath.Join("archetypes", "metric", "archetype.yaml"):                                         metricArchetypeMetadata(),
+		filepath.Join("archetypes", "closing", "archetype.yaml"):                                        closingArchetypeMetadata(),
+		filepath.Join("shortcodes", "eyebrow.html"):                                                     defaultDeckEyebrowShortcode(),
+		filepath.Join("assets", "company-logo.svg"):                                                     starterDeckLogoAsset(),
+		filepath.Join("assets", "shared-grid.svg"):                                                      starterDeckGridAsset(),
 	}
 	for path, content := range AgentFiles() {
 		files[path] = content
@@ -144,25 +144,26 @@ func AgentFiles() map[string]string {
 	return map[string]string{
 		"AGENTS.md":                           scaffoldAgentsGuide(),
 		filepath.Join(".agents", "README.md"): scaffoldAgentsReadme(),
-		filepath.Join(".agents", "skills", "margo-deck-authoring", "SKILL.md"):                         scaffoldDeckAuthoringSkill(),
-		filepath.Join(".agents", "skills", "margo-deck-authoring", "references", "conventions.md"):     scaffoldDeckConventions(),
-		filepath.Join(".agents", "skills", "margo-deck-authoring", "references", "commands.md"):        scaffoldCommandReference(),
-		filepath.Join(".agents", "skills", "margo-theme-authoring", "SKILL.md"):                        scaffoldThemeAuthoringSkill(),
-		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "theme-contract.md"): scaffoldThemeContract(),
+		filepath.Join(".agents", "skills", "margo-deck-authoring", "SKILL.md"):                          scaffoldDeckAuthoringSkill(),
+		filepath.Join(".agents", "skills", "margo-deck-authoring", "references", "conventions.md"):      scaffoldDeckConventions(),
+		filepath.Join(".agents", "skills", "margo-deck-authoring", "references", "commands.md"):         scaffoldCommandReference(),
+		filepath.Join(".agents", "skills", "margo-theme-authoring", "SKILL.md"):                         scaffoldThemeAuthoringSkill(),
+		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "theme-contract.md"):  scaffoldThemeContract(),
 		filepath.Join(".agents", "skills", "margo-layout-contract", "SKILL.md"):                         scaffoldLayoutContractSkill(),
 		filepath.Join(".agents", "skills", "margo-layout-contract", "references", "layout-contract.md"): scaffoldLayoutContractReference(),
-		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "commands.md"):       scaffoldCommandReference(),
-		filepath.Join(".agents", "skills", "margo-github-pages", "SKILL.md"):                           scaffoldGitHubPagesSkill(),
-		filepath.Join(".agents", "skills", "margo-error-triage", "SKILL.md"):                           scaffoldErrorTriageSkill(),
-		filepath.Join(".agents", "skills", "margo-error-triage", "references", "triage.md"):            scaffoldErrorTriageWorkflow(),
-		filepath.Join(".agents", "skills", "margo-error-triage", "references", "evidence.md"):          scaffoldErrorTriageEvidence(),
-		filepath.Join(".agents", "skills", "margo-error-triage", "references", "reporting.md"):         scaffoldErrorTriageReporting(),
-		filepath.Join(".agents", "skills", "margo-error-triage", "references", "known-boundaries.md"):  scaffoldErrorTriageBoundaries(),
-		filepath.Join(".agents", "skills", "margo-brand-theme", "SKILL.md"):                            scaffoldBrandThemeProjectSkill(),
-		filepath.Join(".agents", "skills", "margo-brand-theme", "references", "workflow.md"):           scaffoldBrandThemeWorkflow(),
-		filepath.Join(".agents", "skills", "margo-brand-theme", "references", "evidence.md"):           scaffoldBrandThemeEvidence(),
-		filepath.Join(".agents", "skills", "margo-brand-theme", "references", "component-contract.md"): scaffoldBrandThemeComponentContract(),
-		filepath.Join(".agents", "skills", "margo-brand-theme", "references", "acceptance.md"):         scaffoldBrandThemeAcceptance(),
+		filepath.Join(".agents", "skills", "margo-theme-authoring", "references", "commands.md"):        scaffoldCommandReference(),
+		filepath.Join(".agents", "skills", "margo-github-pages", "SKILL.md"):                            scaffoldGitHubPagesSkill(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "SKILL.md"):                            scaffoldErrorTriageSkill(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "references", "triage.md"):             scaffoldErrorTriageWorkflow(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "references", "evidence.md"):           scaffoldErrorTriageEvidence(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "references", "reporting.md"):          scaffoldErrorTriageReporting(),
+		filepath.Join(".agents", "skills", "margo-error-triage", "references", "known-boundaries.md"):   scaffoldErrorTriageBoundaries(),
+		filepath.Join(".agents", "skills", "margo-brand-theme", "SKILL.md"):                             scaffoldBrandThemeProjectSkill(),
+		filepath.Join(".agents", "skills", "margo-brand-theme", "references", "workflow.md"):            scaffoldBrandThemeWorkflow(),
+		filepath.Join(".agents", "skills", "margo-brand-theme", "references", "evidence.md"):            scaffoldBrandThemeEvidence(),
+		filepath.Join(".agents", "skills", "margo-brand-theme", "references", "component-contract.md"):  scaffoldBrandThemeComponentContract(),
+		filepath.Join(".agents", "skills", "margo-brand-theme", "references", "acceptance.md"):          scaffoldBrandThemeAcceptance(),
+		filepath.Join(".agents", "skills", "margo-theme-tiling", "SKILL.md"):                            scaffoldThemeTilingSkill(),
 	}
 }
 
@@ -203,7 +204,7 @@ This directory is a Margo deck project. Read this file before changing deck cont
 
 ## Agent resources
 
-Read .agents/README.md to choose the right repository-local skill. The deck-authoring skill covers normal slide work, upgrades, and packaging. The theme-authoring skill covers custom theme work. The layout-contract skill covers layout capacity, overflow diagnostics, bounded fitting, and reviewed proposals. The brand-theme skill covers evidence-backed brand-theme creation. The GitHub Pages skill covers deployment setup. The error-triage skill covers reported build, rendering, preview, and export failures.
+Read .agents/README.md to choose the right repository-local skill. The deck-authoring skill covers normal slide work, upgrades, and packaging. The theme-authoring skill covers custom theme work. The theme-tiling skill adds tiled-content support to an existing active theme. The layout-contract skill covers layout capacity, overflow diagnostics, bounded fitting, and reviewed proposals. The brand-theme skill covers evidence-backed brand-theme creation. The GitHub Pages skill covers deployment setup. The error-triage skill covers reported build, rendering, preview, and export failures.
 `
 }
 
@@ -216,6 +217,7 @@ This directory contains repository-local, documentation-only skills for this dec
 
 - margo-deck-authoring: use for creating, editing, reviewing, building, or packaging this deck.
 - margo-theme-authoring: use only when creating, modifying, installing, importing, or reviewing a deck theme.
+- margo-theme-tiling: use to add nested tiled-content shortcode support to an existing active theme when it is missing.
 - margo-layout-contract: use when creating, reviewing, or adjusting a theme layout contract, diagnosing overflow, fitting within declared bounds, or preparing a layout proposal.
 - margo-github-pages: use when configuring or reviewing GitHub Pages deployment for this deck.
 - margo-error-triage: use when diagnosing a Margo build, serve, rendering, or export failure before proposing a repair or report.
@@ -378,6 +380,24 @@ description: Create, modify, install, import, package, or review a Margo deck th
 4. Keep rendering shape in templates and CSS. Do not add presentation-specific behavior to the Margo engine when template composition can express it.
 5. Use margo-layout-contract for capacity rules, overflow diagnostics, fitting bounds, and proposal review. Do not invent layout capacity rules inside a theme implementation.
 6. Validate the theme and build the deck after a theme change. Check interactive and print-oriented outputs when the change affects rendering.
+`
+}
+
+func scaffoldThemeTilingSkill() string {
+	return `---
+name: margo-theme-tiling
+description: Add or adapt Margo's nested tiled-content shortcode support in the active theme of an existing deck. Use when a deck should gain fixed horizontal and vertical tile splits but its theme does not provide tiles and tile. Do not use for general theme redesign or engine changes.
+---
+
+1. Read AGENTS.md and the margo-theme-authoring skill. Identify the deck root and active theme from margo.yaml before editing.
+2. Inspect the active theme's slide layouts, theme.yaml, CSS, print-deck layout, and shortcodes. Also inspect deck-local shortcodes because they override same-named theme shortcodes. Preserve the theme's visual language and existing customizations.
+3. If the active theme already supports tiles and tile with this contract, do not duplicate it. Report what is already supported and continue only with any missing piece.
+4. Add theme-provided tiles and tile shortcode templates for fixed nested splits. tiles accepts axis="horizontal" or axis="vertical" (default horizontal). tile accepts width="N%" for horizontal splits or height="N%" for vertical splits. Unspecified siblings divide the remaining space equally. Keep the split tree in Markdown; do not add interactive resizing or tile-specific Go engine behavior.
+5. Put markup in the active theme's shortcodes/ and styling in its assets/theme.css. Make each split fill its parent content region without overlapping the title, footer, or slide controls. Check responsive CSS so it does not turn print slides into a horizontal scroller or suppress print page breaks. If the theme has a custom print layout, ensure it loads the theme CSS.
+6. Validate percentage values in templates without emitting validation return values into slide content. Assign the result of mustMatch to a template variable.
+7. Do not change slide content unless the user requested a specific slide to use tiles. When requested, use a representative nested split such as a 65% horizontal region with the remaining area divided vertically.
+8. Build the deck and inspect interactive HTML and print HTML/PDF when enabled. Confirm the PDF contains all included slides on separate pages. Report PPTX behavior separately; web-native shortcode content is omitted by the current PPTX exporter.
+9. Summarize the theme files changed, the supported shortcode syntax, and any build or browser limitations. Do not claim other themes gained support.
 `
 }
 
@@ -1067,6 +1087,8 @@ func ThemeFiles(themeName string, includeStyles bool) map[string]string {
 		filepath.Join("themes", themeName, "shortcodes", "math.html"):            defaultThemeMathShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "mermaid.html"):         defaultThemeMermaidShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "stat.html"):            defaultThemeStatShortcode(),
+		filepath.Join("themes", themeName, "shortcodes", "tile.html"):            defaultThemeTileShortcode(),
+		filepath.Join("themes", themeName, "shortcodes", "tiles.html"):           defaultThemeTilesShortcode(),
 		filepath.Join("themes", themeName, "shortcodes", "video.html"):           defaultThemeVideoShortcode(),
 	}
 	if includeStyles {
@@ -1255,6 +1277,20 @@ func defaultThemeColumnsShortcode() string {
 	return `<div class="shortcode-columns">
   {{ .Inner }}
 </div>
+`
+}
+
+func defaultThemeTilesShortcode() string {
+	return `{{ validateParams .Name .Params "axis" }}{{ $axis := optionalParamOneOf .Params "axis" "horizontal" "vertical" }}{{ requiredInner .Name .Inner }}<div class="shortcode-tiles{{ if $axis }} shortcode-tiles-{{ $axis }}{{ else }} shortcode-tiles-horizontal{{ end }}">
+  {{ .Inner }}
+</div>
+`
+}
+
+func defaultThemeTileShortcode() string {
+	return `{{ validateParams .Name .Params "width" "height" }}{{ $width := optionalParam .Params "width" }}{{ $height := optionalParam .Params "height" }}{{ if $width }}{{ $width = mustMatch .Name $width "width" "^(100|[1-9][0-9]?)%$" }}{{ end }}{{ if $height }}{{ $height = mustMatch .Name $height "height" "^(100|[1-9][0-9]?)%$" }}{{ end }}{{ requiredInner .Name .Inner }}<article class="shortcode-tile"{{ if or $width $height }} style="{{ if $width }}--shortcode-tile-width: {{ $width }};{{ end }}{{ if $height }}{{ if $width }} {{ end }}--shortcode-tile-height: {{ $height }};{{ end }}"{{ end }}>
+  {{ .Inner }}
+</article>
 `
 }
 
@@ -1614,7 +1650,7 @@ func defaultThemePrintDeckLayoutSlim() string {
     <div class="deck">
       {{ $root := . }}
       {{ range $slide := .Slides }}
-      <section class="slide{{ if $slide.ImageHintClass }} {{ $slide.ImageHintClass }}{{ end }}"{{ if $slide.StyleAttr }} style="{{ $slide.StyleAttr }}"{{ end }}>
+      <section class="margo-print-slide{{ if $slide.ImageHintClass }} {{ $slide.ImageHintClass }}{{ end }}"{{ if $slide.StyleAttr }} style="{{ $slide.StyleAttr }}"{{ end }}>
         {{ if $slide.IsDraft }}<div class="draft-badge">Draft</div>{{ end }}
         {{ template "deck-logo" (dict "Root" $root "Slide" $slide) }}
         {{ $slide.Body }}
@@ -2077,7 +2113,11 @@ main {
 }
 
 .content-slide .slide-body {
-  align-self: start;
+  align-self: stretch;
+}
+
+.content-slide .slide-body > .shortcode-tiles {
+  height: calc(100% - 52px);
 }
 
 .title-slide {
@@ -2201,13 +2241,15 @@ main {
   object-position: var(--margo-image-position, center);
 }
 
-.slide.image-fit-contain .slide-body img {
+.slide.image-fit-contain .slide-body img,
+.margo-print-slide.image-fit-contain .slide-body img {
   width: 100%;
   max-height: 48vh;
   object-fit: contain;
 }
 
-.slide.image-fit-cover .slide-body img {
+.slide.image-fit-cover .slide-body img,
+.margo-print-slide.image-fit-cover .slide-body img {
   width: 100%;
   max-height: 48vh;
   object-fit: cover;
@@ -2266,6 +2308,53 @@ main {
 
 .shortcode-column > :first-child {
   margin-top: 0;
+}
+
+.shortcode-tiles {
+	display: flex;
+	width: 100%;
+	height: 100%;
+	min-width: 0;
+	min-height: 0;
+	gap: 20px;
+	margin: 0;
+}
+
+.shortcode-tiles-horizontal {
+	flex-direction: row;
+}
+
+.shortcode-tiles-vertical {
+	flex-direction: column;
+}
+
+.shortcode-tile {
+	box-sizing: border-box;
+	display: flex;
+	flex: 1 1 0;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+	padding: 20px 22px;
+	border-radius: 18px;
+	background: color-mix(in srgb, var(--card) 88%, var(--accent) 12%);
+	border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.shortcode-tiles-horizontal > .shortcode-tile[style*="--shortcode-tile-width"] {
+	flex: 0 1 var(--shortcode-tile-width);
+}
+
+.shortcode-tiles-vertical > .shortcode-tile[style*="--shortcode-tile-height"] {
+	flex: 0 1 var(--shortcode-tile-height);
+}
+
+.shortcode-tile > :first-child {
+	margin-top: 0;
+}
+
+.shortcode-tile > :last-child {
+	margin-bottom: 0;
 }
 
 .shortcode-stat {
@@ -2941,22 +3030,66 @@ html.margo-print,
 }
 
 .margo-print .deck {
+  display: block;
   width: 100%;
   aspect-ratio: auto;
   background: transparent;
   box-shadow: none;
+  overflow: visible;
 }
 
-.margo-print .slide {
+.margo-print .slide-shell {
+  height: 100%;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 14px;
+}
+
+.margo-print .deck-logo {
+  top: 24px;
+  right: 28px;
+}
+
+.margo-print .deck-footer {
+  position: absolute;
+  left: 72px;
+  bottom: 28px;
+  margin-top: 0;
+}
+
+.margo-print .prose-body {
+  max-width: 860px;
+}
+
+.margo-print .margo-print-slide {
   display: block !important;
+  position: relative;
+  box-sizing: border-box;
   width: 13.333in;
   min-height: 7.5in;
   height: 7.5in;
+  padding: 72px;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
   break-after: page;
   page-break-after: always;
 }
 
-.margo-print .slide:last-of-type {
+.margo-print .margo-print-slide::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--margo-background-overlay, transparent);
+  opacity: var(--margo-background-opacity, 1);
+  pointer-events: none;
+}
+
+.margo-print .margo-print-slide > * {
+  position: relative;
+  z-index: 1;
+}
+
+.margo-print .margo-print-slide:last-of-type {
   break-after: auto;
   page-break-after: auto;
 }

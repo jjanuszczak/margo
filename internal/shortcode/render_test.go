@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/jjanuszczak/margo/internal/deck"
+	"github.com/jjanuszczak/margo/internal/scaffold"
 	"github.com/jjanuszczak/margo/internal/theme"
 )
 
@@ -151,6 +152,91 @@ func TestRenderColumnShortcodeRejectsInvalidRelativeSizing(t *testing.T) {
 		Theme:       theme.Metadata{RootDir: themeRoot},
 	}); err == nil || !strings.Contains(err.Error(), `width must match`) {
 		t.Fatalf("expected invalid width error, got %v", err)
+	}
+}
+
+func TestRenderNestedTilesWithAxisAndPercentageSizing(t *testing.T) {
+	projectRoot := t.TempDir()
+	themeRoot := filepath.Join(projectRoot, "themes", "default")
+	files := scaffold.ThemeFiles("default", false)
+	for _, rel := range []string{
+		filepath.Join("themes", "default", "shortcodes", "tiles.html"),
+		filepath.Join("themes", "default", "shortcodes", "tile.html"),
+	} {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(projectRoot, rel)), 0o755); err != nil {
+			t.Fatalf("create shortcode directory: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(projectRoot, rel), []byte(files[rel]), 0o644); err != nil {
+			t.Fatalf("write scaffolded shortcode %q: %v", rel, err)
+		}
+	}
+
+	source := `{{< tiles axis="horizontal" >}}
+{{< tile width="65%" >}}Left{{< /tile >}}
+{{< tile >}}{{< tiles axis="vertical" >}}
+{{< tile height="50%" >}}Top{{< /tile >}}
+{{< tile >}}Bottom{{< /tile >}}
+{{< /tiles >}}{{< /tile >}}
+{{< /tiles >}}`
+	rendered, err := Render(source, Context{
+		ProjectRoot: projectRoot,
+		Theme:       theme.Metadata{RootDir: themeRoot},
+	})
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+	for _, needle := range []string{
+		`class="shortcode-tiles shortcode-tiles-horizontal"`,
+		`class="shortcode-tile" style="--shortcode-tile-width: 65%;"`,
+		`class="shortcode-tiles shortcode-tiles-vertical"`,
+		`class="shortcode-tile" style="--shortcode-tile-height: 50%;"`,
+		`Left`,
+		`Top`,
+		`Bottom`,
+	} {
+		if !strings.Contains(rendered, needle) {
+			t.Fatalf("expected rendered tile output to contain %q, got %q", needle, rendered)
+		}
+	}
+	if strings.Contains(rendered, `>65%`) || strings.Contains(rendered, `>50%`) {
+		t.Fatalf("expected validated sizing values not to leak into slide content, got %q", rendered)
+	}
+}
+
+func TestRenderTilesRejectsInvalidAxisAndSizing(t *testing.T) {
+	projectRoot := t.TempDir()
+	themeRoot := filepath.Join(projectRoot, "themes", "default")
+	files := scaffold.ThemeFiles("default", false)
+	for _, rel := range []string{
+		filepath.Join("themes", "default", "shortcodes", "tiles.html"),
+		filepath.Join("themes", "default", "shortcodes", "tile.html"),
+	} {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(projectRoot, rel)), 0o755); err != nil {
+			t.Fatalf("create shortcode directory: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(projectRoot, rel), []byte(files[rel]), 0o644); err != nil {
+			t.Fatalf("write scaffolded shortcode %q: %v", rel, err)
+		}
+	}
+
+	for _, test := range []struct {
+		name   string
+		source string
+		want   string
+	}{
+		{name: "invalid axis", source: `{{< tiles axis="diagonal" >}}x{{< /tiles >}}`, want: `parameter "axis" must be one of "horizontal, vertical"`},
+		{name: "invalid width", source: `{{< tile width="101%" >}}x{{< /tile >}}`, want: `width must match`},
+		{name: "invalid height", source: `{{< tile height="0%" >}}x{{< /tile >}}`, want: `height must match`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := Render(test.source, Context{
+				ProjectRoot: projectRoot,
+				Theme:       theme.Metadata{RootDir: themeRoot},
+			})
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("expected error containing %q, got %v", test.want, err)
+			}
+		})
 	}
 }
 

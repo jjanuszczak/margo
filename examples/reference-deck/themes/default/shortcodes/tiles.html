@@ -1,0 +1,3 @@
+{{ validateParams .Name .Params "axis" }}{{ $axis := optionalParamOneOf .Params "axis" "horizontal" "vertical" }}{{ requiredInner .Name .Inner }}<div class="shortcode-tiles{{ if $axis }} shortcode-tiles-{{ $axis }}{{ else }} shortcode-tiles-horizontal{{ end }}">
+  {{ .Inner }}
+</div>
