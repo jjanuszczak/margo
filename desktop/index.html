@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Margo</title></head>
+<body>
+  <div id="app">
+    <header>
+      <a class="brand" href="#" aria-label="Margo home"><img class="margo-logo" alt="Margo"><span>DESKTOP</span></a>
+      <button id="open">Open project</button><select id="recent" aria-label="Recent projects"><option value="">Recent projects</option></select>
+      <div id="project"><strong>No project open</strong><small>Markdown in. Presentation out.</small></div>
+      <select id="appearance" aria-label="App appearance" title="App appearance"><option value="dark">Dark</option><option value="light">Light</option><option value="system">System</option></select>
+      <button id="overview" disabled>Overview</button><button id="present" disabled>Present</button>
+      <select id="format" aria-label="Export format"><option>html</option></select><button id="build" disabled>Export</button>
+    </header>
+    <div id="workbench">
+      <aside><div class="aside-heading"><span>SLIDES</span><span id="count">0</span></div><nav id="slides" aria-label="Slides"></nav><button id="add" disabled>+ Add slide</button></aside>
+      <main>
+        <div id="empty"><div class="empty-mark"><img class="margo-logo" alt="Margo"></div><h1>Your deck, in focus.</h1><p>Open a Margo project to review its slides<br>and edit the Markdown behind them.</p><button id="empty-open">Open project folder</button></div>
+        <section id="workspace" hidden>
+          <div class="slide-toolbar"><strong id="slide-title"></strong><span id="slide-meta"></span><div class="spacer"></div><button id="preview-notes" disabled>Preview notes</button><button id="duplicate">Duplicate</button><button id="move-up" aria-label="Move slide up">↑</button><button id="move-down" aria-label="Move slide down">↓</button><button id="delete">Delete</button></div>
+          <div id="preview-area"><div id="preview-target"></div><span id="preview-state" role="status">Rendering preview…</span></div>
+          <div id="divider" role="separator" aria-label="Resize preview and editor" aria-orientation="horizontal" aria-valuenow="55" tabindex="0"></div>
+          <div id="source-area">
+            <div class="source-toolbar"><select id="source" aria-label="Slide source or notes"></select><button id="new-note">+ Note</button><button id="media">Insert media</button><div class="spacer"></div><select id="editor-theme" aria-label="Editor theme" title="Editor theme"></select><label><input id="autosave" type="checkbox" checked> Auto-save</label><span id="save-state" role="status">Saved</span><button id="save">Save</button></div>
+            <div id="conflict" hidden role="alert"><span>This file changed on disk. Your unsaved text is safe.</span><button id="reload">Reload disk</button><button id="compare">Compare</button><button id="keep">Keep my text…</button></div>
+            <div id="editor"></div>
+            <div id="asset-list"></div>
+          </div>
+        </section>
+        <section id="grid" aria-label="Deck overview" hidden></section>
+      </main>
+    </div>
+    <section id="diagnostics" aria-label="Diagnostics"><div id="status" role="status">Ready · Local files, Margo rendering</div><div id="messages"></div></section>
+    <div id="presentation" hidden><button id="exit-presentation">← Back to editor · Esc</button><span>Presentation review includes drafts; hidden slides stay excluded.</span><div id="presentation-target"></div></div>
+    <dialog id="dialog"><form method="dialog"><h2 id="dialog-title"></h2><p id="dialog-description"></p><input id="dialog-input" autocomplete="off"><div id="comparison" hidden><label>On disk<textarea id="disk-text" readonly></textarea></label><label>Your text<textarea id="local-text" readonly></textarea></label></div><div class="dialog-actions"><button id="dialog-cancel" type="button">Cancel</button><button id="dialog-ok" value="ok">Continue</button></div></form></dialog>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

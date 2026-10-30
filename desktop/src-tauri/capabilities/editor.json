@@ -1,0 +1,11 @@
+{
+  "identifier": "editor",
+  "description": "Only the bundled editor webview receives native privileges. The preview is a separate unprivileged webview.",
+  "webviews": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-theme"
+  ]
+}

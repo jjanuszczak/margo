@@ -1,5 +1,11 @@
 # Margo v1 Implementation Plan
 
+This plan describes the Go engine and CLI. The optional Rust + Tauri 2 companion
+is implemented alongside them, with desktop work tracked in the
+[desktop implementation plan](./desktop-app-implementation-plan.md) and
+[runtime decision](../architecture/desktop-runtime.md). The app calls the same
+Go engine for project interpretation, rendering, and safe mutations.
+
 ## 1. Purpose
 
 This document turns the v1 PRD into an execution plan.
@@ -46,6 +52,7 @@ If that loop is not solid, the rest is premature.
 10. Scaffolding system for deck, slide, and theme creation
 11. Conservative project-scaffold upgrade planning and application
 12. GitHub Pages workflow generation for release-gated and on-demand deck publishing
+13. Private desktop protocol and bundled engine, consumed by the optional Tauri shell
 
 ### High-level data flow
 1. Load root config and resolve project paths.

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'">
+<title>Margo slide preview</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#111;scrollbar-width:none}
+::-webkit-scrollbar{display:none}
+iframe{position:absolute;width:1280px;height:720px;border:0;transform-origin:top left;background:#111}
+</style>
+</head>
+<body>
+<!-- This shell and its child live exclusively in the unprivileged native preview
+     webview. Neither receives editor IPC or native capabilities. -->
+<iframe src="index.html" title="Rendered Margo slide" sandbox="allow-scripts allow-same-origin" scrolling="no"></iframe>
+<script>
+const frame=document.querySelector('iframe');
+let scene={x:0,y:0,width:1280,height:720};
+let sceneObserver;
+function fit(){
+ // Fit the rendered stage itself, excluding the theme's browser-page margins.
+ // The source viewport and authored stage layout remain constant while resizing.
+ const scale=Math.min(innerWidth/scene.width,innerHeight/scene.height);
+ frame.style.transform=`scale(${scale})`;
+ frame.style.left=`${(innerWidth-scene.width*scale)/2-scene.x*scale}px`;
+ frame.style.top=`${(innerHeight-scene.height*scale)/2-scene.y*scale}px`;
+}
+frame.addEventListener('load',()=>{
+ const doc=frame.contentDocument;
+ if(!doc)return;
+ const style=doc.createElement('style');
+ style.textContent=`html,body{overflow:hidden!important;scrollbar-width:none!important}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none!important}`;
+ doc.head.append(style);
+ const stage=doc.querySelector('main .deck, main [data-margo-stage], main .slide.active, main .slide');
+ function measure(){
+  if(stage){
+   const bounds=stage.getBoundingClientRect();
+   if(bounds.width>0&&bounds.height>0)scene={x:bounds.x,y:bounds.y,width:bounds.width,height:bounds.height};
+  }
+  fit();
+ }
+ sceneObserver?.disconnect();
+ if(stage){sceneObserver=new ResizeObserver(measure);sceneObserver.observe(stage);}
+ doc.fonts?.ready.then(measure);
+ doc.addEventListener('load',measure,true);
+ measure();
+});
+new ResizeObserver(fit).observe(document.documentElement);
+addEventListener('resize',fit);fit();
+</script>
+</body>
+</html>

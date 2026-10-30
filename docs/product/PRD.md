@@ -1,5 +1,11 @@
 # Margo v1 Product Requirements Document
 
+The Go engine and CLI remain the core described here. An optional Rust + Tauri 2
+app now provides visual authoring over the same source projects. Its scope and
+remaining acceptance work live in the [desktop PRD](./desktop-app-prd.md),
+[desktop plan](./desktop-app-implementation-plan.md), and
+[runtime decision](../architecture/desktop-runtime.md).
+
 ## 1. Overview
 
 ### Product name
@@ -9,7 +15,7 @@ Margo
 `margo` stands for "markdown go".
 
 ### Product summary
-Margo is a local CLI tool for building beautiful slide decks from Markdown using a Hugo-inspired workflow. It is optimized for authors who are comfortable with Git, Markdown, configuration files, and code-driven theming, and who want polished branded decks without depending on browser-based editors or design tools.
+Margo is a local presentation engine with a Go CLI and an optional desktop app for building slide decks from Markdown using a Hugo-inspired workflow. It is optimized for authors who are comfortable with Git, Markdown, configuration files, and code-driven theming, and who want polished branded decks without depending on browser-based editors or design tools.
 
 Margo v1 is a slide-deck system, not a general publishing system. It uses a strict project structure, slide bundles, themes, archetypes, layouts, shortcodes, and deck-wide configuration to generate presentation artifacts. The canonical render target is HTML. PDF export is included as a practical derivative of the HTML rendering path. Editable PPTX export is an additional native output target with explicit capability limits.
 
@@ -37,11 +43,11 @@ Enable a small number of users to create polished, real-world, branded presentat
 These are future considerations, not permanent exclusions.
 
 - Full presenter mode
-- Speaker notes export
+- Speaker notes export beyond the existing PPTX notes support
 - Remote presentation controls
 - Slide URL deep-linking
 - PowerPoint import
-- PPTX export
+- Full PPTX parity with arbitrary HTML, shortcodes, and custom themes
 - Multi-deck repositories as a first-class workflow
 - Collaborative editing
 - Hosting providers other than GitHub Pages

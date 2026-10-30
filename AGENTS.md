@@ -11,14 +11,16 @@ It is intentionally practical. Read this first so you understand:
 
 ## What This Repo Is
 
-`margo` is a Go CLI for building slide decks from Markdown with a Hugo-like project model.
+`margo` is a Go presentation engine and CLI with an optional Rust + Tauri 2
+desktop app for authoring Markdown slide decks using a Hugo-like project model.
 
 Current shape:
-- local CLI tool
+- local CLI for automation, scaffolding, builds, packaging, and publishing
+- desktop companion for visual review and source editing, targeting macOS and Omarchy/Arch Linux
 - HTML-first output
 - scaffold/build/serve workflow
 - default theme plus deck-local custom themes
-- initial PDF pipeline via print-oriented HTML
+- HTML, PDF, and editable PPTX output with format-specific limits
 - Git-based vendored theme install workflow
 
 This is not a finished product. It is beyond prototype scaffolding, but still actively evolving in product scope, theme contract, and export quality.
@@ -30,6 +32,12 @@ Start with:
 - [docs/product/PRD.md](./docs/product/PRD.md)
 - [docs/product/implementation-plan.md](./docs/product/implementation-plan.md)
 - [docs/AUTHORING_GUIDE.md](./docs/AUTHORING_GUIDE.md)
+
+For desktop work, also read:
+- [Desktop development and use](./desktop/README.md)
+- [Desktop PRD](./docs/product/desktop-app-prd.md)
+- [Desktop implementation plan](./docs/product/desktop-app-implementation-plan.md)
+- [Desktop runtime and protocol](./docs/architecture/desktop-runtime.md)
 
 Historical context:
 - [docs/archive/sprints](./docs/archive/sprints)
@@ -46,6 +54,10 @@ Use the product docs for intent and scope boundaries. Use the authoring guide fo
 - `margo serve`
 - `margo clean`
 - `margo new slide <name>`
+- `margo new note <name> --slide <bundle>`
+- `margo slide insert <name> ...`
+- `margo slide move <slide> ...`
+- `margo slide delete <slide>`
 - `margo new theme <name>`
 - `margo theme add <repo> [--ref <rev>] [--name <local-name>]`
 - `margo theme update <name>`
@@ -73,6 +85,21 @@ Use the product docs for intent and scope boundaries. Use the authoring guide fo
 - benchmark and regression fixtures
 - release archive script
 
+### Desktop app MVP
+
+- Rust + Tauri 2 shell with a bundled Go engine using a private JSON-lines protocol
+- project picker and recent projects; no separate installed CLI required
+- rendered slide thumbnails, overview, and a preview that fits the pane on resize
+- Monaco Markdown editor with auto-save, manual save, per-file undo/redo, and conflict handling
+- named bundle note creation/editing and rendered notes preview
+- add, duplicate, reorder, and trash slides through shared CLI operations
+- local image/video insertion and HTML/PDF/PPTX export entry points
+- light, dark, and system app appearance with independent editor themes
+
+Apple Silicon macOS builds and native workflows have been checked locally. Actual
+Omarchy/Hyprland runtime acceptance remains pending. CI build jobs are configured
+for macOS, Ubuntu/WebKitGTK, and Arch; configuration alone is not passing evidence.
+
 ### Implemented but still rough
 
 - PDF fidelity and environment reliability
@@ -82,7 +109,9 @@ Use the product docs for intent and scope boundaries. Use the authoring guide fo
 
 ### Not done
 
-- PPTX export
+- full PPTX shortcode/theme parity
+- desktop theme/settings panels, selected-slide presentation start, export cancellation, and zoom presets
+- signed/notarized desktop distribution and automatic updates
 - presenter mode
 - plugin architecture
 - multi-deck repo workflow
@@ -102,8 +131,10 @@ As of now, the highest-risk product areas are:
 - PDF quality and validation
 - theme API stability
 - authoring polish and CLI ergonomics
+- desktop source safety, native preview geometry/focus, and Omarchy acceptance
 
 Recent additions that matter:
+- optional Tauri desktop app with Monaco, rendered thumbnails, notes preview, and appearance preferences
 - theme-aware print templates
 - vendored theme installation via `theme add`
 - `serve --port` for non-default preview ports
@@ -161,7 +192,23 @@ Example:
 - loading a chart runtime because the deck contains `.shortcode-chart` markup is a good theme-side decision
 - requiring a theme to read a special field like `.HasCharts` is tighter coupling and should be avoided unless there is a strong cross-cutting reason
 
-### 5. Favor explicit override models
+### 5. Keep the desktop app on the canonical engine
+
+Go owns project interpretation, file revisions, safe mutations, and rendering.
+Rust owns native lifecycle, dialogs, sidecar management, and preview placement.
+The JS UI owns buffers and interaction state. Do not duplicate Margo parsing or
+rendering in Rust/JS, or replace source files with an editor-owned document model.
+
+The preview runs in a separate unprivileged native webview, with generated files
+served from a read-only random-token loopback URL. Never give theme-authored HTML
+the editor's native capabilities. Bundle the engine from the same checkout.
+
+The content model stores named-note paths relative to the bundle. Desktop source
+reads/saves require project-relative paths. Preserve that conversion in snapshots.
+App/editor appearance is independent of the deck's theme. Use the approved
+`assets/new-logo-*.png` wordmarks rather than creating replacement branding.
+
+### 6. Favor explicit override models
 
 When deck-level and theme-level customization both exist, prefer explicit local override behavior over magic lookup or deep inheritance.
 
@@ -173,6 +220,7 @@ Top-level directories:
 
 ```text
 cmd/
+desktop/
 docs/
 examples/
 internal/
@@ -195,6 +243,21 @@ gemini skills install skills/git-workflow-lifecycle.skill --scope workspace
 After installation, reload the skills in your interactive session using `/skills reload`.
 
 ### Important code areas
+
+- [desktop/src](./desktop/src)
+  Tauri web UI, Monaco adapter, app appearance, and buffer reconciliation
+
+- [desktop/src-tauri/src/main.rs](./desktop/src-tauri/src/main.rs)
+  Native shell, dialogs, bundled engine lifecycle, preview isolation and geometry
+
+- [desktop/scripts](./desktop/scripts)
+  Target-specific Go sidecar builds, approved-logo icons, and engine measurements
+
+- [internal/desktop](./internal/desktop)
+  Private app protocol, project snapshots, source saves, preview server, notes and thumbnails
+
+- [internal/cli/desktop.go](./internal/cli/desktop.go)
+  Private engine entry point and reuse of canonical CLI slide operations
 
 - [cmd/margo/main.go](./cmd/margo/main.go)
   CLI entrypoint
@@ -308,6 +371,23 @@ Important limitation:
 - `theme add` currently assumes the Git repo root is itself a single Margo theme
 - it does not yet install a theme from a subdirectory inside a larger monorepo
 
+### Desktop development
+
+From the repository root, install Go 1.22+, Node.js 22+, stable Rust, and the
+[Tauri platform prerequisites](https://v2.tauri.app/start/prerequisites/), then run:
+
+```bash
+cd desktop
+npm ci
+npm run dev
+```
+
+Development and packaging build the Go sidecar automatically. For a local macOS
+app, run `npm run build -- --debug --bundles app` from `desktop/`; launch
+`desktop/src-tauri/target/debug/bundle/macos/Margo.app` from Finder. Quit and reopen
+a running instance after rebuilding. Native Arch build and portal instructions
+are in the [desktop guide](./desktop/README.md).
+
 ## Testing And Verification
 
 ### Full suite
@@ -326,6 +406,27 @@ In restricted environments, set `GOCACHE` explicitly as above.
 - print rendering: `./internal/output/printhtml`
 - PDF glue: `./internal/output/pdf`
 - CLI workflows: `./internal/cli`
+- desktop protocol, source safety, notes and previews: `./internal/desktop`
+
+### Desktop checks
+
+```bash
+npm test --prefix desktop
+npm run web:build --prefix desktop
+cargo fmt --manifest-path desktop/src-tauri/Cargo.toml -- --check
+```
+
+Use a disposable copy of a committed deck for editing and structural-operation QA.
+Verify source save/undo, external edits, note creation/reopening/preview, thumbnails,
+app/editor themes, window/divider resizing, and exports. Chrome/Chromium supplies
+thumbnail capture and PDF export. The optional real-capture test is:
+
+```bash
+MARGO_DESKTOP_THUMBNAIL_TEST=1 go test ./internal/desktop -run Thumbnail
+```
+
+Native acceptance must run on the actual OS. Linux compilation does not verify
+Omarchy's Wayland geometry, input, GPU rendering, or desktop file-picker portals.
 
 ### Benchmark
 
@@ -360,9 +461,9 @@ This builds versioned archives that bundle:
 Version stamping comes from:
 - [internal/version/version.go](./internal/version/version.go)
 
-Current caveat:
-- archive creation works
-- Homebrew formula and `.pkg` packaging are not implemented in-repo
+The script packages the CLI only. The Homebrew tap also installs the CLI, not the
+app. Desktop builds use Tauri separately; signed/notarized app releases, automatic
+updates, and `.pkg` packaging are not configured. See [release procedures](./docs/RELEASING.md).
 
 ## Common Sharp Edges
 
@@ -431,6 +532,14 @@ Avoid:
 - implicit magic behavior
 - arbitrary generalization unless the product needs it
 - growing a library of shortcode-specific Go helpers when template logic is sufficient
+
+### 6. Desktop notes and preview boundaries
+
+Named notes live at `slides/<bundle>/notes/<name>.md`. The desktop notes reader
+works independently of a theme's Notes controls; published controls still require
+`presentation.navigation.notes: true` and theme support. Slide previews fit the
+rendered stage at a fixed source viewport. Do not fix resizing by changing theme
+breakpoints or enabling page scrollbars that overlap native controls.
 
 ## How To Work Safely
 

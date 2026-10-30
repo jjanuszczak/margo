@@ -1,7 +1,7 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./assets/new-logo-dark-bg.png">
   <source media="(prefers-color-scheme: light)" srcset="./assets/new-logo-light-bg.png">
-  <img alt="Margo logo" src="./assets/margo-logo-glow.png" width="600">
+  <img alt="Margo logo" src="./assets/new-logo-light-bg.png" width="600">
 </picture>
 
 Markdown presentation engine | Inspired by [Hugo](https://gohugo.io/) | Developer *and* agent friendly
@@ -10,10 +10,14 @@ This project's overview is a [slide deck](https://jjanuszczak.github.io/margo/) 
 
 # Margo
 
-Margo is a Go app for building slide decks from Markdown with a Hugo-like project model.
+Margo builds slide decks from Markdown with a Hugo-like project model. Use the Go
+CLI for scaffolding, automation, builds, and publishing, or the optional Rust + Tauri
+desktop app to browse slides and edit their source with a live Margo preview. Both
+use the same projects, themes, and Go rendering engine.
 
 The current repo contains:
-- the CLI implementation
+- the Go engine and CLI implementation
+- the desktop app in [desktop](./desktop), targeting macOS and Omarchy/Arch Linux
 - the product docs in [docs/product/PRD.md](./docs/product/PRD.md) and [docs/product/implementation-plan.md](./docs/product/implementation-plan.md)
 - the user guide in [docs/AUTHORING_GUIDE.md](./docs/AUTHORING_GUIDE.md)
 - a working local deck scaffold/build/serve flow
@@ -23,7 +27,8 @@ The current repo contains:
 
 ## Current Status
 
-This is an early prototype, not a release-ready tool.
+Margo is under active development. The CLI and desktop app have working local
+authoring flows; desktop distribution and Omarchy runtime acceptance remain pending.
 
 The release-gated [Margo product deck](./examples/margo-product-deck) deploys to the repository's [GitHub Pages site](https://jjanuszczak.github.io/margo/) with each versioned release. The published site is built from the same release tag as the shipped binary. Its source is also a working deck and a reference for users and contributors.
 
@@ -46,6 +51,7 @@ Working today:
 - `margo slide insert <name> (--before <slide> | --after <slide> | --position <n>)`
 - `margo slide move <slide> (--before <slide> | --after <slide> | --position <n>)`
 - `margo slide delete <slide>`
+- `margo new note <name> --slide <bundle>`
 - `margo new theme <name>`
 - `margo new theme <name> blank`
 - `margo theme update <name>`
@@ -67,7 +73,50 @@ Not finished:
 - presenter mode
 - browser-refresh injection outside the scaffolded default theme
 
-## Build
+## Desktop companion (MVP)
+
+The app opens an existing folder containing `margo.yaml` and writes directly to
+its Markdown bundles. It provides:
+
+- actual rendered slide thumbnails, an overview, and a preview that fits on resize
+- Monaco source editing with syntax highlighting, Find, auto-save, manual save, and undo/redo
+- named Markdown notes with a rendered notes preview
+- add, duplicate, reorder, delete-to-trash, and local image/video insertion
+- presentation review and HTML, PDF, and PPTX export actions
+- light, dark, or system app appearance plus independent editor themes
+- external-change detection and conflict handling when CLI, agents, or other editors change files
+
+Build tools: Go 1.22+, Node.js 22+, stable Rust, and
+[Tauri platform prerequisites](https://v2.tauri.app/start/prerequisites/).
+From the repository root:
+
+```bash
+cd desktop
+npm ci
+npm run dev
+```
+
+For a local macOS app:
+
+```bash
+npm run build -- --debug --bundles app
+```
+
+Open `desktop/src-tauri/target/debug/bundle/macos/Margo.app` from Finder. Quit and
+reopen it after rebuilding. The app bundles its Go engine; a separate installed CLI
+is unnecessary. Chrome/Chromium supplies thumbnails and PDF export.
+
+Apple Silicon macOS has local build and native-workflow verification. Omarchy/Arch
+is an MVP target with native build instructions and CI configuration; testing in
+an actual Omarchy/Hyprland session remains pending. Desktop signing/notarization
+and automatic updates are not configured. CLI release archives and Homebrew
+installation do not install the app.
+
+See the [desktop guide](./desktop/README.md) for Arch prerequisites, packaging,
+notes, recovery, and limits; the [runtime decision](./docs/architecture/desktop-runtime.md)
+for architecture; and the [desktop PRD](./docs/product/desktop-app-prd.md) for scope.
+
+## CLI build and installation
 
 Build a local binary:
 
@@ -228,12 +277,17 @@ my-deck/
 
 ## Development Notes
 
-- The repository root is the CLI source repo, not a deck project.
+- The repository root contains the engine, CLI, and desktop app; it is not a deck project.
 - Generated test decks and local caches are ignored by `.gitignore`.
 - `examples/reference-deck` is the committed fixture deck for manual checks and regression work.
 - `examples/benchmark-deck` is the committed 20-slide deck for manual performance and density checks.
 - `margo serve` uses `127.0.0.1:1313` by default. If that port is unavailable, interactive runs now prompt for another port and non-interactive runs should use `--port <port>`.
 - Some local preview verification required running outside the sandbox because binding local ports may be restricted in this environment.
+
+Desktop checks are `npm test --prefix desktop` and `npm run web:build --prefix desktop`.
+The Go suite covers the private desktop protocol as well as the engine and CLI.
+Use a disposable fixture copy for app editing tests. See [AGENTS.md](./AGENTS.md)
+for code ownership and verification guidance.
 
 Benchmark the committed 20-slide deck build path with:
 
