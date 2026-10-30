@@ -151,7 +151,12 @@ jobs:
       - name: Create draft GitHub Release with generated notes
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" dist/release/* --draft --generate-notes
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
+            gh release create "${GITHUB_REF_NAME}" dist/release/* --draft --prerelease --generate-notes
+          else
+            gh release create "${GITHUB_REF_NAME}" dist/release/* --draft --generate-notes
+          fi
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
