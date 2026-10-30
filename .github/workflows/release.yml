@@ -10,7 +10,7 @@ permissions:
   id-token: write
 
 jobs:
-  release:
+  cli:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,21 +20,152 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - name: Test
+      - name: Test Go engine
         run: go test ./...
-      - name: Build release artifacts
+      - name: Build CLI release artifacts
         env:
           VERSION: ${{ github.ref_name }}
         run: VERSION="${VERSION#v}" ./scripts/release.sh
-      - name: Verify checksums
+      - name: Verify CLI checksums
         run: (cd dist/release && shasum -a 256 -c checksums.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cli-release
+          path: |
+            dist/release/*.tar.gz
+            dist/release/*.zip
+          if-no-files-found: error
+
+  desktop-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Set desktop version from tag
+        working-directory: desktop
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          VERSION="${VERSION#v}" node --input-type=module -e '
+            import fs from "node:fs";
+            const path = "src-tauri/tauri.conf.json";
+            const config = JSON.parse(fs.readFileSync(path, "utf8"));
+            config.version = process.env.VERSION;
+            fs.writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
+          '
+      - run: npm ci
+        working-directory: desktop
+      - run: npm test
+        working-directory: desktop
+      - name: Build macOS disk image
+        working-directory: desktop
+        env:
+          MARGO_VERSION: ${{ github.ref_name }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          npm run build -- --bundles dmg
+          mkdir -p "$RUNNER_TEMP/desktop-release"
+          cp src-tauri/target/release/bundle/dmg/*.dmg \
+            "$RUNNER_TEMP/desktop-release/margo-desktop-experimental-macos-${RUNNER_ARCH,,}-${VERSION}.dmg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos-${{ runner.arch }}
+          path: ${{ runner.temp }}/desktop-release/*
+          if-no-files-found: error
+
+  desktop-arch:
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    steps:
+      - name: Install Arch build dependencies
+        run: pacman -Syu --noconfirm --needed git go nodejs npm rust webkit2gtk-4.1 openssl appmenu-gtk-module libappindicator-gtk3 librsvg xdotool
+      - uses: actions/checkout@v4
+      - name: Set desktop version from tag
+        working-directory: desktop
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          VERSION="${VERSION#v}" node --input-type=module -e '
+            import fs from "node:fs";
+            const path = "src-tauri/tauri.conf.json";
+            const config = JSON.parse(fs.readFileSync(path, "utf8"));
+            config.version = process.env.VERSION;
+            fs.writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
+          '
+      - run: npm ci
+        working-directory: desktop
+      - run: npm test
+        working-directory: desktop
+      - name: Build Arch desktop app and bundled engine
+        working-directory: desktop
+        env:
+          MARGO_VERSION: ${{ github.ref_name }}
+        run: |
+          npm run engine
+          npm run web:build
+          cargo build --locked --release --features custom-protocol --manifest-path src-tauri/Cargo.toml
+          VERSION="${GITHUB_REF_NAME#v}"
+          PACKAGE="margo-desktop-experimental-linux-arch-x86_64-${VERSION}"
+          mkdir -p "../dist/desktop/$PACKAGE"
+          cp src-tauri/target/release/margo-desktop "../dist/desktop/$PACKAGE/margo-desktop"
+          cp src-tauri/binaries/margo-engine-x86_64-unknown-linux-gnu "../dist/desktop/$PACKAGE/margo-engine"
+          cp RELEASE-LINUX.md "../dist/desktop/$PACKAGE/README.md"
+          chmod +x "../dist/desktop/$PACKAGE/margo-desktop" "../dist/desktop/$PACKAGE/margo-engine"
+          tar -C ../dist/desktop -czf "../dist/desktop/$PACKAGE.tar.gz" "$PACKAGE"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-linux-arch
+          path: dist/desktop/*.tar.gz
+          if-no-files-found: error
+
+  publish:
+    needs: [cli, desktop-macos, desktop-arch]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*-release'
+          path: dist/release
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: 'desktop-*'
+          path: dist/release
+          merge-multiple: true
+      - name: Verify release contents and write combined checksums
+        run: |
+          test -n "$(find dist/release -maxdepth 1 -type f -name 'margo-*.tar.gz' -print -quit)"
+          test -n "$(find dist/release -maxdepth 1 -type f -name 'margo-desktop-experimental-macos-*.dmg' -print -quit)"
+          test -n "$(find dist/release -maxdepth 1 -type f -name 'margo-desktop-experimental-linux-arch-*.tar.gz' -print -quit)"
+          cd dist/release
+          sha256sum ./*.tar.gz ./*.zip ./*.dmg | sed 's#  \./#  #' | sort -k2 > checksums.txt
+          sha256sum -c checksums.txt
+      - name: Create draft GitHub Release with generated notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" dist/release/* --draft --generate-notes
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "${GITHUB_REF_NAME}" \
-            dist/release/*.tar.gz dist/release/*.zip dist/release/checksums.txt \
-            --generate-notes
+        run: gh release edit "${GITHUB_REF_NAME}" --draft=false
+
+  product-deck:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
       - name: Build Margo product deck
         working-directory: examples/margo-product-deck
         run: go run ../../cmd/margo build
@@ -46,7 +177,7 @@ jobs:
           path: examples/margo-product-deck/dist/html
 
   deploy-product-deck:
-    needs: release
+    needs: product-deck
     runs-on: ubuntu-latest
     environment:
       name: github-pages

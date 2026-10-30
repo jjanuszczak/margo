@@ -11,8 +11,10 @@ and the [runtime decision](../docs/architecture/desktop-runtime.md) for the prot
 
 The MVP targets macOS and Omarchy/Arch Linux. Apple Silicon macOS has local native
 verification for project opening, previews/resizing, source save/undo, app/editor
-appearance, and named notes. Native Omarchy acceptance remains pending. This app
-is built separately from the CLI release archives and Homebrew formula.
+appearance, and named notes. Native Omarchy acceptance remains pending. Tagged
+releases attach an experimental macOS disk image and Arch Linux portable archive
+alongside the independently usable CLI archives. The desktop app includes its
+matching Go engine and does not require the CLI to be installed separately.
 
 ## Develop
 
@@ -181,8 +183,10 @@ and structural slide operations. Check window/divider resizing, theme choices,
 source selection, external edits, and exports in the native app on each target OS.
 
 The [Desktop CI workflow](../.github/workflows/desktop.yml) defines macOS app,
-Ubuntu package, and Arch compile jobs. Review run results separately; a successful
-compile does not establish working native dialogs, focus, or Wayland rendering.
+Ubuntu package, and Arch compile jobs. Tagged [releases](../.github/workflows/release.yml)
+build the macOS disk image and Arch archive. Review run results separately; a
+successful compile does not establish working native dialogs, focus, or Wayland
+rendering.
 
 ## Current validation boundaries
 
