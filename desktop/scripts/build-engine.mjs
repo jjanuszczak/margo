@@ -12,7 +12,7 @@ const targets = {
 };
 if (!targets[triple]) throw new Error(`Unsupported desktop target: ${triple}`);
 mkdirSync(path.join(root, 'desktop/src-tauri/binaries'), { recursive: true });
-const args = ['build', '-trimpath'];
+const args = ['build', '-trimpath', '-buildvcs=false'];
 if (process.env.MARGO_VERSION) {
   const version = process.env.MARGO_VERSION.replace(/^v/, '');
   args.push('-ldflags', `-s -w -X github.com/jjanuszczak/margo/internal/version.Version=${version}`);

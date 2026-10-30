@@ -99,6 +99,9 @@ func TestPreviewUsesCanonicalRendererWithoutTouchingProject(t *testing.T) {
 			if _, err := os.Stat(root); os.IsNotExist(err) {
 				t.Skip("optional dogfood fixture unavailable")
 			}
+			if _, err := os.Stat(filepath.Join(root, "margo.yaml")); os.IsNotExist(err) {
+				t.Skip("optional dogfood fixture config unavailable")
+			}
 			e := &Engine{root: root, temp: t.TempDir(), origin: "http://127.0.0.1:1/token/"}
 			before, err := projectRevision(root)
 			if err != nil {
