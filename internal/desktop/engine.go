@@ -8,11 +8,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -153,6 +155,30 @@ func (e *Engine) handle(r Request) (Response, error) {
 	if r.Op == "hello" {
 		return Response{}, nil
 	}
+	if r.Op == "create-project" {
+		if strings.TrimSpace(r.Name) == "" || strings.TrimSpace(r.Root) == "" {
+			return Response{}, fmt.Errorf("project name and destination are required")
+		}
+		root, err := filepath.Abs(r.Root)
+		if err != nil {
+			return Response{}, err
+		}
+		if err := scaffold.CreateDeck(scaffold.DeckOptions{Name: r.Name, TargetDir: root}); err != nil {
+			return Response{}, err
+		}
+		if strings.TrimSpace(r.ThemeRepo) != "" {
+			installed, err := theme.Install(theme.InstallOptions{ProjectRoot: root, Repo: r.ThemeRepo, Ref: r.ThemeRef, Name: r.ThemeName})
+			if err != nil {
+				return Response{}, fmt.Errorf("deck created with the default theme, but importing the selected theme failed: %w", err)
+			}
+			if err := config.SetThemeName(filepath.Join(root, "margo.yaml"), installed.Name); err != nil {
+				return Response{}, fmt.Errorf("deck and theme %q were created, but selecting the theme failed: %w", installed.Name, err)
+			}
+		}
+		e.root = root
+		snapshot, err := e.snapshot()
+		return Response{Snapshot: snapshot}, err
+	}
 	if r.Op == "close" {
 		e.stopThumbnails()
 		e.root = ""
@@ -194,6 +220,8 @@ func (e *Engine) handle(r Request) (Response, error) {
 	case "snapshot":
 		snapshot, err := e.snapshot()
 		return Response{Snapshot: snapshot}, err
+	case "skills":
+		return Response{Skills: e.projectSkills()}, nil
 	case "read":
 		file, err := readFile(e.root, r.Path)
 		return Response{File: file}, err
@@ -313,7 +341,7 @@ func (e *Engine) snapshot() (*Snapshot, error) {
 	if err != nil {
 		return nil, err
 	}
-	snapshot := &Snapshot{Root: e.root, Title: model.Config.Deck.Title, Theme: active.Name, Revision: revision, Slides: []Slide{}, Formats: []string{"html", "pptx"}}
+	snapshot := &Snapshot{Root: e.root, Title: model.Config.Deck.Title, Theme: active.Name, Revision: revision, Slides: []Slide{}, Formats: []string{"html", "pptx"}, SupportsTiles: e.themeSupportsTiles(active)}
 	if _, err := pdf.DetectBrowser(); err == nil {
 		snapshot.Formats = append(snapshot.Formats, "pdf")
 	}
@@ -325,6 +353,99 @@ func (e *Engine) snapshot() (*Snapshot, error) {
 		snapshot.Slides = append(snapshot.Slides, Slide{ID: s.ID, Title: s.Title, Path: filepath.ToSlash(filepath.Join("slides", s.ID, "index.md")), Draft: s.Draft, Visibility: s.Visibility, Layout: s.Layout, Notes: notes, Assets: append([]string{}, s.Assets...)})
 	}
 	return snapshot, nil
+}
+
+func (e *Engine) themeSupportsTiles(active theme.Metadata) bool {
+	for _, name := range []string{"tiles.html", "tile.html"} {
+		path := filepath.Join(e.root, "shortcodes", name)
+		if _, err := os.Stat(path); err != nil {
+			path = filepath.Join(active.RootDir, "shortcodes", name)
+		}
+		info, err := os.Stat(path)
+		if err != nil || !info.Mode().IsRegular() {
+			return false
+		}
+	}
+	foundStyles := false
+	_ = filepath.WalkDir(filepath.Join(active.RootDir, "assets"), func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".css") {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err == nil && strings.Contains(string(data), ".shortcode-tiles") && strings.Contains(string(data), ".shortcode-tile") {
+			foundStyles = true
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	return foundStyles
+}
+
+func (e *Engine) projectSkills() []Skill {
+	files := scaffold.AgentFiles()
+	contents := make(map[string]string)
+	for path, content := range files {
+		rel := filepath.ToSlash(path)
+		if strings.HasPrefix(rel, ".agents/skills/") && strings.HasSuffix(strings.ToLower(rel), ".md") {
+			contents[rel] = content
+		}
+	}
+	root, err := confined(e.root, filepath.Join(".agents", "skills"))
+	if err == nil {
+		_ = filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return nil
+			}
+			if entry.Type()&os.ModeSymlink != 0 {
+				if entry.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".md") {
+				return nil
+			}
+			rel, err := filepath.Rel(e.root, path)
+			if err != nil {
+				return nil
+			}
+			data, err := os.ReadFile(path)
+			if err == nil {
+				contents[filepath.ToSlash(rel)] = string(data)
+			}
+			return nil
+		})
+	}
+	skills := make([]Skill, 0, len(contents))
+	for rel, content := range contents {
+		if !strings.HasSuffix(filepath.ToSlash(rel), "/SKILL.md") {
+			continue
+		}
+		name, description := filepath.Base(filepath.Dir(filepath.FromSlash(rel))), "Project skill"
+		if strings.HasPrefix(content, "---") {
+			if end := strings.Index(content[3:], "---"); end >= 0 {
+				for _, line := range strings.Split(content[3:3+end], "\n") {
+					if strings.HasPrefix(line, "name:") {
+						name = strings.Trim(strings.TrimSpace(strings.TrimPrefix(line, "name:")), "\"'")
+					}
+					if strings.HasPrefix(line, "description:") {
+						description = strings.Trim(strings.TrimSpace(strings.TrimPrefix(line, "description:")), "\"'")
+					}
+				}
+			}
+		}
+		skill := Skill{Name: name, Description: description, Path: rel, Content: content}
+		referencePrefix := strings.TrimSuffix(filepath.ToSlash(rel), "/SKILL.md") + "/references/"
+		for refPath, refContent := range contents {
+			if strings.HasPrefix(filepath.ToSlash(refPath), referencePrefix) && strings.HasSuffix(strings.ToLower(refPath), ".md") {
+				skill.References = append(skill.References, SkillReference{Path: refPath, Content: refContent})
+			}
+		}
+		sort.Slice(skill.References, func(i, j int) bool { return skill.References[i].Path < skill.References[j].Path })
+		skills = append(skills, skill)
+	}
+	sort.Slice(skills, func(i, j int) bool { return skills[i].Name < skills[j].Name })
+	return skills
 }
 
 func (e *Engine) preview(r Request) (Response, error) {

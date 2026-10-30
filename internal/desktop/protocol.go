@@ -20,6 +20,9 @@ type Request struct {
 	Format       string `json:"format,omitempty"`
 	Notes        bool   `json:"notes,omitempty"`
 	Presentation bool   `json:"presentation,omitempty"`
+	ThemeRepo    string `json:"theme_repo,omitempty"`
+	ThemeRef     string `json:"theme_ref,omitempty"`
+	ThemeName    string `json:"theme_name,omitempty"`
 }
 
 type Response struct {
@@ -37,16 +40,31 @@ type Response struct {
 	Artifact       string                   `json:"artifact,omitempty"`
 	Markdown       string                   `json:"markdown,omitempty"`
 	Log            string                   `json:"log,omitempty"`
+	Skills         []Skill                  `json:"skills,omitempty"`
 	Diagnostics    []diagnostics.Diagnostic `json:"diagnostics"`
 }
 
+type Skill struct {
+	Name        string           `json:"name"`
+	Description string           `json:"description"`
+	Path        string           `json:"path"`
+	Content     string           `json:"content"`
+	References  []SkillReference `json:"references,omitempty"`
+}
+
+type SkillReference struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
+}
+
 type Snapshot struct {
-	Root     string   `json:"root"`
-	Title    string   `json:"title"`
-	Theme    string   `json:"theme"`
-	Revision string   `json:"revision"`
-	Slides   []Slide  `json:"slides"`
-	Formats  []string `json:"formats"`
+	Root          string   `json:"root"`
+	Title         string   `json:"title"`
+	Theme         string   `json:"theme"`
+	Revision      string   `json:"revision"`
+	Slides        []Slide  `json:"slides"`
+	Formats       []string `json:"formats"`
+	SupportsTiles bool     `json:"supports_tiles"`
 }
 
 type Slide struct {

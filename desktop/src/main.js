@@ -44,21 +44,59 @@ const editor=createSourceEditor($('editor'),content=>{
  if($('autosave').checked&&!buffer.conflict&&!buffer.manualSave)autosaveTimer=setTimeout(()=>act(save),800);
 });
 const systemAppearance=matchMedia('(prefers-color-scheme: dark)');
-let appearanceChoice=readPreference('margo.appearance',['dark','light','system'],'dark');
+let appearanceChoice=readPreference('margo.appearance',['dark','light','system','omarchy'],'dark');
 let editorThemeChoice=readPreference('margo.editor-theme',Object.keys(editorThemes),'auto');
+const appearanceLabels={light:'Light',dark:'Dark',system:'System',omarchy:'Omarchy'};
+let omarchyPalette=null;
+const omarchyColorKeys={
+ '--background':'background','--panel':'lighter_background','--control':'background',
+ '--control-hover':'lighter_background','--text':'foreground','--muted':'muted',
+ '--line':'muted','--accent':'accent','--selected':'selection','--selected-border':'accent',
+ '--well':'dark_background','--frame':'darker_background','--frame-line':'muted',
+ '--divider':'muted','--warning':'yellow','--error':'red','--conflict':'selection',
+ '--conflict-text':'foreground'
+};
+const appearanceIcons={
+ light:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>',
+ dark:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 15.5A8.5 8.5 0 0 1 8.5 3.5 8.5 8.5 0 1 0 20.5 15.5z"/></svg>',
+ system:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>',
+ omarchy:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><circle cx="7" cy="6.5" r=".7"/><circle cx="10" cy="6.5" r=".7"/><path d="M7 13h4m-4 3h7"/></svg>'
+};
 for(const [value,label] of Object.entries(editorThemes)){const option=document.createElement('option');option.value=value;option.textContent=label;$('editor-theme').append(option);}
 function applyAppearance(){
- const appearance=resolveAppearance(appearanceChoice,systemAppearance.matches);
+ const palette=appearanceChoice==='omarchy'?omarchyPalette:null;
+ const appearance=palette?.available?palette.mode:resolveAppearance(appearanceChoice==='omarchy'?'system':appearanceChoice,systemAppearance.matches);
  document.documentElement.dataset.appearance=appearance;
- $('appearance').value=appearanceChoice;$('editor-theme').value=editorThemeChoice;
+ document.documentElement.dataset.appearanceSource=palette?.available?'omarchy':'system';
+ document.documentElement.style.colorScheme=appearance;
+ for(const [property,key] of Object.entries(omarchyColorKeys)){
+  const value=palette?.available?palette.colors?.[key]:null;
+  if(value)document.documentElement.style.setProperty(property,value);else document.documentElement.style.removeProperty(property);
+ }
+ $('appearance-icon').innerHTML=appearanceIcons[appearanceChoice];
+ const unavailable=appearanceChoice==='omarchy'&&!palette?.available;
+ $('appearance-toggle').title='Appearance: '+appearanceLabels[appearanceChoice]+(unavailable?' (Omarchy palette unavailable; using system colors)':'');
+ $('appearance-toggle').setAttribute('aria-label','Appearance: '+appearanceLabels[appearanceChoice]+(unavailable?' (using system colors)':''));
+ for(const option of document.querySelectorAll('[data-appearance-choice]'))option.setAttribute('aria-checked',String(option.dataset.appearanceChoice===appearanceChoice));
+ $('editor-theme').value=editorThemeChoice;
  for(const image of document.querySelectorAll('.margo-logo'))image.src=appearance==='light'?logoLight:logoDark;
  editor.setTheme(resolveEditorTheme(editorThemeChoice,appearance));
  getCurrentWindow().setTheme(appearanceChoice==='system'?null:appearance).catch(error=>console.warn('Native theme:',error));
  requestAnimationFrame(()=>syncPreview());
 }
-$('appearance').onchange=()=>{appearanceChoice=$('appearance').value;savePreference('margo.appearance',appearanceChoice);applyAppearance();};
+async function refreshOmarchyPalette(){
+ try{omarchyPalette=await invoke('omarchy_palette');}
+ catch(error){omarchyPalette=null;console.warn('Omarchy palette:',error);}
+ if(appearanceChoice==='omarchy')applyAppearance();
+}
+$('appearance-menu').querySelectorAll('[data-appearance-choice]').forEach(option=>option.onclick=()=>{
+ appearanceChoice=option.dataset.appearanceChoice;savePreference('margo.appearance',appearanceChoice);$('appearance-menu').open=false;applyAppearance();if(appearanceChoice==='omarchy')refreshOmarchyPalette();
+});
+document.addEventListener('pointerdown',event=>{if($('appearance-menu').open&&!$('appearance-menu').contains(event.target))$('appearance-menu').open=false;});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&$('appearance-menu').open){$('appearance-menu').open=false;$('appearance-toggle').focus();}});
 $('editor-theme').onchange=()=>{editorThemeChoice=$('editor-theme').value;savePreference('margo.editor-theme',editorThemeChoice);applyAppearance();};
-systemAppearance.addEventListener('change',()=>{if(appearanceChoice==='system')applyAppearance();});
+systemAppearance.addEventListener('change',()=>{if(appearanceChoice==='system'||(appearanceChoice==='omarchy'&&!omarchyPalette?.available))applyAppearance();});
+refreshOmarchyPalette();setInterval(()=>{if(appearanceChoice==='omarchy')refreshOmarchyPalette();},2500);
 function status(message) { $('status').textContent=message; }
 function updateSaveState() {
  $('save-state').textContent=buffer?.conflict?'Conflict':isDirty(buffer)?'Unsaved':'Saved';
@@ -95,9 +133,9 @@ async function request(op, params={}) {
 }
 async function act(fn) {
  if(busy)return;busy=true;updateSaveState();
- for(const id of ['open','empty-open','recent','add','duplicate','delete','move-up','move-down','build','source','slides','overview','present','media','new-note','preview-notes'])$(id).inert=true;
+ for(const id of ['new-project','open','empty-new','empty-open','agent-skills','tile-content','add','duplicate','delete','move-up','move-down','source','slides','overview','present','media','new-note','preview-notes'])$(id).inert=true;
  try{await fn();}catch(error){status(error.message||String(error));console.error(error);}
- finally{busy=false;for(const id of ['open','empty-open','recent','add','duplicate','delete','move-up','move-down','build','source','slides','overview','present','media','new-note','preview-notes'])$(id).inert=false;updateSaveState();}
+ finally{busy=false;for(const id of ['new-project','open','empty-new','empty-open','agent-skills','tile-content','add','duplicate','delete','move-up','move-down','source','slides','overview','present','media','new-note','preview-notes'])$(id).inert=false;updateSaveState();}
 }
 $('dialog-cancel').onclick=()=>$('dialog').close('cancel');
 function dialog(title, description, initial, comparison) {
@@ -179,15 +217,30 @@ async function openProject(root) {
  const result=await request('open',{root});snapshot=result.snapshot;selected=snapshot.slides[0]?.id||'';
  buffer=null;editor.reset();previewURL=null;thumbnails.clear();thumbnailRevision='';thumbnailCursor=0;overview=false;presentation=false;showDiagnostics([]);
  $('project').firstElementChild.textContent=snapshot.title||'Untitled deck';$('project').lastElementChild.textContent=`${snapshot.root} · ${snapshot.theme}`;$('project').title=snapshot.root;
- for(const id of ['overview','present','build','add'])$(id).disabled=false;
- $('format').replaceChildren();for(const f of snapshot.formats){const o=document.createElement('option');o.value=f;o.textContent=f.toUpperCase();$('format').append(o);}
+ for(const id of ['overview','present','add'])$(id).disabled=false;
+ $('agent-skills').disabled=false;$('tile-content').disabled=false;
+ $('tile-content').title=snapshot.supports_tiles?'Insert a nested tile composition':'Theme does not provide the nested tile shortcodes';
  renderNavigation();updateModes();if(selected)await selectSlide(selected);
  await updateRecent(snapshot.root);await startThumbnails();status(`Opened ${snapshot.title} · ${snapshot.slides.length} slides`);
 }
 async function pickProject(){const path=await invoke('choose_path',{kind:'project'});if(path)await openProject(path);}
+async function newProject(){
+ if(!await resolveDirty())return;
+ const parent=await invoke('choose_path',{kind:'project-parent'});if(!parent)return;
+ const name=await dialog('Create a deck','Choose a project folder name. Margo will create a complete starter deck here.','My presentation');
+ if(!name?.trim())return;
+ const folderName=name.trim().replace(/[\\/:*?"<>|]/g,'-');
+ const root=parent.replace(/[\\/]$/,'')+'/'+folderName;
+ const repo=await dialog('Optional theme import','Enter a Git repository URL for a Margo theme, or leave blank to use the default theme.','');
+ const themeRepo=repo?.trim()||'';
+ const themeRef=themeRepo?(await dialog('Theme revision','Optional Git branch, tag, or commit. Leave blank for the repository default.','')||'').trim():'';
+ status('Creating deck…');
+ try { await request('create-project',{root,name:name.trim(),theme_repo:themeRepo,theme_ref:themeRef}); }
+ catch(error) { try { await openProject(root); } catch {} throw error; }
+ await openProject(root);status('Created deck · '+root);
+}
 async function updateRecent(root=null){
- const recent=await invoke('recent_projects',{root});$('recent').replaceChildren();const empty=document.createElement('option');empty.value='';empty.textContent='Recent projects';$('recent').append(empty);
- for(const path of recent){const o=document.createElement('option');o.value=path;o.textContent=path.split('/').at(-1);o.title=path;$('recent').append(o);}
+ await invoke('recent_projects',{root});
 }
 async function save() {
  clearTimeout(autosaveTimer);if(!isDirty(buffer)||buffer.conflict)return;
@@ -205,7 +258,7 @@ async function refreshSnapshot(){
  const path=buffer?.path;renderSourceOptions();if(path)$('source').value=path;
 }
 async function poll(){
- if(busy||polling||!snapshot||$('dialog').open||presentation)return;
+ if(busy||polling||!snapshot||appModalOpen()||presentation)return;
  polling=true;
  const root=snapshot.root, path=buffer?.path;
  try{
@@ -242,6 +295,7 @@ async function renderPreview(){
  }catch(error){markStale('Preview failed · last successful render remains visible');throw error;}
 }
 let previewLayoutPending=false, previewLayoutAgain=false, pendingNavigation=false;
+function appModalOpen(){return ['dialog','skills-dialog','tiling-dialog'].some(id=>$(id).open);}
 async function syncPreview(navigate=false){
  pendingNavigation ||= navigate;
  if(previewLayoutPending){previewLayoutAgain=true;return;}
@@ -251,12 +305,13 @@ async function syncPreview(navigate=false){
    previewLayoutAgain=false;
    const target=presentation?$('presentation-target'):$('preview-target');
    const rect=fitSlideRect(target.getBoundingClientRect());
-   const visible=!!previewURL&&!overview&&!$('dialog').open&&!!snapshot&&rect.width>1&&rect.height>1;
+   const visible=!!previewURL&&!overview&&!appModalOpen()&&!!snapshot&&rect.width>1&&rect.height>1;
    const url=pendingNavigation?previewURL:null;pendingNavigation=false;
    await invoke('preview_layout',{rect,visible,url,viewport:{width:window.innerWidth,height:window.innerHeight}});
   } while(previewLayoutAgain||pendingNavigation);
  }catch(error){if(previewURL)status('Preview window: '+error);}finally{previewLayoutPending=false;}
 }
+for(const id of ['dialog','skills-dialog','tiling-dialog'])$(id).addEventListener('close',()=>requestAnimationFrame(()=>syncPreview()));
 function updateModes(){
  $('empty').hidden=!!snapshot;$('workspace').hidden=!snapshot||overview;$('grid').hidden=!snapshot||!overview;
  $('overview').classList.toggle('active',overview);$('presentation').hidden=!presentation;requestAnimationFrame(()=>syncPreview());
@@ -269,8 +324,116 @@ async function mutate(op,params={}){
  status('Slide '+op+' complete');
 }
 async function namedMutation(op){const name=await dialog(op==='create'?'Add a slide':'Duplicate slide','Enter a unique name for the new slide bundle.',op==='create'?'New slide':currentSlide().title+' copy');if(name?.trim())await mutate(op,{name});}
+const tilingDialog=$('tiling-dialog');
+let tilingLayout='stack';
+const layoutRadios=[...document.querySelectorAll('input[name=tiling-layout]')];
+function refreshTilingSettings(){
+ $('tiling-ratio-label').hidden=tilingLayout!=='stack';
+ $('tiling-track-label').hidden=tilingLayout!=='track';
+ const count=Math.max(2,Math.min(6,Number($('tiling-count').value)||3));
+ $('tiling-track-count').max=Math.min(3,count);
+ if(Number($('tiling-track-count').value)>Number($('tiling-track-count').max))$('tiling-track-count').value=$('tiling-track-count').max;
+}
+for(const radio of layoutRadios)radio.onchange=()=>{tilingLayout=radio.value;refreshTilingSettings();};
+$('tiling-count').oninput=refreshTilingSettings;
+$('tiling-track-count').oninput=refreshTilingSettings;
+$('tiling-cancel').onclick=()=>tilingDialog.close('cancel');
+$('tiling-create').onclick=()=>tilingDialog.close('insert');
+function composeTiles(layout,count,ratio,trackCount){
+ const tile=(body,params='')=>'{{< tile'+(params?' '+params:'')+' >}}\n'+body+'\n{{< /tile >}}';
+ const tiles=(axis,children)=>'{{< tiles axis="'+axis+'" >}}\n'+children.join('\n')+'\n{{< /tiles >}}';
+ const fill=index=>'Add content for area '+index+' here.';
+ const leaf=index=>tile(fill(index));
+ if(layout==='columns')return tiles('horizontal',Array.from({length:count},(_,i)=>leaf(i+1)));
+ if(layout==='stack'){
+  const supporting=Array.from({length:count-1},(_,i)=>leaf(i+2));
+  const stack=supporting.length===1?fill(2):tiles('vertical',supporting);
+  return tiles('horizontal',[tile('Add primary content here.','width="'+ratio+'%"'),tile(stack)]);
+ }
+ if(layout==='bsp'){
+  const split=(start,size,depth)=>{
+   if(size===1)return fill(start);
+   const leftSize=Math.ceil(size/2),rightSize=size-leftSize,axis=depth%2===0?'horizontal':'vertical';
+   return tiles(axis,[tile(split(start,leftSize,depth+1)),tile(split(start+leftSize,rightSize,depth+1))]);
+  };
+  return split(1,count,0);
+ }
+ if(layout==='grid'){
+  const columns=Math.ceil(Math.sqrt(count)),rows=[];
+  for(let start=0;start<count;start+=columns){
+   const row=Array.from({length:Math.min(columns,count-start)},(_,i)=>leaf(start+i+1));
+   rows.push(tile(row.length===1?fill(start+1):tiles('horizontal',row)));
+  }
+  return tiles('vertical',rows);
+ }
+ if(layout==='track'){
+  const tracks=[];let start=1;
+  for(let track=0;track<trackCount;track++){
+   const size=Math.floor(count/trackCount)+(track<count%trackCount?1:0);
+   const content=Array.from({length:size},(_,i)=>leaf(start+i));
+   start+=size;
+   tracks.push(tile(content.length===1?fill(start-1):tiles('vertical',content)));
+  }
+  return tiles('horizontal',tracks);
+ }
+ return '';
+}
+$('tile-content').onclick=()=>act(async()=>{
+ if(!snapshot?.supports_tiles){status('This theme does not provide nested tile shortcodes. Use Agent skills to hand off the explicit margo-theme-tiling workflow.');await showProjectSkills('margo-theme-tiling');return;}
+ if(!await resolveDirty())return;
+ refreshTilingSettings();
+ tilingDialog.returnValue='';tilingDialog.showModal();syncPreview();
+ await new Promise(resolve=>tilingDialog.addEventListener('close',resolve,{once:true}));
+ if(tilingDialog.returnValue!=='insert')return;
+ const count=Math.max(2,Math.min(6,Number($('tiling-count').value)||3));
+ const ratio=Math.max(25,Math.min(75,Number($('tiling-ratio').value)||65));
+ const trackCount=Math.max(2,Math.min(3,count,Number($('tiling-track-count').value)||2));
+ const source=composeTiles(tilingLayout,count,ratio,trackCount)+'\n';
+ editor.insert('\n'+source);editor.focus();await save();status('Tiling source inserted · edit the Markdown placeholders');
+});
+$('agent-skills').onclick=()=>act(()=>showProjectSkills());
+let agentSkills=[];
+async function showProjectSkills(preferred=''){
+ const result=await request('skills');agentSkills=result.skills||[];const select=$('skills-list');select.replaceChildren();
+ for(const skill of agentSkills){const option=document.createElement('option');option.value=skill.path;option.textContent=skill.name+' — '+skill.description;select.append(option);}
+ if(!agentSkills.length){status('No project skills are available.');return;}
+ if(preferred){const match=agentSkills.find(skill=>skill.name===preferred||skill.path.includes('/'+preferred+'/'));if(match)select.value=match.path;}
+ const update=()=>{const skill=agentSkills.find(item=>item.path===select.value);$('skills-content').value=skill?buildAgentPrompt(skill):'';$('skills-copy').disabled=!$('agent-task').value.trim();};select.onchange=update;$('agent-task').oninput=update;update();
+ $('skills-dialog').showModal();syncPreview();
+}
+function buildAgentPrompt(skill){
+ const slide=currentSlide();
+ const skillBody=skill.content.replace(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/,'').trim();
+ const context=[
+  'Margo is a local-first Markdown presentation engine and CLI. A deck is a directory containing margo.yaml, slide bundles under slides/, and a selected theme under themes/. The Go engine and CLI define project behavior; source files are canonical.',
+  'Project root: '+snapshot.root,
+  'Deck title: '+(snapshot.title||'Untitled deck'),
+  'Project configuration: '+snapshot.root+'/margo.yaml',
+  'Active theme: '+snapshot.theme+' ('+snapshot.root+'/themes/'+snapshot.theme+'/)',
+  'Project guidance: '+snapshot.root+'/AGENTS.md',
+  'Selected slide: '+(slide?slide.title+' ['+slide.id+']':'none'),
+  'Selected slide source: '+(slide?snapshot.root+'/'+slide.path:'none'),
+  'Currently open source file: '+(buffer?snapshot.root+'/'+buffer.path:'none'),
+  'Skill file: '+snapshot.root+'/'+skill.path,
+  'The agent should have this project folder open or otherwise mounted at the path above.'
+ ].join('\n');
+ const references=(skill.references||[]).map(ref=>'Reference file: '+snapshot.root+'/'+ref.path+'\n'+ref.content.trim()).join('\n\n');
+ return [
+  'Task for the agent:\n'+$('agent-task').value.trim(),
+  'Project context:\n'+context,
+  'Project skill: '+skill.name+'\n'+skill.description+'\n\n'+skillBody,
+  references?'Skill reference material:\n'+references:'',
+  'Work within the project root. Follow AGENTS.md and the skill guidance, preserve unrelated source and user changes, and do not edit generated dist/ output. When finished, summarize what changed and any checks performed.'
+ ].filter(Boolean).join('\n\n');
+}
+$('skills-close').onclick=()=>$('skills-dialog').close();
+$('skills-copy').onclick=async()=>{
+ if(!$('agent-task').value.trim()){status('Describe the task before copying the handoff prompt.');return;}
+ try{await navigator.clipboard.writeText($('skills-content').value);$('skills-dialog').close();status('Complete agent prompt copied. Paste it into an agent with access to this deck folder.');}
+ catch{$('skills-content').focus();$('skills-content').select();status('Clipboard access is unavailable. The skill text is selected; copy it manually.');}
+};
 $('open').onclick=$('empty-open').onclick=()=>act(pickProject);
-$('recent').onchange=()=>{const path=$('recent').value;if(path)act(()=>openProject(path));$('recent').value='';};
+$('new-project').onclick=$('empty-new').onclick=()=>act(newProject);
 $('save').onclick=()=>act(save);
 $('source').onchange=()=>act(async()=>{const target=$('source').value;if(await resolveDirty()){await loadSource(target);await renderPreview();}else $('source').value=buffer.path;});
 $('overview').onclick=()=>act(async()=>{if(!await resolveDirty())return;overview=!overview;updateModes();});
@@ -289,10 +452,12 @@ $('media').onclick=()=>act(async()=>{
  if(buffer.path!==currentSlide().path)await loadSource(currentSlide().path);
  editor.insert('\n'+result.markdown+'\n');editor.focus();await save();
 });
-$('build').onclick=()=>act(async()=>{
- if(!await resolveDirty())return;status(`Exporting ${$('format').value.toUpperCase()}…`);
- const result=await request('build',{format:$('format').value});showDiagnostics(result.diagnostics);status(result.log||`Built ${result.artifact}`);
-});
+async function exportDeck(format){
+ if(!snapshot||!snapshot.formats.includes(format)){status(format.toUpperCase()+' export is unavailable in this environment.');return;}
+ if(!await resolveDirty())return;
+ status('Exporting '+format.toUpperCase()+'…');
+ const result=await request('build',{format});showDiagnostics(result.diagnostics);status(result.log||'Built '+result.artifact);
+}
 $('reload').onclick=()=>act(async()=>{
  if(!await dialog('Reload disk version?','This discards your unsaved text. Use Compare first if you need to copy part of it.'))return;
  await loadSource(buffer.path);await refreshSnapshot();await renderPreview();
@@ -317,7 +482,7 @@ window.addEventListener('resize',()=>syncPreview());
 window.addEventListener('keydown',event=>{
  if((event.metaKey||event.ctrlKey)&&event.key==='s'){event.preventDefault();act(save);return;}
  if(event.key==='Escape'&&presentation){act(()=>setPresentation(false));return;}
- if(event.defaultPrevented||editor.hasFocus()||$('dialog').open||event.target.closest('.monaco-editor,input,textarea,select'))return;
+ if(event.defaultPrevented||editor.hasFocus()||appModalOpen()||event.target.closest('.monaco-editor,input,textarea,select'))return;
  if(event.key==='ArrowDown'||event.key==='ArrowUp'){
   event.preventDefault();const index=snapshot?.slides.findIndex(s=>s.id===selected);const slide=snapshot?.slides[index+(event.key==='ArrowDown'?1:-1)];if(slide)act(()=>selectSlide(slide.id));
  }
@@ -327,6 +492,12 @@ $('autosave').onchange=()=>{if($('autosave').checked&&isDirty(buffer)&&!buffer.c
 updateRecent().catch(error=>status(String(error)));setInterval(poll,1500);setInterval(pollThumbnails,700);
 
 listen('margo-editor-history',event=>editor.history(event.payload)).catch(error=>status(String(error)));
+listen('margo-native-menu',event=>{
+ const {action,root,format}=event.payload||{};
+ if(action==='new-project')act(newProject);
+ else if(action==='open-project')act(root?()=>openProject(root):pickProject);
+ else if(action==='export'&&format)act(()=>exportDeck(format));
+}).catch(error=>status(String(error)));
 
 listen('margo-close-requested',()=>act(async()=>{
  clearTimeout(autosaveTimer);

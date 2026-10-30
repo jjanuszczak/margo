@@ -58,8 +58,10 @@ Messages are capped at 16 MiB. Errors carry `error`, structured `diagnostics`, a
 | --- | --- | --- |
 | `hello` | protocol | compatible response |
 | `open` | absolute `root` folder or margo.yaml | `snapshot` |
+| `create-project` | destination `root`, `name`, optional `theme_repo` and `theme_ref` | scaffolded project `snapshot` |
 | `close` | | clear selected project scope |
 | `snapshot` | | `snapshot` |
+| `skills` | | project-local skill files and referenced Markdown |
 | `read` | project-relative `path` | `file` |
 | `save` | `path`, full `content`, expected file `revision` | new `file` |
 | `preview` | `slide`, optional `presentation` or `notes`, selected note `path` | `preview` URL and diagnostics |
@@ -74,7 +76,8 @@ Messages are capped at 16 MiB. Errors carry `error`, structured `diagnostics`, a
 | `build` | `format`: html/pdf/pptx | artifact path, diagnostics, log |
 
 A snapshot contains canonical root identity, title, active theme, source-tree SHA-256
-revision, ordered slide summaries, and available export formats. Each summary includes
+revision, ordered slide summaries, available export formats, and whether the active
+theme provides both nested tile shortcodes plus matching CSS. Each summary includes
 bundle ID, title, source path, draft/visibility/layout, named note references, and asset
 paths. Notes/assets are always arrays, including when empty. File replies contain the
 exact source text and its SHA-256. Inline legacy notes have an empty path and remain
@@ -118,10 +121,11 @@ changes and selection preservation. Native macOS inspection confirmed initial wi
 folder picker, project model, and separate rendered preview. It exposed a null-assets
 selection bug, now corrected on both sides of the contract.
 
-CI is configured to build macOS and WebKitGTK/Linux plus Arch. Those newly added jobs
-have not run yet. Actual Omarchy/Hyprland acceptance must verify dialogs, Wayland
-placement/scaling, preview keyboard focus, source reconciliation, presentation, and
-exports. Native distribution signing, updates, presentation starting at selection, and export cancellation remain incomplete.
+CI is configured to build macOS and WebKitGTK/Linux plus Arch. The debug app has
+built and launched in an Omarchy session. Full Omarchy/Hyprland acceptance must still
+verify palette matching, dialogs, Wayland placement/scaling, preview keyboard focus,
+source reconciliation, presentation, and exports. Native distribution signing,
+updates, presentation starting at selection, and export cancellation remain incomplete.
 
 ## Filmstrip and preview sizing
 
@@ -164,10 +168,16 @@ with no scrollbar and its complete slide/footer contained in the preview. Explic
 
 ## App appearance and editor boundary
 
-Dark, light and system appearance are local preferences, independent of the deck
-theme. Monaco has its own persisted theme choice, including both high-contrast
-variants. Switching appearance changes neither the buffer nor its model/undo stack.
-The app chooses the approved dark/light wordmark to match its background.
+Dark, light, and system appearance are local preferences, independent of the deck
+theme. On Omarchy, an additional appearance choice reads the active palette from
+`~/.local/state/omarchy/current/theme/colors.toml`; a Tauri command returns only a
+recognized mode and validated semantic hex-color roles. The web UI maps palette
+roles to its own CSS variables and refreshes the palette while that option is selected. If no
+palette is available, it uses the system appearance. This integration changes only
+the app shell and controls, never deck rendering. Monaco has its own persisted theme
+choice, including both high-contrast variants. Switching appearance changes neither
+the buffer nor its model/undo stack. The app chooses the approved dark/light wordmark
+to match its background.
 
 Monaco 0.57.0 (MIT) is bundled locally with selected editor contributions and
 Markdown/YAML tokenizers. Its worker uses a locally constructed blob URL, allowed

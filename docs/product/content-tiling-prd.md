@@ -1,6 +1,7 @@
 # Content Tiling Product Requirements Document
 
-Status: proposed; no implementation included.
+Status: proposed structured tiling model; a separate nested-shortcode composition
+and desktop insertion UI are implemented in limited form.
 Date: 2026-10-30.
 
 Related: [implementation plan](./content-tiling-implementation-plan.md),
@@ -21,6 +22,17 @@ This proposal does not require integration with a window manager or an OS servic
 It must work through Markdown and the headless CLI as well as the desktop app.
 
 ## 2. Product direction and decision status
+
+### Current implementation boundary
+
+The desktop app currently generates editable nested `tiles` and `tile` shortcodes
+for Stack, BSP, Columns, Grid, and Track arrangements. It enables the control only
+when the active theme provides both shortcode templates and CSS selectors for the
+composition. It does not edit an existing tile tree, expose a structured tile model,
+change theme files, or provide tile diagnostics and overflow validation. This is a
+limited integration built on the existing shortcode system, not implementation of
+the structured contract proposed below. The proposed syntax, settings, and acceptance
+criteria remain unimplemented until the model and theme API are explicitly adopted.
 
 Add **content tiling** as an optional composition inside `layout: content`.
 Existing untiled slides keep their current behavior. Tiles occupy the body region;

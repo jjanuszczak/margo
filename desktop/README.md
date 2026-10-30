@@ -1,7 +1,7 @@
 # Margo desktop (MVP)
 
-Rust + Tauri 2 desktop companion for existing Margo projects. The bundled Go
-engine owns project interpretation, rendering, slide operations, and exports.
+Rust + Tauri 2 desktop companion for creating and editing Margo projects. The
+bundled Go engine owns project interpretation, rendering, slide operations, and exports.
 No separately installed Margo CLI or account is required. The app and bundled
 editor work locally; a deck's theme or content can still request external resources.
 See the [authoring guide](../docs/AUTHORING_GUIDE.md) for the shared project model
@@ -11,7 +11,8 @@ and the [runtime decision](../docs/architecture/desktop-runtime.md) for the prot
 
 The MVP targets macOS and Omarchy/Arch Linux. Apple Silicon macOS has local native
 verification for project opening, previews/resizing, source save/undo, app/editor
-appearance, and named notes. Native Omarchy acceptance remains pending. Tagged
+appearance, and named notes. The debug app has built and launched in an Omarchy
+session; full native acceptance remains pending. Tagged
 releases attach an experimental macOS disk image and Arch Linux portable archive
 alongside the independently usable CLI archives. The desktop app includes its
 matching Go engine and does not require the CLI to be installed separately.
@@ -88,7 +89,26 @@ does not establish working Hyprland input, file dialogs, or GPU rendering.
 
 ## Use
 
-- Open a project folder containing `margo.yaml`. Recent folders are remembered.
+- **New project** creates a standard deck with the Go scaffold. Choose a parent
+  folder and name; optionally enter a Git theme repository and revision during
+  setup. If theme installation fails, the scaffolded default-theme deck remains.
+- **Tile content** offers graphical cards for Stack, BSP, Columns, Grid, and
+  Track. Choose 2–6 areas; Stack also sets the primary width, while Track sets
+  the number of vertical lanes. The selected arrangement is inserted as nested
+  shortcodes in the current Markdown selection. Scroll is omitted because slides
+  use a fixed canvas. Tiling is enabled only when the active theme supplies both
+  `tiles` and `tile` shortcodes and their CSS; custom themes are never modified
+  automatically.
+- **Agent skills** lists project-local skills from `.agents/skills/` and builds a
+  task-specific prompt with the deck root, theme, selected slide and source paths,
+  the skill instructions, and its Markdown references. YAML skill metadata is
+  omitted from the copied prompt. The target agent must have access to the same
+  project folder; the app does not provide an AI runtime.
+- Use the native **Projects** menu beside Edit, Window, and Help for New/Open,
+  recent projects, and HTML/PDF/PPTX export. Icon-only New, Open, and AI handoff
+  buttons sit on the ribbon with hover tooltips; Overview and Present also use
+  tooltip-labeled icons. The welcome screen presents New project and Open existing
+  project side by side.
 - The left filmstrip and overview show captured images of the actual interactive
   slides. Thumbnails fill in progressively in the background. Chrome/Chromium is
   required for capture, using the same browser discovery as PDF/PNG export.
@@ -123,9 +143,13 @@ does not establish working Hyprland input, file dialogs, or GPU rendering.
 
 ## Appearance and source editor
 
-Choose **Dark**, **Light**, or **System** in the header. The source toolbar has an
-independent editor theme: match the app, light, dark, or either high-contrast theme.
-Both choices persist across restarts. App appearance does not change the deck theme.
+Choose **Dark**, **Light**, **System**, or **Omarchy** in the header. Omarchy reads
+the active theme's `colors.toml` palette, applying its background, foreground,
+accent, selection, and muted colors to the app surface and controls. It refreshes
+while the app is open when the active theme changes. If the palette is unavailable,
+it falls back to system colors. The source toolbar has an independent editor theme:
+match the app, light, dark, or either high-contrast theme. Both choices persist
+across restarts. App appearance does not change the deck theme.
 
 The source editor is [Monaco](https://github.com/microsoft/monaco-editor), licensed
 under MIT. It edits Markdown and YAML directly, with syntax highlighting, find,
@@ -191,9 +215,10 @@ rendering.
 ## Current validation boundaries
 
 The first local build targets Apple Silicon macOS. Engine rendering tests cover
-reference, benchmark, Omarchy showcase, and available ArCa fixtures. Arch/Omarchy
-runtime testing is still required on an actual Omarchy machine. Native cold-start,
-memory, keyboard/focus, and export fidelity remain user acceptance checks.
+reference, benchmark, Omarchy showcase, and available ArCa fixtures. The app has
+also built and launched in an Omarchy session, but runtime checks of palette
+matching, native dialogs, Wayland geometry, keyboard/focus, and export fidelity
+remain user acceptance checks.
 
 Presentation starts at the beginning of the interactive deck. Escape from a focused theme webview follows
 the theme's behavior; the visible Back button always returns to the editor. Theme

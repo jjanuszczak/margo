@@ -28,7 +28,8 @@ The current repo contains:
 ## Current Status
 
 Margo is under active development. The CLI and desktop app have working local
-authoring flows; desktop distribution and Omarchy runtime acceptance remain pending.
+authoring flows; the desktop debug app has launched on Omarchy, while full native
+acceptance and desktop distribution remain pending.
 
 The release-gated [Margo product deck](./examples/margo-product-deck) deploys to the repository's [GitHub Pages site](https://jjanuszczak.github.io/margo/) with each versioned release. The published site is built from the same release tag as the shipped binary. Its source is also a working deck and a reference for users and contributors.
 
@@ -75,15 +76,19 @@ Not finished:
 
 ## Desktop companion (MVP)
 
-The app opens an existing folder containing `margo.yaml` and writes directly to
-its Markdown bundles. It provides:
+The app creates new projects with the Go scaffold or opens an existing folder
+containing `margo.yaml`, then writes directly to its Markdown bundles. It provides:
 
 - actual rendered slide thumbnails, an overview, and a preview that fits on resize
 - Monaco source editing with syntax highlighting, Find, auto-save, manual save, and undo/redo
 - named Markdown notes with a rendered notes preview
 - add, duplicate, reorder, delete-to-trash, and local image/video insertion
 - presentation review and HTML, PDF, and PPTX export actions
-- light, dark, or system app appearance plus independent editor themes
+- graphical tiling options that write theme-supported nested shortcodes
+- task-specific agent-skill prompts with project and source context; the app does
+  not run an AI agent
+- a Projects menu for New/Open, recent projects, and export, with icon toolbar actions
+- light, dark, system, or active Omarchy palette appearance plus independent editor themes
 - external-change detection and conflict handling when CLI, agents, or other editors change files
 
 Build tools: Go 1.22+, Node.js 22+, stable Rust, and
@@ -106,9 +111,9 @@ Open `desktop/src-tauri/target/debug/bundle/macos/Margo.app` from Finder. Quit a
 reopen it after rebuilding. The app bundles its Go engine; a separate installed CLI
 is unnecessary. Chrome/Chromium supplies thumbnails and PDF export.
 
-Apple Silicon macOS has local build and native-workflow verification. Omarchy/Arch
-is an MVP target with native build instructions and CI configuration; testing in
-an actual Omarchy/Hyprland session remains pending. Desktop signing/notarization
+Apple Silicon macOS has local build and native-workflow verification. A debug build
+has launched in an Omarchy session; broader native acceptance of palette matching,
+dialogs, Wayland geometry/focus, and exports remains pending. Desktop signing/notarization
 and automatic updates are not configured. CLI release archives and Homebrew
 installation do not install the app.
 
