@@ -25,7 +25,7 @@
     <div class="deck">
       {{ $root := . }}
       {{ range $slide := .Slides }}
-      <section class="slide{{ if $slide.ImageHintClass }} {{ $slide.ImageHintClass }}{{ end }}"{{ if $slide.StyleAttr }} style="{{ $slide.StyleAttr }}"{{ end }}>
+      <section class="margo-print-slide{{ if $slide.ImageHintClass }} {{ $slide.ImageHintClass }}{{ end }}"{{ if $slide.StyleAttr }} style="{{ $slide.StyleAttr }}"{{ end }}>
         {{ if $slide.IsDraft }}<div class="draft-badge">Draft</div>{{ end }}
         {{ template "deck-logo" (dict "Root" $root "Slide" $slide) }}
         {{ $slide.Body }}

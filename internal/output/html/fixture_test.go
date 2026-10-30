@@ -29,16 +29,16 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("discover slides: %v", err)
 	}
-	if got, want := len(slides), 9; got != want {
+	if got, want := len(slides), 10; got != want {
 		t.Fatalf("expected %d slide bundles, got %d", want, got)
 	}
 
 	filtered := deck.FilterSlides(slides, deck.FilterOptions{})
-	if got, want := len(filtered), 7; got != want {
+	if got, want := len(filtered), 8; got != want {
 		t.Fatalf("expected %d build-visible slides, got %d", want, got)
 	}
 	shaped := deck.ApplySectionDividers(filtered)
-	if got, want := len(shaped), 8; got != want {
+	if got, want := len(shaped), 9; got != want {
 		t.Fatalf("expected %d build-rendered slides, got %d", want, got)
 	}
 
@@ -98,6 +98,19 @@ func TestReferenceDeckBuildFlow(t *testing.T) {
 			t.Fatalf("expected rendered output to contain %q", needle)
 		}
 	}
+	for _, needle := range []string{
+		"Tiled Content",
+		"Explicit structure",
+		`class="shortcode-tiles shortcode-tiles-horizontal"`,
+		`--shortcode-tile-width: 65%;`,
+		`class="shortcode-tiles shortcode-tiles-vertical"`,
+		`--shortcode-tile-height: 50%;`,
+	} {
+		if !strings.Contains(out, needle) {
+			t.Fatalf("expected tiled slide output to contain %q", needle)
+		}
+	}
+
 	if strings.Contains(out, "<p>flowchart LR") || strings.Contains(out, "<p>flowchart TD") {
 		t.Fatalf("expected rendered output not to leak raw mermaid source paragraph")
 	}
@@ -160,11 +173,11 @@ func TestReferenceDeckServeFilteringIncludesDrafts(t *testing.T) {
 	}
 
 	filtered := deck.FilterSlides(slides, deck.FilterOptions{IncludeDrafts: true})
-	if got, want := len(filtered), 8; got != want {
+	if got, want := len(filtered), 9; got != want {
 		t.Fatalf("expected %d serve-visible slides, got %d", want, got)
 	}
 	shaped := deck.ApplySectionDividers(filtered)
-	if got, want := len(shaped), 9; got != want {
+	if got, want := len(shaped), 10; got != want {
 		t.Fatalf("expected %d serve-rendered slides, got %d", want, got)
 	}
 
