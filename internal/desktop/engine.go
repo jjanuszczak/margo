@@ -27,8 +27,11 @@ import (
 	"github.com/jjanuszczak/margo/internal/manifest"
 	htmloutput "github.com/jjanuszczak/margo/internal/output/html"
 	"github.com/jjanuszczak/margo/internal/output/pdf"
+	"github.com/jjanuszczak/margo/internal/projectarchive"
 	"github.com/jjanuszczak/margo/internal/scaffold"
 	"github.com/jjanuszczak/margo/internal/theme"
+	"github.com/jjanuszczak/margo/internal/themearchive"
+	"github.com/jjanuszczak/margo/internal/version"
 )
 
 //go:embed preview-shell.html
@@ -192,6 +195,24 @@ func (e *Engine) handle(r Request) (Response, error) {
 		if filepath.Base(root) == "margo.yaml" {
 			root = filepath.Dir(root)
 		}
+		if strings.EqualFold(filepath.Ext(root), projectarchive.Extension) {
+			if strings.TrimSpace(r.Destination) == "" {
+				return Response{}, fmt.Errorf("choose a destination folder for this project archive")
+			}
+			destination, err := filepath.Abs(r.Destination)
+			if err != nil {
+				return Response{}, err
+			}
+			if _, err := os.Lstat(destination); err == nil {
+				return Response{}, fmt.Errorf("destination already exists; choose a new project folder: %s", destination)
+			} else if !os.IsNotExist(err) {
+				return Response{}, err
+			}
+			if _, err := projectarchive.Unpack(root, destination); err != nil {
+				return Response{}, fmt.Errorf("open project archive: %w", err)
+			}
+			root = destination
+		}
 		root, err = filepath.EvalSymlinks(root)
 		if err != nil {
 			return Response{}, err
@@ -220,6 +241,78 @@ func (e *Engine) handle(r Request) (Response, error) {
 	case "snapshot":
 		snapshot, err := e.snapshot()
 		return Response{Snapshot: snapshot}, err
+	case "theme-source-list":
+		root, cleanup, err := sourceProjectRoot(r.Path)
+		if err != nil {
+			return Response{}, err
+		}
+		defer cleanup()
+		items, err := theme.List(root)
+		return Response{Themes: themeInfos(items)}, err
+	case "theme-activate":
+		_, previous, err := e.load()
+		if err != nil {
+			return Response{}, err
+		}
+		meta, err := theme.Load(e.root, r.ThemeName)
+		if err != nil {
+			return Response{}, err
+		}
+		configPath := filepath.Join(e.root, "margo.yaml")
+		originalConfig, err := config.LoadRaw(configPath)
+		if err != nil {
+			return Response{}, err
+		}
+		parsed, err := config.Parse(originalConfig)
+		if err != nil {
+			return Response{}, err
+		}
+		compatibleOptions := theme.CompatibleOptions(meta, parsed.Config.Theme.Options)
+		optionNames := make([]string, 0, len(compatibleOptions))
+		for name := range compatibleOptions {
+			optionNames = append(optionNames, name)
+		}
+		if _, err := theme.ResolveOptions(meta, compatibleOptions); err != nil {
+			return Response{}, err
+		}
+		if err := config.SetThemeNameAndOptions(configPath, r.ThemeName, optionNames); err != nil {
+			return Response{}, err
+		}
+		e.stopThumbnails()
+		snapshot, err := e.snapshot()
+		if err != nil {
+			if rollbackErr := config.RestoreRaw(originalConfig); rollbackErr != nil {
+				return Response{}, fmt.Errorf("theme activation failed: %v; restoring theme %q also failed: %w", err, previous.Name, rollbackErr)
+			}
+			return Response{}, err
+		}
+		return Response{Snapshot: snapshot}, err
+	case "theme-add-git":
+		installed, err := theme.Install(theme.InstallOptions{ProjectRoot: e.root, Repo: r.ThemeRepo, Ref: r.ThemeRef, Name: r.Name})
+		if err != nil {
+			return Response{}, err
+		}
+		snapshot, err := e.snapshot()
+		return Response{Snapshot: snapshot, Selected: installed.Name}, err
+	case "theme-import-margot":
+		installed, err := themearchive.Import(e.root, r.Path, r.Name, version.Current())
+		if err != nil {
+			return Response{}, err
+		}
+		snapshot, err := e.snapshot()
+		return Response{Snapshot: snapshot, Selected: installed.Name}, err
+	case "theme-import-project":
+		root, cleanup, err := sourceProjectRoot(r.Path)
+		if err != nil {
+			return Response{}, err
+		}
+		defer cleanup()
+		installed, err := theme.CopyFromProject(e.root, root, r.SourceTheme, r.Name)
+		if err != nil {
+			return Response{}, err
+		}
+		snapshot, err := e.snapshot()
+		return Response{Snapshot: snapshot, Selected: installed.Name}, err
 	case "skills":
 		return Response{Skills: e.projectSkills()}, nil
 	case "read":
@@ -341,7 +434,11 @@ func (e *Engine) snapshot() (*Snapshot, error) {
 	if err != nil {
 		return nil, err
 	}
-	snapshot := &Snapshot{Root: e.root, Title: model.Config.Deck.Title, Theme: active.Name, Revision: revision, Slides: []Slide{}, Formats: []string{"html", "pptx"}, SupportsTiles: e.themeSupportsTiles(active)}
+	installed, err := theme.List(e.root)
+	if err != nil {
+		return nil, err
+	}
+	snapshot := &Snapshot{Root: e.root, Title: model.Config.Deck.Title, Theme: active.Name, Revision: revision, Slides: []Slide{}, Formats: []string{"html", "pptx"}, SupportsTiles: e.themeSupportsTiles(active), Themes: themeInfos(installed)}
 	if _, err := pdf.DetectBrowser(); err == nil {
 		snapshot.Formats = append(snapshot.Formats, "pdf")
 	}
@@ -353,6 +450,51 @@ func (e *Engine) snapshot() (*Snapshot, error) {
 		snapshot.Slides = append(snapshot.Slides, Slide{ID: s.ID, Title: s.Title, Path: filepath.ToSlash(filepath.Join("slides", s.ID, "index.md")), Draft: s.Draft, Visibility: s.Visibility, Layout: s.Layout, Notes: notes, Assets: append([]string{}, s.Assets...)})
 	}
 	return snapshot, nil
+}
+
+func themeInfos(installed []theme.InstalledTheme) []ThemeInfo {
+	result := make([]ThemeInfo, 0, len(installed))
+	for _, item := range installed {
+		source := ""
+		if item.Source != nil {
+			source = item.Source.Type
+		}
+		result = append(result, ThemeInfo{Name: item.Name, Source: source})
+	}
+	return result
+}
+
+func sourceProjectRoot(path string) (string, func(), error) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return "", func() {}, fmt.Errorf("choose a source project")
+	}
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return "", func() {}, err
+	}
+	if strings.EqualFold(filepath.Ext(absolute), projectarchive.Extension) {
+		stage, err := os.MkdirTemp("", "margo-theme-source-*")
+		if err != nil {
+			return "", func() {}, err
+		}
+		if _, err := projectarchive.Unpack(absolute, stage); err != nil {
+			os.RemoveAll(stage)
+			return "", func() {}, fmt.Errorf("read source project archive: %w", err)
+		}
+		return stage, func() { _ = os.RemoveAll(stage) }, nil
+	}
+	root, err := filepath.EvalSymlinks(absolute)
+	if err != nil {
+		return "", func() {}, err
+	}
+	if info, err := os.Stat(root); err != nil || !info.IsDir() {
+		return "", func() {}, fmt.Errorf("source must be a Margo project folder or .margo archive")
+	}
+	if _, err := os.Stat(filepath.Join(root, "margo.yaml")); err != nil {
+		return "", func() {}, fmt.Errorf("source folder does not contain margo.yaml")
+	}
+	return root, func() {}, nil
 }
 
 func (e *Engine) themeSupportsTiles(active theme.Metadata) bool {

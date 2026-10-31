@@ -10,6 +10,7 @@ type Request struct {
 	Protocol     int    `json:"protocol"`
 	Op           string `json:"op"`
 	Root         string `json:"root,omitempty"`
+	Destination  string `json:"destination,omitempty"`
 	Path         string `json:"path,omitempty"`
 	Content      string `json:"content,omitempty"`
 	Revision     string `json:"revision,omitempty"`
@@ -23,6 +24,7 @@ type Request struct {
 	ThemeRepo    string `json:"theme_repo,omitempty"`
 	ThemeRef     string `json:"theme_ref,omitempty"`
 	ThemeName    string `json:"theme_name,omitempty"`
+	SourceTheme  string `json:"source_theme,omitempty"`
 }
 
 type Response struct {
@@ -41,6 +43,7 @@ type Response struct {
 	Markdown       string                   `json:"markdown,omitempty"`
 	Log            string                   `json:"log,omitempty"`
 	Skills         []Skill                  `json:"skills,omitempty"`
+	Themes         []ThemeInfo              `json:"themes,omitempty"`
 	Diagnostics    []diagnostics.Diagnostic `json:"diagnostics"`
 }
 
@@ -57,14 +60,20 @@ type SkillReference struct {
 	Content string `json:"content"`
 }
 
+type ThemeInfo struct {
+	Name   string `json:"name"`
+	Source string `json:"source,omitempty"`
+}
+
 type Snapshot struct {
-	Root          string   `json:"root"`
-	Title         string   `json:"title"`
-	Theme         string   `json:"theme"`
-	Revision      string   `json:"revision"`
-	Slides        []Slide  `json:"slides"`
-	Formats       []string `json:"formats"`
-	SupportsTiles bool     `json:"supports_tiles"`
+	Root          string      `json:"root"`
+	Title         string      `json:"title"`
+	Theme         string      `json:"theme"`
+	Revision      string      `json:"revision"`
+	Slides        []Slide     `json:"slides"`
+	Formats       []string    `json:"formats"`
+	SupportsTiles bool        `json:"supports_tiles"`
+	Themes        []ThemeInfo `json:"themes"`
 }
 
 type Slide struct {

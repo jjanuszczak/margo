@@ -194,31 +194,56 @@ async fn engine_request(
 #[tauri::command]
 async fn choose_path(webview: tauri::Webview, kind: String) -> Result<Option<String>, String> {
     require_editor(&webview)?;
-    let result = match kind.as_str() {
-        "project" => {
-            rfd::AsyncFileDialog::new()
-                .set_title("Open Margo project folder")
-                .pick_folder()
-                .await
-        }
-        "project-parent" => {
-            rfd::AsyncFileDialog::new()
-                .set_title("Choose where to create the Margo project")
-                .pick_folder()
-                .await
-        }
-        "media" => {
-            rfd::AsyncFileDialog::new()
-                .add_filter(
-                    "Media",
-                    &["png", "jpg", "jpeg", "gif", "svg", "webp", "mp4", "webm"],
-                )
-                .pick_file()
-                .await
-        }
-        _ => return Err("Unknown picker".into()),
-    };
-    Ok(result.map(|f| f.path().to_string_lossy().into_owned()))
+    if !matches!(
+        kind.as_str(),
+        "project"
+            | "project-archive"
+            | "theme-source-archive"
+            | "project-config"
+            | "theme-archive"
+            | "theme-project"
+            | "project-parent"
+            | "media"
+    ) {
+        return Err("Unknown picker".into());
+    }
+    let result = tauri::async_runtime::spawn_blocking(move || match kind.as_str() {
+        "project" => rfd::FileDialog::new()
+            .set_title("Open Margo project folder")
+            .pick_folder(),
+        "project-archive" | "theme-source-archive" => rfd::FileDialog::new()
+            .set_title(if kind == "project-archive" {
+                "Open Margo project archive"
+            } else {
+                "Choose a Margo project archive"
+            })
+            .add_filter("Margo project archive", &["margo"])
+            .pick_file(),
+        "project-config" => rfd::FileDialog::new()
+            .set_title("Open Margo project configuration")
+            .add_filter("Margo project configuration", &["yaml"])
+            .pick_file(),
+        "theme-archive" => rfd::FileDialog::new()
+            .set_title("Import Margo theme archive")
+            .add_filter("Margo theme archive", &["margot"])
+            .pick_file(),
+        "theme-project" => rfd::FileDialog::new()
+            .set_title("Choose a Margo project folder")
+            .pick_folder(),
+        "project-parent" => rfd::FileDialog::new()
+            .set_title("Choose where to create the Margo project")
+            .pick_folder(),
+        "media" => rfd::FileDialog::new()
+            .add_filter(
+                "Media",
+                &["png", "jpg", "jpeg", "gif", "svg", "webp", "mp4", "webm"],
+            )
+            .pick_file(),
+        _ => None,
+    })
+    .await
+    .map_err(|error| error.to_string())?;
+    Ok(result.map(|path| path.to_string_lossy().into_owned()))
 }
 
 #[derive(Deserialize)]
@@ -528,6 +553,21 @@ fn editor_menu(
         true,
         Some("CmdOrCtrl+O"),
     )?;
+    let open_archive = MenuItem::with_id(
+        app,
+        "margo-open-project-archive",
+        "Open Project Archive…",
+        true,
+        None::<&str>,
+    )?;
+    let open_config = MenuItem::with_id(
+        app,
+        "margo-open-project-config",
+        "Open margo.yaml…",
+        true,
+        None::<&str>,
+    )?;
+    let themes = MenuItem::with_id(app, "margo-themes", "Themes…", true, None::<&str>)?;
     let html = MenuItem::with_id(app, "margo-export-html", "HTML", true, None::<&str>)?;
     let pdf = MenuItem::with_id(app, "margo-export-pdf", "PDF", true, None::<&str>)?;
     let pptx = MenuItem::with_id(app, "margo-export-pptx", "PPTX", true, None::<&str>)?;
@@ -536,6 +576,9 @@ fn editor_menu(
     let projects = Submenu::new(app, "Projects", true)?;
     projects.append(&new_project)?;
     projects.append(&open_project)?;
+    projects.append(&open_archive)?;
+    projects.append(&open_config)?;
+    projects.append(&themes)?;
     projects.append(&PredefinedMenuItem::separator(app)?)?;
     projects.append(&MenuItem::with_id(
         app,
@@ -644,6 +687,9 @@ fn main() {
                 }
                 "margo-new-project" => json!({"action":"new-project"}),
                 "margo-open-project" => json!({"action":"open-project"}),
+                "margo-open-project-archive" => json!({"action":"open-project-archive"}),
+                "margo-open-project-config" => json!({"action":"open-project-config"}),
+                "margo-themes" => json!({"action":"themes"}),
                 "margo-export-html" => json!({"action":"export","format":"html"}),
                 "margo-export-pdf" => json!({"action":"export","format":"pdf"}),
                 "margo-export-pptx" => json!({"action":"export","format":"pptx"}),

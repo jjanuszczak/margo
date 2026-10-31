@@ -54,6 +54,22 @@ func ResolveOptions(meta Metadata, selected map[string]any) (map[string]any, err
 	return resolved, nil
 }
 
+// CompatibleOptions keeps only explicitly selected values accepted by the
+// destination theme. Invalid or removed values fall back to theme defaults.
+func CompatibleOptions(meta Metadata, selected map[string]any) map[string]any {
+	compatible := map[string]any{}
+	for _, option := range meta.ConfigOptions {
+		value, ok := selected[option.Name]
+		if !ok {
+			continue
+		}
+		if normalized, err := normalizeOptionValue(option, value); err == nil {
+			compatible[option.Name] = normalized
+		}
+	}
+	return compatible
+}
+
 func normalizeOptionValue(option ConfigOption, raw any) (any, error) {
 	switch option.Type {
 	case "", "string":

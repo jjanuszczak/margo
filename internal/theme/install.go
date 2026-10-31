@@ -249,10 +249,65 @@ func List(projectRoot string) ([]InstalledTheme, error) {
 	return result, nil
 }
 
+// CopyFromProject installs one validated theme from another project without
+// changing the source project or activating the copied theme.
+func CopyFromProject(projectRoot, sourceRoot, sourceName, localName string) (InstalledTheme, error) {
+	sourceName = strings.TrimSpace(sourceName)
+	localName = strings.TrimSpace(localName)
+	if sourceName == "" {
+		return InstalledTheme{}, errors.New("source theme name is required")
+	}
+	if filepath.Base(sourceName) != sourceName || sourceName == "." || sourceName == ".." {
+		return InstalledTheme{}, fmt.Errorf("invalid source theme name %q", sourceName)
+	}
+	if localName == "" {
+		localName = sourceName
+	}
+	if filepath.Base(localName) != localName || localName == "." || localName == ".." {
+		return InstalledTheme{}, fmt.Errorf("invalid local theme name %q", localName)
+	}
+	meta, err := Load(sourceRoot, sourceName)
+	if err != nil {
+		return InstalledTheme{}, fmt.Errorf("validate source theme %q: %w", sourceName, err)
+	}
+	themesDir := filepath.Join(projectRoot, ThemesDirName)
+	if err := os.MkdirAll(themesDir, 0o755); err != nil {
+		return InstalledTheme{}, err
+	}
+	target := filepath.Join(themesDir, localName)
+	if _, err := os.Stat(target); err == nil {
+		return InstalledTheme{}, fmt.Errorf("theme already exists: %s", target)
+	} else if !os.IsNotExist(err) {
+		return InstalledTheme{}, err
+	}
+	stage, err := os.MkdirTemp(themesDir, localName+".staged-*")
+	if err != nil {
+		return InstalledTheme{}, err
+	}
+	defer os.RemoveAll(stage)
+	if err := copyThemeTree(meta.RootDir, stage); err != nil {
+		return InstalledTheme{}, fmt.Errorf("copy source theme: %w", err)
+	}
+	if _, err := ValidateRoot(stage, localName); err != nil {
+		return InstalledTheme{}, fmt.Errorf("validate copied theme: %w", err)
+	}
+	source := &Source{Type: "project", ImportedThemeName: sourceName, ImportedThemeVersion: meta.Version}
+	if err := writeSourceMetadata(filepath.Join(stage, ThemeMetadataFile), source, localName); err != nil {
+		return InstalledTheme{}, err
+	}
+	if err := os.Rename(stage, target); err != nil {
+		return InstalledTheme{}, err
+	}
+	return InstalledTheme{Name: localName, Source: source}, nil
+}
+
 func copyThemeTree(srcRoot, dstRoot string) error {
 	return filepath.WalkDir(srcRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		if d.Type()&os.ModeSymlink != 0 {
+			return fmt.Errorf("refuse symlink in theme: %s", path)
 		}
 		relPath, err := filepath.Rel(srcRoot, path)
 		if err != nil {

@@ -9,7 +9,9 @@ prototype was not built. See the [runtime decision](../architecture/desktop-runt
 for the actual protocol, isolation boundary, measurements, and native checks.
 
 Working MVP slices include project creation through the canonical scaffold, optional
-Git theme import, project lifecycle, snapshots, actual rendered thumbnails, fit-to-pane
+Git theme import, project-folder and `.margo` archive opening, theme selection and
+imports from Git, `.margot`, project folders, and `.margo` archives, project lifecycle,
+snapshots, actual rendered thumbnails, fit-to-pane
 preview, source editing and undo, notes creation and preview, safe slide operations,
 media import, external-change reconciliation, overview, presentation review, export
 entry points, a theme-gated graphical tiling shortcode editor, and contextual

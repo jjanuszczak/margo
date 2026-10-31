@@ -28,8 +28,11 @@ notes preview, conflict handling, slide operations, media insertion, presentatio
 review, and HTML/PDF/PPTX export entry points. A graphical tiling control writes
 theme-supported nested shortcodes without changing the theme. Agent-skill handoff
 builds a contextual prompt for copying to an external agent; the app does not run an
-AI agent. The native Projects menu and icon toolbar expose project, export, and view
-actions. App appearance supports light/dark/system plus the active Omarchy palette,
+AI agent. The native Projects menu and icon toolbar expose project, theme, export,
+and view actions. Project theme switching and imports from Git, `.margot`, another project,
+or a `.margo` archive are available through the theme selector. Project opening
+accepts folders and `.margo` archives, which are extracted to a durable location.
+App appearance supports light/dark/system plus the active Omarchy palette,
 with separate editor theme preferences. Files on disk remain the source of truth.
 
 Apple Silicon macOS has local native verification. The debug app has built and
@@ -78,7 +81,10 @@ A Margo deck author who works with Markdown and Git, and wants a visual way to i
 ### Initial release scope
 
 - Open a project by selecting its root or `margo.yaml`; remember recent projects.
+- Open a project folder or `.margo` project archive; extract archives into a new durable folder without overwriting existing content, then remember the extracted project.
 - Create a new project with Margo's canonical scaffold and optionally install a Git-hosted theme.
+- Select and activate any theme installed in the current project through a theme selector in the toolbar and native Projects menu.
+- Import a theme from a Git repository, `.margot` archive, another project folder, or a `.margo` archive. For project sources, import one selected theme without copying deck content or changing the source project; leave imports inactive until selected.
 - Show slide navigation with title/summary, order, and visible state indicators for draft/hidden slides.
 - Show a live preview of the selected slide and a Markdown editor for its source.
 - Provide a full-deck overview/grid for selection and reordering.
@@ -96,7 +102,7 @@ A Margo deck author who works with Markdown and Git, and wants a visual way to i
 
 ### Follow-on scope
 
-- Theme and deck settings panels for stable, documented configuration fields.
+- Theme and deck settings panels for stable, documented configuration fields beyond theme switching.
 - Theme development workflow with live refresh when CSS/templates change.
 - Richer diagnostics, source navigation, and accessibility checks.
 - Batch media import and additional safe authoring helpers.
