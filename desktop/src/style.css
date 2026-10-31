@@ -66,6 +66,22 @@ header { display: flex; align-items: center; gap: 9px; padding: 14px 18px; borde
 .icon-button:hover { background: var(--control-hover); }
 .icon-button svg, #appearance-toggle svg, #appearance-icon svg, .appearance-popover svg { display: block; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 #appearance-menu { position: relative; flex-shrink: 0; }
+#themes-dialog, #theme-source-dialog { width: min(540px, calc(100vw - 32px)); max-height: min(80vh, 720px); border: 1px solid var(--line); border-radius: 12px; padding: 22px; background: var(--panel); color: var(--text); box-shadow: 0 20px 60px #0005; }
+#themes-dialog::backdrop, #theme-source-dialog::backdrop { background: #0008; }
+#themes-dialog h2, #theme-source-dialog h2 { margin: 0 0 10px; }
+#themes-dialog p, #theme-source-dialog p { color: var(--muted); line-height: 1.5; }
+#themes-dialog #theme-error { color: var(--error); }
+#theme-select, #source-theme-select { display: block; width: 100%; margin: 8px 0 14px; }
+#themes-dialog label, #theme-source-dialog label { display: block; color: var(--muted); font-size: 12px; }
+#local-theme-name { width: 100%; margin: 6px 0 12px; padding: 8px; }
+.theme-actions { align-items: center; }
+#theme-import-menu { position: relative; margin-right: auto; }
+#theme-import-menu summary { list-style: none; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--control); color: var(--text); cursor: pointer; }
+#theme-import-menu summary::-webkit-details-marker { display: none; }
+#theme-import-menu[open] summary { background: var(--selected); border-color: var(--selected-border); }
+.theme-import-options { position: absolute; z-index: 5; bottom: calc(100% + 6px); left: 0; width: 220px; padding: 5px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: 0 12px 36px #0007; }
+.theme-import-options button { display: block; width: 100%; padding: 8px; border-color: transparent; background: transparent; text-align: left; }
+.theme-import-options button:hover { background: var(--control-hover); }
 #appearance-toggle { list-style: none; display: flex; align-items: center; gap: 2px; padding: 7px 6px; border: 1px solid var(--line); border-radius: 7px; background: var(--control); cursor: pointer; }
 #appearance-toggle::-webkit-details-marker { display: none; }
 #appearance-menu[open] #appearance-toggle { background: var(--selected); border-color: var(--selected-border); }

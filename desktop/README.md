@@ -89,6 +89,18 @@ does not establish working Hyprland input, file dialogs, or GPU rendering.
 
 ## Use
 
+- **Open project folder** opens an existing deck in place. **Open .margo archive**
+  opens a file picker and extracts the selected project beside the archive. If a
+  folder with that name already exists, the app asks for a different project folder
+  name. It does not overwrite existing content.
+- **Project themes** in the toolbar or native Projects menu lists installed themes
+  and marks the active one. Switching themes updates `margo.yaml`, keeps compatible
+  option values, uses the new theme's defaults for incompatible values, and refreshes
+  the Margo-rendered preview. Add
+  themes from Git, a `.margot` archive, another project
+  folder, or a `.margo` archive. Project imports copy only the selected theme and
+  leave it inactive. Theme templates and scripts run during local rendering, so
+  import only from sources you trust.
 - **New project** creates a standard deck with the Go scaffold. Choose a parent
   folder and name; optionally enter a Git theme repository and revision during
   setup. If theme installation fails, the scaffolded default-theme deck remains.

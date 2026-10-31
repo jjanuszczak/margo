@@ -133,9 +133,9 @@ async function request(op, params={}) {
 }
 async function act(fn) {
  if(busy)return;busy=true;updateSaveState();
- for(const id of ['new-project','open','empty-new','empty-open','agent-skills','tile-content','add','duplicate','delete','move-up','move-down','source','slides','overview','present','media','new-note','preview-notes'])$(id).inert=true;
+ for(const id of ['new-project','open','open-archive','empty-new','empty-open','empty-open-archive','themes','agent-skills','tile-content','add','duplicate','delete','move-up','move-down','source','slides','overview','present','media','new-note','preview-notes'])$(id).inert=true;
  try{await fn();}catch(error){status(error.message||String(error));console.error(error);}
- finally{busy=false;for(const id of ['new-project','open','empty-new','empty-open','agent-skills','tile-content','add','duplicate','delete','move-up','move-down','source','slides','overview','present','media','new-note','preview-notes'])$(id).inert=false;updateSaveState();}
+ finally{busy=false;for(const id of ['new-project','open','open-archive','empty-new','empty-open','empty-open-archive','themes','agent-skills','tile-content','add','duplicate','delete','move-up','move-down','source','slides','overview','present','media','new-note','preview-notes'])$(id).inert=false;updateSaveState();}
 }
 $('dialog-cancel').onclick=()=>$('dialog').close('cancel');
 function dialog(title, description, initial, comparison) {
@@ -211,19 +211,36 @@ async function selectSlide(id) {
  const slide=currentSlide();if(slide)await loadSource(slide.path);
  await renderPreview();
 }
-async function openProject(root) {
+async function openProject(root,destination) {
  if(!await resolveDirty())return;
  status('Opening project…');
- const result=await request('open',{root});snapshot=result.snapshot;selected=snapshot.slides[0]?.id||'';
+ const result=await request('open',{root,...(destination?{destination}:{})});snapshot=result.snapshot;selected=snapshot.slides[0]?.id||'';
  buffer=null;editor.reset();previewURL=null;thumbnails.clear();thumbnailRevision='';thumbnailCursor=0;overview=false;presentation=false;showDiagnostics([]);
  $('project').firstElementChild.textContent=snapshot.title||'Untitled deck';$('project').lastElementChild.textContent=`${snapshot.root} · ${snapshot.theme}`;$('project').title=snapshot.root;
- for(const id of ['overview','present','add'])$(id).disabled=false;
+ renderThemes();
+ for(const id of ['overview','present','add','themes'])$(id).disabled=false;
  $('agent-skills').disabled=false;$('tile-content').disabled=false;
  $('tile-content').title=snapshot.supports_tiles?'Insert a nested tile composition':'Theme does not provide the nested tile shortcodes';
  renderNavigation();updateModes();if(selected)await selectSlide(selected);
  await updateRecent(snapshot.root);await startThumbnails();status(`Opened ${snapshot.title} · ${snapshot.slides.length} slides`);
 }
 async function pickProject(){const path=await invoke('choose_path',{kind:'project'});if(path)await openProject(path);}
+async function pickProjectConfig(){const path=await invoke('choose_path',{kind:'project-config'});if(path)await openProject(path);}
+async function pickProjectArchive(){
+ if(!await resolveDirty())return;
+ const archive=await invoke('choose_path',{kind:'project-archive'});if(!archive)return;
+ const separator=Math.max(archive.lastIndexOf('/'),archive.lastIndexOf('\\'));
+ const parent=separator>=0?archive.slice(0,separator):'.';
+ const folder=archive.slice(separator+1).replace(/\.margo$/i,'');
+ const destination=parent.replace(/[\\/]$/,'')+'/'+folder;
+ try{await openProject(archive,destination);}
+ catch(error){
+  if(!String(error.message||error).includes('destination already exists'))throw error;
+  const name=await dialog('Choose project folder name','A folder with the archive name already exists. Choose another name. The archive will remain unchanged.',folder+'-copy');
+  if(!name?.trim())return;
+  await openProject(archive,parent.replace(/[\\/]$/,'')+'/'+name.trim().replace(/[\\/:*?"<>|]/g,'-'));
+ }
+}
 async function newProject(){
  if(!await resolveDirty())return;
  const parent=await invoke('choose_path',{kind:'project-parent'});if(!parent)return;
@@ -275,7 +292,7 @@ async function poll(){
   const {snapshot:next}=await request('snapshot');
   if(busy||snapshot.root!==root)return;
   if(next.revision!==snapshot.revision){
-   const previous=selected;selected=selectedAfterRefresh(next.slides,selected,snapshot.slides.findIndex(s=>s.id===selected));snapshot=next;renderNavigation();renderSourceOptions();
+   const previous=selected;selected=selectedAfterRefresh(next.slides,selected,snapshot.slides.findIndex(s=>s.id===selected));snapshot=next;renderNavigation();renderSourceOptions();renderThemes();
    if(buffer)$('source').value=buffer.path;
    if(previous!==selected&&!isDirty(buffer)&&currentSlide())await loadSource(currentSlide().path);
    if(busy)return;
@@ -295,7 +312,7 @@ async function renderPreview(){
  }catch(error){markStale('Preview failed · last successful render remains visible');throw error;}
 }
 let previewLayoutPending=false, previewLayoutAgain=false, pendingNavigation=false;
-function appModalOpen(){return ['dialog','skills-dialog','tiling-dialog'].some(id=>$(id).open);}
+function appModalOpen(){return ['dialog','skills-dialog','tiling-dialog','themes-dialog','theme-source-dialog'].some(id=>$(id).open);}
 async function syncPreview(navigate=false){
  pendingNavigation ||= navigate;
  if(previewLayoutPending){previewLayoutAgain=true;return;}
@@ -311,7 +328,7 @@ async function syncPreview(navigate=false){
   } while(previewLayoutAgain||pendingNavigation);
  }catch(error){if(previewURL)status('Preview window: '+error);}finally{previewLayoutPending=false;}
 }
-for(const id of ['dialog','skills-dialog','tiling-dialog'])$(id).addEventListener('close',()=>requestAnimationFrame(()=>syncPreview()));
+for(const id of ['dialog','skills-dialog','tiling-dialog','themes-dialog','theme-source-dialog'])$(id).addEventListener('close',()=>requestAnimationFrame(()=>syncPreview()));
 function updateModes(){
  $('empty').hidden=!!snapshot;$('workspace').hidden=!snapshot||overview;$('grid').hidden=!snapshot||!overview;
  $('overview').classList.toggle('active',overview);$('presentation').hidden=!presentation;requestAnimationFrame(()=>syncPreview());
@@ -433,7 +450,58 @@ $('skills-copy').onclick=async()=>{
  catch{$('skills-content').focus();$('skills-content').select();status('Clipboard access is unavailable. The skill text is selected; copy it manually.');}
 };
 $('open').onclick=$('empty-open').onclick=()=>act(pickProject);
+$('open-archive').onclick=$('empty-open-archive').onclick=()=>act(pickProjectArchive);
 $('new-project').onclick=$('empty-new').onclick=()=>act(newProject);
+function renderThemes(){
+ const select=$('theme-select'),previous=select.value;select.replaceChildren();
+ for(const item of snapshot?.themes||[]){const option=document.createElement('option');option.value=item.name;option.textContent=item.name+(item.name===snapshot.theme?' · Active':'')+(item.source?' · '+item.source:'');select.append(option);}
+ select.value=(snapshot?.themes||[]).some(item=>item.name===previous)?previous:snapshot?.theme||'';
+ $('theme-activate').disabled=!snapshot?.themes?.length||select.value===snapshot?.theme;
+}
+async function showThemes(){if(!snapshot)return;renderThemes();$('theme-error').hidden=true;$('theme-error').textContent='';$('theme-import-menu').open=false;$('themes-dialog').showModal();syncPreview();}
+async function refreshThemeResult(result){
+ if(result.snapshot)snapshot=result.snapshot;
+ thumbnailRevision='';thumbnailCursor=0;thumbnailsDone=true;thumbnails.clear();renderThemes();renderNavigation();
+ $('project').lastElementChild.textContent=`${snapshot.root} · ${snapshot.theme}`;
+ await renderPreview();await startThumbnails();
+}
+async function activateTheme(){
+ if(!await resolveDirty())return;const name=$('theme-select').value;if(!name||name===snapshot.theme)return;
+ $('theme-error').hidden=true;$('theme-error').textContent='';status('Switching to theme '+name+'…');
+ try{const result=await request('theme-activate',{theme_name:name});$('themes-dialog').close();await refreshThemeResult(result);status('Using theme '+name);}
+ catch(error){$('theme-error').textContent='Could not switch to '+name+': '+(error.message||String(error));$('theme-error').hidden=false;status('Theme switch failed · '+(error.message||String(error)));}
+}
+async function importGitTheme(){
+ if(!await resolveDirty())return;
+ const repo=await dialog('Add theme from Git','Enter the Git repository URL. Import themes only from sources you trust.','');if(!repo?.trim())return;
+ const ref=await dialog('Theme revision','Optional branch, tag, or commit. Leave blank for the repository default.','');if(ref===null)return;
+ const name=await dialog('Local theme name','Optional name for this project installation. Leave blank to use the theme name.','');if(name===null)return;
+ status('Adding theme from Git…');const result=await request('theme-add-git',{theme_repo:repo.trim(),theme_ref:ref.trim(),name:name.trim()});await refreshThemeResult(result);status('Added theme '+result.selected);
+}
+async function importMargot(){
+ if(!await resolveDirty())return;
+ const path=await invoke('choose_path',{kind:'theme-archive'});if(!path)return;
+ if(!await dialog('Import theme code','This archive contains templates and scripts that run during local rendering. Import only if you trust its source.'))return;
+ const suggested=path.split(/[\\/]/).pop().replace(/\.margot$/i,'');const name=await dialog('Local theme name','Choose the name to install in this project.',suggested);if(!name?.trim())return;
+ const result=await request('theme-import-margot',{path,name:name.trim()});await refreshThemeResult(result);status('Imported theme '+result.selected);
+}
+async function importProjectTheme(path){
+ if(!await resolveDirty())return;
+ if(!await dialog('Import theme code','The selected project contains templates and scripts that run during local rendering. Import only if you trust its source.'))return;
+ const listed=await request('theme-source-list',{path});if(!listed.themes?.length)throw new Error('The selected project has no installed themes.');
+ const select=$('source-theme-select');select.replaceChildren();for(const theme of listed.themes){const option=document.createElement('option');option.value=theme.name;option.textContent=theme.name;select.append(option);}
+ $('local-theme-name').value=select.value;$('theme-source-copy').textContent='Choose one theme to copy. Only its theme files will be imported; the source project remains unchanged.';
+ $('theme-source-dialog').returnValue='';$('theme-source-dialog').showModal();syncPreview();
+ const choice=await new Promise(resolve=>$('theme-source-dialog').addEventListener('close',()=>resolve($('theme-source-dialog').returnValue==='import'?{theme:select.value,name:$('local-theme-name').value.trim()}:null),{once:true}));
+ if(!choice)return;
+ const result=await request('theme-import-project',{path,source_theme:choice.theme,name:choice.name});await refreshThemeResult(result);status('Imported theme '+result.selected);
+}
+$('themes').onclick=()=>act(showThemes);$('theme-activate').onclick=()=>act(activateTheme);$('themes-close').onclick=()=>$('themes-dialog').close();
+$('theme-add-git').onclick=()=>{$('theme-import-menu').open=false;act(importGitTheme);};$('theme-add-archive').onclick=()=>{$('theme-import-menu').open=false;act(importMargot);};
+$('theme-add-project').onclick=()=>{$('theme-import-menu').open=false;act(async()=>{const path=await invoke('choose_path',{kind:'theme-project'});if(path)await importProjectTheme(path);});};
+$('theme-add-project-archive').onclick=()=>{$('theme-import-menu').open=false;act(async()=>{const path=await invoke('choose_path',{kind:'theme-source-archive'});if(path)await importProjectTheme(path);});};
+$('theme-select').onchange=()=>{$('theme-activate').disabled=$('theme-select').value===snapshot?.theme;$('theme-error').hidden=true;$('theme-error').textContent='';};
+$('theme-source-cancel').onclick=()=>$('theme-source-dialog').close('cancel');$('theme-source-import').onclick=()=>$('theme-source-dialog').close('import');
 $('save').onclick=()=>act(save);
 $('source').onchange=()=>act(async()=>{const target=$('source').value;if(await resolveDirty()){await loadSource(target);await renderPreview();}else $('source').value=buffer.path;});
 $('overview').onclick=()=>act(async()=>{if(!await resolveDirty())return;overview=!overview;updateModes();});
@@ -496,6 +564,9 @@ listen('margo-native-menu',event=>{
  const {action,root,format}=event.payload||{};
  if(action==='new-project')act(newProject);
  else if(action==='open-project')act(root?()=>openProject(root):pickProject);
+ else if(action==='open-project-archive')act(pickProjectArchive);
+ else if(action==='open-project-config')act(pickProjectConfig);
+ else if(action==='themes')act(showThemes);
  else if(action==='export'&&format)act(()=>exportDeck(format));
 }).catch(error=>status(String(error)));
 
