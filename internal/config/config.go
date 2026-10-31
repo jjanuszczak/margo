@@ -50,6 +50,16 @@ func LoadRaw(path string) (RawConfig, error) {
 // SetThemeName updates only theme.name and writes the config atomically. It
 // preserves all other fields, including theme options.
 func SetThemeName(path, name string) error {
+	return updateThemeName(path, name, nil, false)
+}
+
+// SetThemeNameAndOptions switches themes and drops settings the destination
+// theme does not declare, while preserving values for options it supports.
+func SetThemeNameAndOptions(path, name string, supportedOptions []string) error {
+	return updateThemeName(path, name, supportedOptions, true)
+}
+
+func updateThemeName(path, name string, supportedOptions []string, filterOptions bool) error {
 	if name == "" {
 		return errors.New("theme name is required")
 	}
@@ -70,6 +80,17 @@ func SetThemeName(path, name string) error {
 	if themeNode == nil || themeNode.Kind != yaml.MappingNode {
 		return fmt.Errorf("config %q is missing a theme mapping", path)
 	}
+	allowed := map[string]bool{}
+	for _, option := range supportedOptions {
+		allowed[option] = true
+	}
+	for i := 0; i+1 < len(themeNode.Content); i += 2 {
+		key := themeNode.Content[i]
+		if filterOptions && key.Value != "name" && !allowed[key.Value] {
+			themeNode.Content = append(themeNode.Content[:i], themeNode.Content[i+2:]...)
+			i -= 2
+		}
+	}
 	nameNode := findMapValue(themeNode, "name")
 	if nameNode == nil {
 		themeNode.Content = append(themeNode.Content,
@@ -87,6 +108,18 @@ func SetThemeName(path, name string) error {
 	if err != nil {
 		return fmt.Errorf("marshal config %q: %w", path, err)
 	}
+	return replaceConfig(path, updated)
+}
+
+// RestoreRaw atomically restores a previously loaded project configuration.
+func RestoreRaw(raw RawConfig) error {
+	if raw.Path == "" {
+		return errors.New("config path is required")
+	}
+	return replaceConfig(raw.Path, raw.Bytes)
+}
+
+func replaceConfig(path string, data []byte) error {
 	info, err := os.Stat(path)
 	if err != nil {
 		return fmt.Errorf("stat config %q: %w", path, err)
@@ -101,7 +134,7 @@ func SetThemeName(path, name string) error {
 		temporary.Close()
 		return fmt.Errorf("set config permissions: %w", err)
 	}
-	if _, err := temporary.Write(updated); err != nil {
+	if _, err := temporary.Write(data); err != nil {
 		temporary.Close()
 		return fmt.Errorf("write config update: %w", err)
 	}
