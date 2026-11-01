@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jjanuszczak/margo/internal/config"
 	"github.com/jjanuszczak/margo/internal/content"
@@ -31,7 +32,9 @@ import (
 	"github.com/jjanuszczak/margo/internal/scaffold"
 	"github.com/jjanuszczak/margo/internal/theme"
 	"github.com/jjanuszczak/margo/internal/themearchive"
+	"github.com/jjanuszczak/margo/internal/upgrade"
 	"github.com/jjanuszczak/margo/internal/version"
+	"gopkg.in/yaml.v3"
 )
 
 //go:embed preview-shell.html
@@ -314,9 +317,70 @@ func (e *Engine) handle(r Request) (Response, error) {
 		snapshot, err := e.snapshot()
 		return Response{Snapshot: snapshot, Selected: installed.Name}, err
 	case "skills":
-		return Response{Skills: e.projectSkills()}, nil
+		return Response{Skills: e.projectSkills(), ProjectGuidanceMissing: e.projectGuidanceMissing()}, nil
+	case "upgrade-status":
+		manifest, err := e.projectScaffoldManifest()
+		if err != nil {
+			return Response{}, err
+		}
+		return Response{ProjectMargoVersion: manifest.Margo, UpgradeAvailable: manifest.Margo != version.Current() || e.projectGuidanceMissing()}, nil
+	case "upgrade-plan":
+		plan, err := upgrade.BuildPlan(e.root)
+		if err != nil {
+			return Response{}, err
+		}
+		result := make([]UpgradeChange, 0, len(plan.Changes))
+		for _, change := range plan.Changes {
+			result = append(result, UpgradeChange{Path: change.Path, Action: string(change.Action), Reason: change.Reason})
+		}
+		return Response{UpgradeChanges: result}, nil
+	case "upgrade-apply":
+		plan, err := upgrade.BuildPlan(e.root)
+		if err != nil {
+			return Response{}, err
+		}
+		backup, err := upgrade.Apply(e.root, plan)
+		if err != nil {
+			return Response{}, err
+		}
+		return Response{Artifact: backup}, nil
 	case "read":
 		file, err := readFile(e.root, r.Path)
+		return Response{File: file}, err
+	case "ai-read":
+		file, err := aiReadFile(e.root, r.Path)
+		return Response{File: file}, err
+	case "ai-list":
+		matches, err := e.listProjectDirectory(r.Path)
+		return Response{Matches: matches}, err
+	case "ai-search":
+		return Response{Matches: e.searchProject(r.Query)}, nil
+	case "ai-outline":
+		file, err := aiReadFile(e.root, r.Path)
+		if err != nil {
+			return Response{}, err
+		}
+		var headings []SearchMatch
+		for i, line := range strings.Split(file.Content, "\n") {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "#") {
+				headings = append(headings, SearchMatch{Path: file.Path, Line: i + 1, Snippet: trimmed})
+			}
+		}
+		return Response{Matches: headings}, nil
+	case "ai-apply-edit":
+		snapshot, err := e.snapshot()
+		if err != nil {
+			return Response{}, err
+		}
+		file, err := aiApplyEdit(e.root, snapshot.Theme, r.Path, r.Content, r.Revision)
+		return Response{File: file}, err
+	case "ai-propose-edit":
+		snapshot, err := e.snapshot()
+		if err != nil {
+			return Response{}, err
+		}
+		file, err := aiStageEdit(e.root, snapshot.Theme, r.Path)
 		return Response{File: file}, err
 	case "save":
 		file, err := readFile(e.root, r.Path)
@@ -524,14 +588,7 @@ func (e *Engine) themeSupportsTiles(active theme.Metadata) bool {
 }
 
 func (e *Engine) projectSkills() []Skill {
-	files := scaffold.AgentFiles()
 	contents := make(map[string]string)
-	for path, content := range files {
-		rel := filepath.ToSlash(path)
-		if strings.HasPrefix(rel, ".agents/skills/") && strings.HasSuffix(strings.ToLower(rel), ".md") {
-			contents[rel] = content
-		}
-	}
 	root, err := confined(e.root, filepath.Join(".agents", "skills"))
 	if err == nil {
 		_ = filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
@@ -588,6 +645,248 @@ func (e *Engine) projectSkills() []Skill {
 	}
 	sort.Slice(skills, func(i, j int) bool { return skills[i].Name < skills[j].Name })
 	return skills
+}
+
+func (e *Engine) projectGuidanceMissing() bool {
+	path, err := confined(e.root, "AGENTS.md")
+	if err != nil {
+		return true
+	}
+	info, err := os.Stat(path)
+	return err != nil || !info.Mode().IsRegular()
+}
+
+func (e *Engine) projectScaffoldManifest() (scaffold.Manifest, error) {
+	path, err := confined(e.root, scaffold.ManifestPath)
+	if err != nil {
+		return scaffold.Manifest{}, err
+	}
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return scaffold.Manifest{}, nil
+	}
+	if err != nil {
+		return scaffold.Manifest{}, err
+	}
+	var manifest scaffold.Manifest
+	if err := yaml.Unmarshal(data, &manifest); err != nil {
+		return scaffold.Manifest{}, fmt.Errorf("read scaffold manifest: %w", err)
+	}
+	return manifest, nil
+}
+
+func (e *Engine) searchProject(query string) []SearchMatch {
+	query = strings.TrimSpace(strings.ToLower(query))
+	if query == "" || len(query) > 160 {
+		return nil
+	}
+	var matches []SearchMatch
+	filesRead, bytesRead := 0, int64(0)
+	_ = filepath.WalkDir(e.root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if entry.Type()&os.ModeSymlink != 0 {
+			if entry.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if entry.IsDir() {
+			if path != e.root && (entry.Name() == ".git" || entry.Name() == "dist" || entry.Name() == "node_modules" || entry.Name() == "target") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if filesRead >= 300 || bytesRead >= 16*1024*1024 {
+			return filepath.SkipAll
+		}
+		if len(matches) >= 20 {
+			return nil
+		}
+		info, err := entry.Info()
+		if err != nil || info.Size() > 512*1024 {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil || strings.ContainsRune(string(data), '\x00') || !utf8.Valid(data) {
+			return nil
+		}
+		filesRead++
+		bytesRead += int64(len(data))
+		rel, err := filepath.Rel(e.root, path)
+		if err != nil {
+			return nil
+		}
+		for i, line := range strings.Split(string(data), "\n") {
+			if strings.Contains(strings.ToLower(line), query) {
+				snippet := strings.TrimSpace(line)
+				if len(snippet) > 320 {
+					snippet = snippet[:320]
+				}
+				matches = append(matches, SearchMatch{Path: filepath.ToSlash(rel), Line: i + 1, Snippet: snippet})
+				if len(matches) >= 20 {
+					return filepath.SkipAll
+				}
+			}
+		}
+		return nil
+	})
+	return matches
+}
+
+func aiReadFile(root, relative string) (*File, error) {
+	for _, part := range strings.Split(filepath.ToSlash(filepath.Clean(relative)), "/") {
+		if part == ".git" || part == "dist" || part == "node_modules" || part == "target" {
+			return nil, fmt.Errorf("generated and dependency directories are not available to AI tools")
+		}
+	}
+	path, err := confined(root, relative)
+	if err != nil {
+		return nil, err
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) && filepath.ToSlash(filepath.Clean(relative)) == "AGENTS.md" {
+			return nil, fmt.Errorf("AGENTS.md is missing from this deck; run margo upgrade --plan, then margo upgrade --apply")
+		}
+		return nil, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > 512*1024 {
+		return nil, fmt.Errorf("file is not a supported regular text file or exceeds 512 KiB")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	if strings.ContainsRune(string(data), '\x00') || !utf8.Valid(data) {
+		return nil, fmt.Errorf("file does not appear to be plain text")
+	}
+	return &File{Path: filepath.ToSlash(filepath.Clean(relative)), Content: string(data), Revision: hash(data)}, nil
+}
+
+func aiEditPath(root, activeTheme, relative string) (string, error) {
+	clean := filepath.ToSlash(filepath.Clean(filepath.FromSlash(relative)))
+	for _, part := range strings.Split(clean, "/") {
+		if strings.HasPrefix(part, ".") {
+			return "", fmt.Errorf("AI edits cannot target hidden project files")
+		}
+	}
+	allowed := clean == "margo.yaml" || clean == "manifest.yaml" ||
+		(strings.HasPrefix(clean, "slides/") && strings.HasSuffix(strings.ToLower(clean), ".md")) ||
+		strings.HasPrefix(clean, "themes/"+activeTheme+"/")
+	if !allowed {
+		return "", fmt.Errorf("AI edits are limited to project config, slide Markdown, and the active theme")
+	}
+	if strings.HasPrefix(clean, "themes/") && !map[string]bool{".md": true, ".yaml": true, ".yml": true, ".html": true, ".css": true, ".js": true, ".json": true, ".txt": true, ".toml": true}[strings.ToLower(filepath.Ext(clean))] {
+		return "", fmt.Errorf("AI edits support theme text files only")
+	}
+	path, err := confined(root, clean)
+	if err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+func aiStageEdit(root, activeTheme, relative string) (*File, error) {
+	clean := filepath.ToSlash(filepath.Clean(filepath.FromSlash(relative)))
+	path, err := aiEditPath(root, activeTheme, clean)
+	if err != nil {
+		return nil, err
+	}
+	file, err := aiReadFile(root, clean)
+	if err == nil {
+		return file, nil
+	}
+	if !os.IsNotExist(err) {
+		return nil, err
+	}
+	parent := filepath.Dir(path)
+	info, statErr := os.Stat(parent)
+	if statErr != nil || !info.IsDir() {
+		return nil, fmt.Errorf("new file parent folder must already exist")
+	}
+	return &File{Path: clean, Content: "", Revision: "new"}, nil
+}
+
+func aiApplyEdit(root, activeTheme, relative, content, expectedRevision string) (*File, error) {
+	clean := filepath.ToSlash(filepath.Clean(filepath.FromSlash(relative)))
+	path, err := aiEditPath(root, activeTheme, clean)
+	if err != nil {
+		return nil, err
+	}
+	if len(content) > 512*1024 || strings.ContainsRune(content, '\x00') {
+		return nil, fmt.Errorf("proposed content must be plain text under 512 KiB")
+	}
+	if expectedRevision == "new" {
+		if _, err := os.Lstat(path); err == nil {
+			return nil, fmt.Errorf("%s now exists; ask the assistant to reread it", clean)
+		} else if !os.IsNotExist(err) {
+			return nil, err
+		}
+		if err := atomicCreate(path, []byte(content), 0o644); err != nil {
+			return nil, err
+		}
+		return aiReadFile(root, clean)
+	}
+	if expectedRevision == "" {
+		return nil, fmt.Errorf("edit proposal is missing its source revision")
+	}
+	current, err := aiReadFile(root, clean)
+	if err != nil {
+		return nil, err
+	}
+	if current.Revision != expectedRevision {
+		return nil, fmt.Errorf("%s changed after the proposal was created; ask the assistant to reread it", clean)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	latest, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	if hash(latest) != expectedRevision {
+		return nil, fmt.Errorf("%s changed during approval; ask the assistant to reread it", clean)
+	}
+	if err := atomicWrite(path, []byte(content), info.Mode()); err != nil {
+		return nil, err
+	}
+	return aiReadFile(root, clean)
+}
+
+func (e *Engine) listProjectDirectory(relative string) ([]SearchMatch, error) {
+	path := e.root
+	if relative != "" {
+		var err error
+		path, err = confined(e.root, relative)
+		if err != nil {
+			return nil, err
+		}
+	}
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+	var result []SearchMatch
+	for _, entry := range entries {
+		if entry.Type()&os.ModeSymlink != 0 {
+			continue
+		}
+		if entry.Name() == ".git" || entry.Name() == "node_modules" || entry.Name() == "dist" || entry.Name() == "target" {
+			continue
+		}
+		name := entry.Name()
+		if entry.IsDir() {
+			name += "/"
+		}
+		result = append(result, SearchMatch{Path: filepath.ToSlash(filepath.Join(relative, name))})
+		if len(result) >= 100 {
+			break
+		}
+	}
+	return result, nil
 }
 
 func (e *Engine) preview(r Request) (Response, error) {

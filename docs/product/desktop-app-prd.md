@@ -26,9 +26,23 @@ import, project opening/recent folders, rendered thumbnails and overview, a prev
 that fits the pane on resize, Monaco source editing, named Markdown notes and rendered
 notes preview, conflict handling, slide operations, media insertion, presentation
 review, and HTML/PDF/PPTX export entry points. A graphical tiling control writes
-theme-supported nested shortcodes without changing the theme. Agent-skill handoff
-builds a contextual prompt for copying to an external agent; the app does not run an
-AI agent. The native Projects menu and icon toolbar expose project, theme, export,
+theme-supported nested shortcodes without changing the theme. The Margo skills
+control presents project-local skills as a browsable UI library for external handoff
+and assistant guidance. The in-app assistant is a wide workbench panel with a fixed
+composer. Chat stays disabled until a provider and model are connected. A connection
+dialog supports ChatGPT plan sign-in through OpenAI's open-source OAuth flow and
+Responses API, plus endpoint and API-key configuration for OpenAI-compatible Chat
+Completions providers. Project-aware conversation requires an open project. ChatGPT
+OAuth defaults to session-only credentials held in native process memory, with optional
+Keychain storage for persistent sign-in. Hosted API keys stay in the OS keychain;
+conversation history stays per project in local app storage. Each request automatically
+includes the project's `AGENTS.md`, `.agents/README.md`, active theme metadata, deck
+outline, and open source file. The assistant offers project listing, search, file reading, and Markdown
+outline tools through the Go engine. For file changes, it stages complete replacements
+for project config, slide Markdown, or active-theme text files. The user reviews both
+versions and explicitly applies each proposal; Go rechecks project scope and source
+revision before writing. It can create a text file only inside an existing folder.
+The native Projects menu and icon toolbar expose project, theme, export,
 and view actions. Project theme switching and imports from Git, `.margot`, another project,
 or a `.margo` archive are available through the theme selector. Project opening
 accepts folders and `.margo` archives, which are extracted to a durable location.
@@ -106,6 +120,10 @@ A Margo deck author who works with Markdown and Git, and wants a visual way to i
 - Theme development workflow with live refresh when CSS/templates change.
 - Richer diagnostics, source navigation, and accessibility checks.
 - Batch media import and additional safe authoring helpers.
+- Native provider adapters beyond the OpenAI-compatible Chat Completions contract,
+  including provider-specific model discovery and configuration. Keep credentials
+  in OS secure storage and keep skills available for chat and external handoff.
+- Optional embeddings/RAG and write tools beyond the review-and-apply flow only if real projects show a need.
 
 ### Out of scope
 

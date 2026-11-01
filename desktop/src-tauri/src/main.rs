@@ -1,5 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod chatgpt_auth;
+
+use futures_util::StreamExt;
 #[cfg(target_os = "linux")]
 use gtk::gdk::prelude::DisplayExtManual;
 #[cfg(target_os = "linux")]
@@ -7,6 +10,7 @@ use gtk::prelude::*;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::{
+    collections::BTreeMap,
     fs::{self, OpenOptions},
     io::{BufRead, BufReader, Write},
     path::PathBuf,
@@ -189,6 +193,640 @@ async fn engine_request(
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+#[derive(Deserialize)]
+struct ChatRequest {
+    #[serde(default)]
+    auth_mode: String,
+    #[serde(default)]
+    session_only: bool,
+    endpoint: String,
+    model: String,
+    messages: Vec<Value>,
+    request_id: String,
+    tools_enabled: bool,
+}
+
+trait LlmProvider {
+    fn stream_completion(
+        &self,
+        model: &str,
+        messages: &[Value],
+        tools: &Value,
+    ) -> reqwest::RequestBuilder;
+}
+
+fn pop_sse_event(pending: &mut String) -> Option<String> {
+    let lf = pending.find("\n\n").map(|index| (index, 2));
+    let crlf = pending.find("\r\n\r\n").map(|index| (index, 4));
+    let (index, delimiter_len) = match (lf, crlf) {
+        (Some(left), Some(right)) => {
+            if left.0 <= right.0 {
+                left
+            } else {
+                right
+            }
+        }
+        (Some(found), None) | (None, Some(found)) => found,
+        (None, None) => return None,
+    };
+    let event = pending[..index].to_string();
+    pending.drain(..index + delimiter_len);
+    Some(event)
+}
+
+fn response_output_text(response: &Value) -> String {
+    if let Some(text) = response["output_text"].as_str() {
+        if !text.is_empty() {
+            return text.to_string();
+        }
+    }
+    response["output"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|item| item["type"] == "message")
+        .flat_map(|item| item["content"].as_array().into_iter().flatten())
+        .filter_map(|part| match part["type"].as_str()? {
+            "output_text" => part["text"].as_str(),
+            "refusal" => part["refusal"].as_str(),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("")
+}
+
+fn response_output_summary(response: &Value) -> String {
+    let outputs = response["output"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|item| {
+            let kind = item["type"].as_str().unwrap_or("unknown");
+            if kind == "function_call" {
+                format!("{kind}:{}", item["name"].as_str().unwrap_or("unnamed"))
+            } else if kind == "message" {
+                let parts = item["content"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|part| part["type"].as_str())
+                    .collect::<Vec<_>>()
+                    .join(",");
+                format!("message[{parts}]")
+            } else {
+                kind.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!(
+        "status={}, output=[{}]",
+        response["status"].as_str().unwrap_or("unknown"),
+        if outputs.is_empty() {
+            "empty"
+        } else {
+            &outputs
+        }
+    )
+}
+
+struct OpenAICompatibleProvider {
+    client: reqwest::Client,
+    endpoint: String,
+    key: String,
+}
+
+impl LlmProvider for OpenAICompatibleProvider {
+    fn stream_completion(
+        &self,
+        model: &str,
+        messages: &[Value],
+        tools: &Value,
+    ) -> reqwest::RequestBuilder {
+        let mut body = json!({"model":model,"messages":messages,"stream":true});
+        if !tools.is_null() {
+            body["tools"] = tools.clone();
+            body["tool_choice"] = json!("auto");
+        }
+        let mut request = self
+            .client
+            .post(format!("{}/chat/completions", self.endpoint))
+            .json(&body);
+        if !self.key.is_empty() {
+            request = request.bearer_auth(&self.key);
+        }
+        request
+    }
+}
+
+#[tauri::command]
+async fn store_ai_key(webview: tauri::Webview, key: String) -> Result<(), String> {
+    require_editor(&webview)?;
+    let entry =
+        keyring::Entry::new("margo-desktop", "openai-compatible").map_err(|e| e.to_string())?;
+    if key.trim().is_empty() {
+        entry.delete_credential().ok();
+    } else {
+        entry.set_password(key.trim()).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn has_ai_key(webview: tauri::Webview) -> Result<bool, String> {
+    require_editor(&webview)?;
+    let entry =
+        keyring::Entry::new("margo-desktop", "openai-compatible").map_err(|e| e.to_string())?;
+    Ok(entry.get_password().is_ok())
+}
+
+#[tauri::command]
+async fn test_ai_connection(
+    webview: tauri::Webview,
+    endpoint: String,
+    model: String,
+) -> Result<Value, String> {
+    require_editor(&webview)?;
+    let endpoint = endpoint.trim_end_matches('/').to_string();
+    let parsed = reqwest::Url::parse(&endpoint).map_err(|_| "Invalid provider endpoint")?;
+    let local = matches!(
+        parsed.host_str(),
+        Some("localhost" | "127.0.0.1" | "::1" | "[::1]")
+    );
+    if !parsed.username().is_empty() || parsed.password().is_some() {
+        return Err("Do not put credentials in the provider URL".into());
+    }
+    if parsed.query().is_some() || parsed.fragment().is_some() {
+        return Err("Remove query parameters and fragments from the provider URL".into());
+    }
+    if parsed.scheme() != "https" && !(parsed.scheme() == "http" && local) {
+        return Err("Use HTTPS, localhost, or 127.0.0.1 for the provider endpoint".into());
+    }
+    let entry =
+        keyring::Entry::new("margo-desktop", "openai-compatible").map_err(|e| e.to_string())?;
+    let key = if local {
+        String::new()
+    } else {
+        entry.get_password().unwrap_or_default()
+    };
+    let mut request = reqwest::Client::new().get(format!("{endpoint}/models"));
+    if !key.is_empty() {
+        request = request.bearer_auth(key);
+    }
+    let response = request
+        .send()
+        .await
+        .map_err(|e| format!("Could not reach provider: {e}"))?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "Provider returned {}. Check the endpoint and API key.",
+            response.status()
+        ));
+    }
+    let body: Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Provider returned an invalid model list: {e}"))?;
+    let models: Vec<String> = body
+        .get("data")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|item| item.get("id").and_then(Value::as_str).map(str::to_owned))
+        .collect();
+    let model_available = models.iter().any(|available| available == model.trim());
+    Ok(json!({"models": models, "model_available": model_available}))
+}
+
+#[tauri::command]
+async fn chat_stream(
+    webview: tauri::Webview,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, State>,
+    request: ChatRequest,
+) -> Result<(), String> {
+    require_editor(&webview)?;
+    if request.auth_mode == "chatgpt" {
+        return chatgpt_chat_stream(app, state, request).await;
+    }
+    let endpoint = request.endpoint.trim_end_matches('/').to_string();
+    let parsed = reqwest::Url::parse(&endpoint).map_err(|_| "Invalid provider endpoint")?;
+    let local = matches!(
+        parsed.host_str(),
+        Some("localhost" | "127.0.0.1" | "::1" | "[::1]")
+    );
+    if !parsed.username().is_empty() || parsed.password().is_some() {
+        return Err("Do not put credentials in the provider URL".into());
+    }
+    if parsed.query().is_some() || parsed.fragment().is_some() {
+        return Err("Remove query parameters and fragments from the provider URL".into());
+    }
+    if parsed.scheme() != "https" && !(parsed.scheme() == "http" && local) {
+        return Err("Use HTTPS, localhost, or 127.0.0.1 for the provider endpoint".into());
+    }
+    let entry =
+        keyring::Entry::new("margo-desktop", "openai-compatible").map_err(|e| e.to_string())?;
+    let key = if local {
+        String::new()
+    } else {
+        entry.get_password().unwrap_or_default()
+    };
+    let provider = OpenAICompatibleProvider {
+        client: reqwest::Client::new(),
+        endpoint,
+        key,
+    };
+    let tools = if request.tools_enabled {
+        json!([
+            {"type":"function","function":{"name":"read_project_file","description":"Read one text file inside the open Margo project, using its project-relative path.","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}}},
+            {"type":"function","function":{"name":"list_project_directory","description":"List entries in a project directory using a project-relative path. Use an empty path for the project root.","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}}},
+            {"type":"function","function":{"name":"search_project","description":"Search Markdown, config, theme, and source files in the open project.","parameters":{"type":"object","properties":{"query":{"type":"string"}},"required":["query"],"additionalProperties":false}}},
+            {"type":"function","function":{"name":"get_file_outline","description":"Return Markdown headings for one file inside the open project.","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}}},
+            {"type":"function","function":{"name":"propose_file_edit","description":"Stage a replacement or new file in the project for user review. No disk write occurs until the user applies it in Margo. Use only project config, slide Markdown, or active-theme text files, and create files only inside existing folders.","parameters":{"type":"object","properties":{"path":{"type":"string"},"content":{"type":"string"}},"required":["path","content"],"additionalProperties":false}}}
+        ])
+    } else {
+        Value::Null
+    };
+    let mut messages = request.messages;
+    for round in 0..5 {
+        let allowed_tools = if request.tools_enabled && round < 4 {
+            &tools
+        } else {
+            &Value::Null
+        };
+        let response = provider
+            .stream_completion(&request.model, &messages, allowed_tools)
+            .send()
+            .await
+            .map_err(|e| format!("Provider request failed: {e}"))?;
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            return Err(format!(
+                "Provider returned {status}: {}",
+                body.chars().take(500).collect::<String>()
+            ));
+        }
+        let mut stream = response.bytes_stream();
+        let mut pending = String::new();
+        let mut calls: BTreeMap<usize, Value> = BTreeMap::new();
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.map_err(|e| e.to_string())?;
+            pending.push_str(&String::from_utf8_lossy(&chunk));
+            while let Some(event) = pop_sse_event(&mut pending) {
+                for line in event.lines().filter_map(|line| line.strip_prefix("data:")) {
+                    let data = line.trim();
+                    if data == "[DONE]" {
+                        continue;
+                    }
+                    if let Ok(value) = serde_json::from_str::<Value>(data) {
+                        let delta = &value["choices"][0]["delta"];
+                        if let Some(text) = delta["content"].as_str() {
+                            let _ = app.emit(
+                                "margo-chat-delta",
+                                json!({"id":request.request_id,"text":text}),
+                            );
+                        }
+                        if let Some(tool_calls) = delta["tool_calls"].as_array() {
+                            for call in tool_calls {
+                                let index = call["index"].as_u64().unwrap_or(0) as usize;
+                                let current = calls.entry(index).or_insert_with(|| json!({"id":"","type":"function","function":{"name":"","arguments":""}}));
+                                if let Some(id) = call["id"].as_str() {
+                                    current["id"] = json!(id);
+                                }
+                                if let Some(name) = call["function"]["name"].as_str() {
+                                    current["function"]["name"] = json!(format!(
+                                        "{}{}",
+                                        current["function"]["name"].as_str().unwrap_or(""),
+                                        name
+                                    ));
+                                }
+                                if let Some(args) = call["function"]["arguments"].as_str() {
+                                    current["function"]["arguments"] = json!(format!(
+                                        "{}{}",
+                                        current["function"]["arguments"].as_str().unwrap_or(""),
+                                        args
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if calls.is_empty() {
+            break;
+        }
+        let calls: Vec<Value> = calls.into_values().collect();
+        messages.push(json!({"role":"assistant","content":null,"tool_calls":calls}));
+        for call in calls {
+            let name = call["function"]["name"].as_str().unwrap_or("");
+            let args: Value =
+                serde_json::from_str(call["function"]["arguments"].as_str().unwrap_or("{}"))
+                    .unwrap_or(json!({}));
+            let (op, params) = match name {
+                "read_project_file" => ("ai-read", json!({"path":args["path"]})),
+                "list_project_directory" => ("ai-list", json!({"path":args["path"]})),
+                "search_project" => ("ai-search", json!({"query":args["query"]})),
+                "get_file_outline" => ("ai-outline", json!({"path":args["path"]})),
+                "propose_file_edit" => ("ai-propose-edit", json!({"path":args["path"]})),
+                _ => {
+                    messages.push(json!({"role":"tool","tool_call_id":call["id"],"content":"Unsupported read-only tool"}));
+                    continue;
+                }
+            };
+            let _ = app.emit(
+                "margo-chat-tool",
+                json!({"id":request.request_id,"name":name,"arguments":args}),
+            );
+            let payload = json!({"protocol":1,"op":op,"root":"","path":params["path"],"query":params["query"]});
+            let engine_state = state.0.clone();
+            let result = tauri::async_runtime::spawn_blocking(move || {
+                let mut guard = engine_state.lock().map_err(|_| "Engine lock failed")?;
+                guard.as_mut().ok_or("Engine unavailable")?.call(payload)
+            })
+            .await
+            .map_err(|e| e.to_string())?
+            .unwrap_or_else(|e| json!({"error":e}));
+            let output = if name == "propose_file_edit" && result["file"].is_object() {
+                if let Some(content) = args["content"].as_str() {
+                    if content.len() <= 512 * 1024 && !content.contains('\0') {
+                        let _ = app.emit(
+                            "margo-chat-proposal",
+                            json!({"id":request.request_id,"path":args["path"],"original":result["file"]["content"],"revision":result["file"]["revision"],"content":content}),
+                        );
+                        "Proposal staged for user review. It has not been applied to disk. Continue helping and do not claim that the file was changed.".to_string()
+                    } else {
+                        "Proposal rejected: content must be plain text under 512 KiB.".to_string()
+                    }
+                } else {
+                    "Proposal rejected: content must be text.".to_string()
+                }
+            } else if let Some(content) = result["file"]["content"].as_str() {
+                content.chars().take(20000).collect::<String>()
+            } else {
+                result.to_string()
+            };
+            let _ = app.emit(
+                "margo-chat-tool-result",
+                json!({"id":request.request_id,"name":name,"preview":output.chars().take(4000).collect::<String>()}),
+            );
+            messages.push(json!({"role":"tool","tool_call_id":call["id"],"content":output}));
+        }
+    }
+    let _ = app.emit("margo-chat-done", &request.request_id);
+    Ok(())
+}
+
+#[tauri::command]
+async fn connect_chatgpt(
+    webview: tauri::Webview,
+    session_only: bool,
+) -> Result<chatgpt_auth::PublicConnection, String> {
+    require_editor(&webview)?;
+    chatgpt_auth::sign_in(session_only).await
+}
+
+#[tauri::command]
+async fn chatgpt_connection(
+    webview: tauri::Webview,
+    session_only: bool,
+) -> Result<chatgpt_auth::PublicConnection, String> {
+    require_editor(&webview)?;
+    chatgpt_auth::public_connection(session_only)
+}
+
+#[tauri::command]
+async fn disconnect_chatgpt(webview: tauri::Webview, session_only: bool) -> Result<(), String> {
+    require_editor(&webview)?;
+    chatgpt_auth::disconnect(session_only).await
+}
+
+#[tauri::command]
+async fn chatgpt_models(webview: tauri::Webview, session_only: bool) -> Result<Vec<Value>, String> {
+    require_editor(&webview)?;
+    Ok(chatgpt_auth::list_models(session_only)
+        .await?
+        .into_iter()
+        .map(|(slug, display_name)| json!({"id":slug,"name":display_name}))
+        .collect())
+}
+
+async fn chatgpt_chat_stream(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, State>,
+    request: ChatRequest,
+) -> Result<(), String> {
+    let token = chatgpt_auth::access_token(request.session_only).await?;
+    let http = reqwest::Client::new();
+    let mut instructions = String::new();
+    let mut input = Vec::new();
+    for message in &request.messages {
+        let role = message["role"].as_str().unwrap_or("");
+        if role == "system" || role == "developer" {
+            if let Some(content) = message["content"].as_str() {
+                if !instructions.is_empty() {
+                    instructions.push_str("\n\n");
+                }
+                instructions.push_str(content);
+            }
+        } else if matches!(role, "user" | "assistant") {
+            input.push(message.clone());
+        }
+    }
+    let tools = if request.tools_enabled {
+        json!([
+            {"type":"function","name":"read_project_file","description":"Read one text file inside the open Margo project, using its project-relative path.","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}},
+            {"type":"function","name":"list_project_directory","description":"List entries in a project directory using a project-relative path. Use an empty path for the project root.","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}},
+            {"type":"function","name":"search_project","description":"Search Markdown, config, theme, and source files in the open project.","parameters":{"type":"object","properties":{"query":{"type":"string"}},"required":["query"],"additionalProperties":false}},
+            {"type":"function","name":"get_file_outline","description":"Return Markdown headings for one file inside the open project.","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}},
+            {"type":"function","name":"propose_file_edit","description":"Stage a replacement or new file in the project for user review. No disk write occurs until the user applies it in Margo. Use only project config, slide Markdown, or active-theme text files, and create files only inside existing folders.","parameters":{"type":"object","properties":{"path":{"type":"string"},"content":{"type":"string"}},"required":["path","content"],"additionalProperties":false}}
+        ])
+    } else {
+        Value::Null
+    };
+
+    let mut empty_response_retried = false;
+    for round in 0..5 {
+        let mut body = json!({"model":request.model,"instructions":instructions,"input":input,"store":false,"stream":true});
+        if !tools.is_null() && round < 4 {
+            body["tools"] = tools.clone();
+        }
+        let response = http
+            .post("https://api.openai.com/v1/responses")
+            .bearer_auth(&token)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|error| format!("ChatGPT request failed: {error}"))?;
+        if !response.status().is_success() {
+            let status = response.status();
+            let detail = response.text().await.unwrap_or_default();
+            return Err(format!(
+                "ChatGPT returned {status}: {}",
+                detail.chars().take(500).collect::<String>()
+            ));
+        }
+        let mut stream = response.bytes_stream();
+        let mut pending = String::new();
+        let mut completed: Option<Value> = None;
+        let mut failure: Option<String> = None;
+        let mut streamed_text = false;
+        let mut streamed_items: BTreeMap<usize, Value> = BTreeMap::new();
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.map_err(|error| error.to_string())?;
+            pending.push_str(&String::from_utf8_lossy(&chunk));
+            while let Some(event) = pop_sse_event(&mut pending) {
+                let (event_name, data) =
+                    event
+                        .lines()
+                        .fold((String::new(), String::new()), |mut acc, line| {
+                            if let Some(value) = line.strip_prefix("event:") {
+                                acc.0 = value.trim().to_string();
+                            }
+                            if let Some(value) = line.strip_prefix("data:") {
+                                acc.1 = value.trim().to_string();
+                            }
+                            acc
+                        });
+                if data.is_empty() {
+                    continue;
+                }
+                let Ok(value) = serde_json::from_str::<Value>(&data) else {
+                    continue;
+                };
+                match event_name.as_str() {
+                    "response.output_item.added" | "response.output_item.done" => {
+                        if let (Some(index), Some(item)) =
+                            (value["output_index"].as_u64(), value["item"].as_object())
+                        {
+                            streamed_items.insert(index as usize, Value::Object(item.clone()));
+                        }
+                    }
+                    "response.function_call_arguments.done" => {
+                        if let Some(index) = value["output_index"].as_u64() {
+                            let item = streamed_items.entry(index as usize).or_insert_with(|| {
+                                json!({"type":"function_call","call_id":value["call_id"],"item_id":value["item_id"],"name":"","arguments":""})
+                            });
+                            item["arguments"] = value["arguments"].clone();
+                        }
+                    }
+                    "response.output_text.delta" | "response.refusal.delta" => {
+                        if let Some(text) = value["delta"].as_str() {
+                            streamed_text = true;
+                            let _ = app.emit(
+                                "margo-chat-delta",
+                                json!({"id":request.request_id,"text":text}),
+                            );
+                        }
+                    }
+                    "response.completed" => completed = Some(value["response"].clone()),
+                    "response.failed" => {
+                        failure = Some(
+                            value["response"]["error"]["message"]
+                                .as_str()
+                                .unwrap_or("ChatGPT request failed")
+                                .to_string(),
+                        )
+                    }
+                    _ => {}
+                }
+            }
+        }
+        if let Some(failure) = failure {
+            return Err(failure);
+        }
+        let mut response =
+            completed.ok_or("ChatGPT stream ended before a completed response arrived")?;
+        if response["output"]
+            .as_array()
+            .map_or(true, |items| items.is_empty())
+            && !streamed_items.is_empty()
+        {
+            response["output"] = json!(streamed_items.into_values().collect::<Vec<_>>());
+        }
+        let output = response["output"].as_array().cloned().unwrap_or_default();
+        let calls: Vec<Value> = output
+            .iter()
+            .filter(|item| item["type"] == "function_call")
+            .cloned()
+            .collect();
+        if calls.is_empty() {
+            if !streamed_text {
+                let text = response_output_text(&response);
+                if !text.is_empty() {
+                    let _ = app.emit(
+                        "margo-chat-delta",
+                        json!({"id":request.request_id,"text":text}),
+                    );
+                } else {
+                    let detail = response_output_summary(&response);
+                    if !empty_response_retried && round < 4 {
+                        empty_response_retried = true;
+                        input.push(json!({"role":"user","content":"Your previous turn completed without returning an answer or tool call. Please answer the original request now with a concise visible text reply. Use project tools only if you need to inspect project files."}));
+                        continue;
+                    }
+                    let _ = app.emit("margo-chat-delta", json!({"id":request.request_id,"text":format!("ChatGPT completed without returning an answer or project tool call ({detail}). Please try again. If this repeats, turn off Project tools and retry.")}));
+                }
+            }
+            break;
+        }
+        input.extend(output);
+        for call in calls {
+            let name = call["name"].as_str().unwrap_or("");
+            let args: Value = serde_json::from_str(call["arguments"].as_str().unwrap_or("{}"))
+                .unwrap_or(json!({}));
+            let (op, params) = match name {
+                "read_project_file" => ("ai-read", json!({"path":args["path"]})),
+                "list_project_directory" => ("ai-list", json!({"path":args["path"]})),
+                "search_project" => ("ai-search", json!({"query":args["query"]})),
+                "get_file_outline" => ("ai-outline", json!({"path":args["path"]})),
+                "propose_file_edit" => ("ai-propose-edit", json!({"path":args["path"]})),
+                _ => {
+                    input.push(json!({"type":"function_call_output","call_id":call["call_id"],"output":"Unsupported read-only tool"}));
+                    continue;
+                }
+            };
+            let _ = app.emit(
+                "margo-chat-tool",
+                json!({"id":request.request_id,"name":name,"arguments":args}),
+            );
+            let payload = json!({"protocol":1,"op":op,"root":"","path":params["path"],"query":params["query"]});
+            let engine_state = state.0.clone();
+            let result = tauri::async_runtime::spawn_blocking(move || {
+                let mut guard = engine_state.lock().map_err(|_| "Engine lock failed")?;
+                guard.as_mut().ok_or("Engine unavailable")?.call(payload)
+            })
+            .await
+            .map_err(|error| error.to_string())?
+            .unwrap_or_else(|error| json!({"error":error}));
+            let result_text = if name == "propose_file_edit" && result["file"].is_object() {
+                if let Some(content) = args["content"].as_str() {
+                    if content.len() <= 512 * 1024 && !content.contains('\0') {
+                        let _ = app.emit(
+                            "margo-chat-proposal",
+                            json!({"id":request.request_id,"path":args["path"],"original":result["file"]["content"],"revision":result["file"]["revision"],"content":content}),
+                        );
+                        "Proposal staged for user review. It has not been applied to disk. Continue helping and do not claim that the file was changed.".to_string()
+                    } else {
+                        "Proposal rejected: content must be plain text under 512 KiB.".to_string()
+                    }
+                } else {
+                    "Proposal rejected: content must be text.".to_string()
+                }
+            } else if let Some(content) = result["file"]["content"].as_str() {
+                content.chars().take(20000).collect::<String>()
+            } else {
+                result.to_string()
+            };
+            let _ = app.emit("margo-chat-tool-result", json!({"id":request.request_id,"name":name,"preview":result_text.chars().take(4000).collect::<String>()}));
+            input.push(json!({"type":"function_call_output","call_id":call["call_id"],"output":result_text}));
+        }
+    }
+    let _ = app.emit("margo-chat-done", &request.request_id);
+    Ok(())
 }
 
 #[tauri::command]
@@ -721,6 +1359,14 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             engine_request,
+            store_ai_key,
+            has_ai_key,
+            test_ai_connection,
+            chat_stream,
+            connect_chatgpt,
+            chatgpt_connection,
+            disconnect_chatgpt,
+            chatgpt_models,
             choose_path,
             preview_layout,
             recent_projects,

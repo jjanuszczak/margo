@@ -36,6 +36,14 @@ Run `npm run icons` to regenerate packaged icons after changing that source.
 Tauri. `npm run web:build` builds only the web assets. `npm test` checks the editor
 reconciliation model. Run `go test ./...` from the repository root for engine tests.
 
+`npm run ai-sdk:spike` runs an isolated Vercel AI SDK probe against a mocked
+OpenAI Responses stream. It checks streaming, one read-only tool round-trip, and
+provider package loading. A mocked Tauri event bridge verifies that the SDK's
+placeholder authorization header is dropped before IPC. The probe uses no real
+credentials or network access. It does not exercise the native IPC command,
+ChatGPT OAuth, Keychain access, or Linux-native packaging; the SDK packages are
+development dependencies and are not included in the app bundle.
+
 ## macOS
 
 Install the Xcode command line tools. Build a local app:
@@ -111,15 +119,41 @@ does not establish working Hyprland input, file dialogs, or GPU rendering.
   use a fixed canvas. Tiling is enabled only when the active theme supplies both
   `tiles` and `tile` shortcodes and their CSS; custom themes are never modified
   automatically.
-- **Agent skills** lists project-local skills from `.agents/skills/` and builds a
+- **Margo skills** lists project-local skills from `.agents/skills/` and builds a
   task-specific prompt with the deck root, theme, selected slide and source paths,
   the skill instructions, and its Markdown references. YAML skill metadata is
   omitted from the copied prompt. The target agent must have access to the same
-  project folder; the app does not provide an AI runtime.
+  project folder.
+- **AI Assistant** opens a wide workbench panel. Chat stays disabled until you connect
+  a provider and select a model. Choose **Connect** to set up either **ChatGPT account**
+  or an **API key or compatible endpoint**. ChatGPT sign-in uses OpenAI's documented
+  open-source OAuth flow and Responses API with `store: false`; the browser asks you
+  to approve ChatGPT plan usage. **This session only** keeps OAuth tokens in memory and
+  skips Keychain; sign in again after restarting Margo. Turn it off to store renewable
+  credentials in the OS keychain. Model availability and usage follow the signed-in
+  account's plan. API keys are stored in the OS keychain; local endpoints can work
+  without one. Use **Disconnect** to clear the active connection.
+  Chat streams Markdown replies, saves history on this device per project, and can
+  clear it. Each request automatically includes the open project's `AGENTS.md`,
+  `.agents/README.md`, active theme metadata, deck outline, and currently open source.
+  Project tools can inspect other files when needed. If project guidance is outdated,
+  the panel offers a reviewed project upgrade. The assistant can list a
+  project directory, search text sources, read a text file, get Markdown headings, and
+  stage a proposed file change. Each proposal shows the current and proposed contents;
+  the assistant cannot write it until you choose **Apply change**. Go confines writes
+  to project config, slide Markdown, or active-theme text files and rejects stale file
+  revisions. New files are allowed only inside existing project folders. Messages and
+  automatically loaded context, plus files read through project tools, are sent to the provider.
+- To try ChatGPT sign-in, open a project and click **AI Assistant**, then **Connect**.
+  Choose **ChatGPT account**, click **Continue with ChatGPT**, sign in with the account
+  you use for ChatGPT/Codex, and approve Margo's plan-usage permission. Return to Margo,
+  choose a model in the connection dialog, and click **Use model**. Chat is then ready.
+  ChatGPT plan limits apply. To use an API key instead, choose **API key or compatible
+  endpoint**, connect, select a model, and click **Use model**.
 - Use the native **Projects** menu beside Edit, Window, and Help for New/Open,
-  recent projects, and HTML/PDF/PPTX export. Icon-only New, Open, and AI handoff
-  buttons sit on the ribbon with hover tooltips; Overview and Present also use
-  tooltip-labeled icons. The welcome screen presents New project and Open existing
+  recent projects, and HTML/PDF/PPTX export. New, Open, Margo skills, and AI Assistant
+  buttons sit on the ribbon; Overview and Present use tooltip-labeled icons. The
+  welcome screen presents New project and Open existing
   project side by side.
 - The left filmstrip and overview show captured images of the actual interactive
   slides. Thumbnails fill in progressively in the background. Chrome/Chromium is

@@ -25,26 +25,44 @@ type Request struct {
 	ThemeRef     string `json:"theme_ref,omitempty"`
 	ThemeName    string `json:"theme_name,omitempty"`
 	SourceTheme  string `json:"source_theme,omitempty"`
+	Query        string `json:"query,omitempty"`
 }
 
 type Response struct {
-	Thumbnails     []Thumbnail              `json:"thumbnails,omitempty"`
-	ThumbnailsDone bool                     `json:"thumbnails_done,omitempty"`
-	ThumbnailError string                   `json:"thumbnail_error,omitempty"`
-	Revision       string                   `json:"revision,omitempty"`
-	Protocol       int                      `json:"protocol"`
-	Error          string                   `json:"error,omitempty"`
-	Conflict       bool                     `json:"conflict,omitempty"`
-	Snapshot       *Snapshot                `json:"snapshot,omitempty"`
-	File           *File                    `json:"file,omitempty"`
-	Preview        string                   `json:"preview,omitempty"`
-	Selected       string                   `json:"selected,omitempty"`
-	Artifact       string                   `json:"artifact,omitempty"`
-	Markdown       string                   `json:"markdown,omitempty"`
-	Log            string                   `json:"log,omitempty"`
-	Skills         []Skill                  `json:"skills,omitempty"`
-	Themes         []ThemeInfo              `json:"themes,omitempty"`
-	Diagnostics    []diagnostics.Diagnostic `json:"diagnostics"`
+	Thumbnails             []Thumbnail              `json:"thumbnails,omitempty"`
+	ThumbnailsDone         bool                     `json:"thumbnails_done,omitempty"`
+	ThumbnailError         string                   `json:"thumbnail_error,omitempty"`
+	Revision               string                   `json:"revision,omitempty"`
+	Protocol               int                      `json:"protocol"`
+	Error                  string                   `json:"error,omitempty"`
+	Conflict               bool                     `json:"conflict,omitempty"`
+	Snapshot               *Snapshot                `json:"snapshot,omitempty"`
+	File                   *File                    `json:"file,omitempty"`
+	Preview                string                   `json:"preview,omitempty"`
+	Selected               string                   `json:"selected,omitempty"`
+	Artifact               string                   `json:"artifact,omitempty"`
+	Markdown               string                   `json:"markdown,omitempty"`
+	Log                    string                   `json:"log,omitempty"`
+	Skills                 []Skill                  `json:"skills,omitempty"`
+	ProjectGuidanceMissing bool                     `json:"project_guidance_missing,omitempty"`
+	UpgradeAvailable       bool                     `json:"upgrade_available,omitempty"`
+	ProjectMargoVersion    string                   `json:"project_margo_version,omitempty"`
+	UpgradeChanges         []UpgradeChange          `json:"upgrade_changes,omitempty"`
+	Themes                 []ThemeInfo              `json:"themes,omitempty"`
+	Diagnostics            []diagnostics.Diagnostic `json:"diagnostics"`
+	Matches                []SearchMatch            `json:"matches,omitempty"`
+}
+
+type UpgradeChange struct {
+	Path   string `json:"path"`
+	Action string `json:"action"`
+	Reason string `json:"reason"`
+}
+
+type SearchMatch struct {
+	Path    string `json:"path"`
+	Line    int    `json:"line"`
+	Snippet string `json:"snippet"`
 }
 
 type Skill struct {
