@@ -136,8 +136,11 @@ does not establish working Hyprland input, file dialogs, or GPU rendering.
   Chat streams Markdown replies, saves history on this device per project, and can
   clear it. Each request automatically includes the open project's `AGENTS.md`,
   `.agents/README.md`, active theme metadata, deck outline, and currently open source.
-  Project tools can inspect other files when needed. If project guidance is outdated,
-  the panel offers a reviewed project upgrade. The assistant can list a
+  Project tools can inspect other files when needed. Margo checks the scaffold
+  manifest when opening a deck. If a newer project scaffold is available, **Upgrade
+  project** is enabled in the toolbar and Projects menu. It shows the planned changes
+  for confirmation, backs up files it updates, and preserves customized files. The
+  assistant panel also offers the same reviewed upgrade. The assistant can list a
   project directory, search text sources, read a text file, get Markdown headings, and
   stage a proposed file change. Each proposal shows the current and proposed contents;
   the assistant cannot write it until you choose **Apply change**. Go confines writes

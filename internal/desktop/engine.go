@@ -345,7 +345,11 @@ func (e *Engine) handle(r Request) (Response, error) {
 		if err != nil {
 			return Response{}, err
 		}
-		return Response{ProjectMargoVersion: manifest.Margo, UpgradeAvailable: manifest.Margo != version.Current() || e.projectGuidanceMissing()}, nil
+		plan, err := upgrade.BuildPlan(e.root)
+		if err != nil {
+			return Response{}, err
+		}
+		return Response{ProjectMargoVersion: manifest.Margo, UpgradeAvailable: plan.HasWrites() || e.projectGuidanceMissing()}, nil
 	case "upgrade-plan":
 		plan, err := upgrade.BuildPlan(e.root)
 		if err != nil {
@@ -524,7 +528,7 @@ func (e *Engine) snapshot() (*Snapshot, error) {
 	if err != nil {
 		return nil, err
 	}
-	snapshot := &Snapshot{Root: e.root, Title: model.Config.Deck.Title, Theme: active.Name, Revision: revision, Slides: []Slide{}, Formats: []string{"html", "pptx"}, SupportsTiles: e.themeSupportsTiles(active), Themes: themeInfos(installed)}
+	snapshot := &Snapshot{Root: e.root, Title: model.Config.Deck.Title, Theme: active.Name, Revision: revision, Slides: []Slide{}, Formats: []string{"html", "pptx"}, SupportsTiles: e.themeSupportsTiles(active), SupportsFigure: e.themeHasShortcode(active, "figure"), SupportsStat: e.themeHasShortcode(active, "stat"), SupportsVideo: e.themeHasShortcode(active, "video"), SupportsColumns: e.themeHasShortcode(active, "columns") && e.themeHasShortcode(active, "column"), SupportsMath: e.themeHasShortcode(active, "math"), SupportsChart: e.themeHasShortcode(active, "chart") && themeAssetExists(active, "chart.umd.min.js"), SupportsMermaid: e.themeHasShortcode(active, "mermaid"), SupportsCallout: e.themeHasShortcode(active, "callout"), SupportsGitHubRepo: e.themeHasShortcode(active, "github-repo"), Themes: themeInfos(installed)}
 	if _, err := pdf.DetectBrowser(); err == nil {
 		snapshot.Formats = append(snapshot.Formats, "pdf")
 	}
@@ -607,6 +611,24 @@ func (e *Engine) themeSupportsTiles(active theme.Metadata) bool {
 		return nil
 	})
 	return foundStyles
+}
+
+func (e *Engine) themeHasShortcode(active theme.Metadata, name string) bool {
+	for _, path := range []string{
+		filepath.Join(e.root, "shortcodes", name+".html"),
+		filepath.Join(active.RootDir, "shortcodes", name+".html"),
+	} {
+		info, err := os.Stat(path)
+		if err == nil && info.Mode().IsRegular() {
+			return true
+		}
+	}
+	return false
+}
+
+func themeAssetExists(active theme.Metadata, name string) bool {
+	info, err := os.Stat(filepath.Join(active.RootDir, "assets", name))
+	return err == nil && info.Mode().IsRegular()
 }
 
 func (e *Engine) projectSkills() []Skill {

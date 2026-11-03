@@ -903,6 +903,8 @@ async fn choose_path(webview: tauri::Webview, kind: String) -> Result<Option<Str
             | "theme-archive"
             | "theme-project"
             | "project-parent"
+            | "image"
+            | "video"
             | "media"
     ) {
         return Err("Unknown picker".into());
@@ -938,6 +940,12 @@ async fn choose_path(webview: tauri::Webview, kind: String) -> Result<Option<Str
                 "Media",
                 &["png", "jpg", "jpeg", "gif", "svg", "webp", "mp4", "webm"],
             )
+            .pick_file(),
+        "image" => rfd::FileDialog::new()
+            .add_filter("Images", &["png", "jpg", "jpeg", "gif", "svg", "webp"])
+            .pick_file(),
+        "video" => rfd::FileDialog::new()
+            .add_filter("Videos", &["mp4", "webm"])
             .pick_file(),
         _ => None,
     })
@@ -1130,6 +1138,24 @@ fn recent_projects(
 }
 
 #[tauri::command]
+fn set_project_upgrade_enabled(webview: tauri::Webview, enabled: bool) -> Result<(), String> {
+    use tauri::menu::MenuItemKind;
+
+    require_editor(&webview)?;
+    let menu = webview
+        .app_handle()
+        .menu()
+        .ok_or("Application menu is unavailable")?;
+    let Some(MenuItemKind::Submenu(projects)) = menu.get("margo-projects") else {
+        return Err("Projects menu is unavailable".into());
+    };
+    let Some(MenuItemKind::MenuItem(item)) = projects.get("margo-upgrade-project") else {
+        return Err("Project upgrade menu option is unavailable".into());
+    };
+    item.set_enabled(enabled).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 fn omarchy_palette(webview: tauri::Webview) -> Result<Value, String> {
     require_editor(&webview)?;
     let Some(home) = std::env::var_os("HOME") else {
@@ -1268,17 +1294,72 @@ fn editor_menu(
         None::<&str>,
     )?;
     let themes = MenuItem::with_id(app, "margo-themes", "Themes…", true, None::<&str>)?;
+    let insert_tiles = MenuItem::with_id(
+        app,
+        "margo-insert-tiles",
+        "Tile composition…",
+        true,
+        None::<&str>,
+    )?;
+    let insert_figure =
+        MenuItem::with_id(app, "margo-insert-figure", "Figure…", true, None::<&str>)?;
+    let insert_stat = MenuItem::with_id(app, "margo-insert-stat", "Stat…", true, None::<&str>)?;
+    let insert_video = MenuItem::with_id(app, "margo-insert-video", "Video…", true, None::<&str>)?;
+    let insert_columns =
+        MenuItem::with_id(app, "margo-insert-columns", "Columns…", true, None::<&str>)?;
+    let insert_math = MenuItem::with_id(app, "margo-insert-math", "Math…", true, None::<&str>)?;
+    let insert_chart = MenuItem::with_id(app, "margo-insert-chart", "Chart…", true, None::<&str>)?;
+    let insert_mermaid = MenuItem::with_id(
+        app,
+        "margo-insert-mermaid",
+        "Flowchart…",
+        true,
+        None::<&str>,
+    )?;
+    let insert_callout =
+        MenuItem::with_id(app, "margo-insert-callout", "Callout…", true, None::<&str>)?;
+    let insert_github_repo = MenuItem::with_id(
+        app,
+        "margo-insert-github-repo",
+        "GitHub repo…",
+        true,
+        None::<&str>,
+    )?;
+    let insert = Submenu::with_items(
+        app,
+        "Insert",
+        true,
+        &[
+            &insert_tiles,
+            &insert_figure,
+            &insert_stat,
+            &insert_video,
+            &insert_columns,
+            &insert_math,
+            &insert_chart,
+            &insert_mermaid,
+            &insert_callout,
+            &insert_github_repo,
+        ],
+    )?;
     let html = MenuItem::with_id(app, "margo-export-html", "HTML", true, None::<&str>)?;
     let pdf = MenuItem::with_id(app, "margo-export-pdf", "PDF", true, None::<&str>)?;
     let pptx = MenuItem::with_id(app, "margo-export-pptx", "PPTX", true, None::<&str>)?;
     let export = Submenu::with_items(app, "Export", true, &[&html, &pdf, &pptx])?;
 
-    let projects = Submenu::new(app, "Projects", true)?;
+    let projects = Submenu::with_id(app, "margo-projects", "Projects", true)?;
     projects.append(&new_project)?;
     projects.append(&open_project)?;
     projects.append(&open_archive)?;
     projects.append(&open_config)?;
     projects.append(&themes)?;
+    projects.append(&MenuItem::with_id(
+        app,
+        "margo-upgrade-project",
+        "Upgrade project…",
+        false,
+        None::<&str>,
+    )?)?;
     projects.append(&PredefinedMenuItem::separator(app)?)?;
     projects.append(&MenuItem::with_id(
         app,
@@ -1330,6 +1411,7 @@ fn editor_menu(
         }
     }
     menu.insert(&projects, project_position)?;
+    menu.insert(&insert, project_position + 1)?;
     Ok(menu)
 }
 
@@ -1390,6 +1472,17 @@ fn main() {
                 "margo-open-project-archive" => json!({"action":"open-project-archive"}),
                 "margo-open-project-config" => json!({"action":"open-project-config"}),
                 "margo-themes" => json!({"action":"themes"}),
+                "margo-upgrade-project" => json!({"action":"upgrade-project"}),
+                "margo-insert-tiles" => json!({"action":"insert-tiles"}),
+                "margo-insert-figure" => json!({"action":"insert-figure"}),
+                "margo-insert-stat" => json!({"action":"insert-stat"}),
+                "margo-insert-video" => json!({"action":"insert-video"}),
+                "margo-insert-columns" => json!({"action":"insert-columns"}),
+                "margo-insert-math" => json!({"action":"insert-math"}),
+                "margo-insert-chart" => json!({"action":"insert-chart"}),
+                "margo-insert-mermaid" => json!({"action":"insert-mermaid"}),
+                "margo-insert-callout" => json!({"action":"insert-callout"}),
+                "margo-insert-github-repo" => json!({"action":"insert-github-repo"}),
                 "margo-export-html" => json!({"action":"export","format":"html"}),
                 "margo-export-pdf" => json!({"action":"export","format":"pdf"}),
                 "margo-export-pptx" => json!({"action":"export","format":"pptx"}),
@@ -1432,6 +1525,7 @@ fn main() {
             choose_path,
             preview_layout,
             recent_projects,
+            set_project_upgrade_enabled,
             omarchy_palette,
             close_app
         ])

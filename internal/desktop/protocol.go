@@ -85,14 +85,23 @@ type ThemeInfo struct {
 }
 
 type Snapshot struct {
-	Root          string      `json:"root"`
-	Title         string      `json:"title"`
-	Theme         string      `json:"theme"`
-	Revision      string      `json:"revision"`
-	Slides        []Slide     `json:"slides"`
-	Formats       []string    `json:"formats"`
-	SupportsTiles bool        `json:"supports_tiles"`
-	Themes        []ThemeInfo `json:"themes"`
+	Root               string      `json:"root"`
+	Title              string      `json:"title"`
+	Theme              string      `json:"theme"`
+	Revision           string      `json:"revision"`
+	Slides             []Slide     `json:"slides"`
+	Formats            []string    `json:"formats"`
+	SupportsTiles      bool        `json:"supports_tiles"`
+	SupportsFigure     bool        `json:"supports_figure"`
+	SupportsStat       bool        `json:"supports_stat"`
+	SupportsVideo      bool        `json:"supports_video"`
+	SupportsColumns    bool        `json:"supports_columns"`
+	SupportsMath       bool        `json:"supports_math"`
+	SupportsChart      bool        `json:"supports_chart"`
+	SupportsMermaid    bool        `json:"supports_mermaid"`
+	SupportsCallout    bool        `json:"supports_callout"`
+	SupportsGitHubRepo bool        `json:"supports_github_repo"`
+	Themes             []ThemeInfo `json:"themes"`
 }
 
 type Slide struct {

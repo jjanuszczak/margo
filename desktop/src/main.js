@@ -1,5 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { MathfieldElement } from 'mathlive';
+import { Chart, BarController, BarElement, LineController, LineElement, PointElement, ArcElement, PieController, DoughnutController, RadarController, RadialLinearScale, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js';
+import DOMPurify from 'dompurify';
 import { createSourceEditor } from './source-editor.js';
 import { editorThemes, resolveAppearance, resolveEditorTheme, readPreference, savePreference } from './appearance.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -7,6 +10,10 @@ import { reconcileBuffer, selectedAfterRefresh, isDirty, fitSlideRect } from './
 import logoDark from '../../assets/new-logo-dark-bg.png';
 import logoLight from '../../assets/new-logo-light-bg.png';
 import './style.css';
+
+MathfieldElement.fontsDirectory = new URL('/mathlive-assets/fonts/', window.location.href).href;
+MathfieldElement.soundsDirectory = new URL('/mathlive-assets/sounds/', window.location.href).href;
+Chart.register(BarController,BarElement,LineController,LineElement,PointElement,ArcElement,PieController,DoughnutController,RadarController,RadialLinearScale,CategoryScale,LinearScale,Tooltip,Legend);
 
 
 const $ = id => document.getElementById(id);
@@ -150,9 +157,9 @@ async function request(op, params={}) {
 }
 async function act(fn) {
  if(busy)return;busy=true;updateSaveState();
- for(const id of ['new-project','open','open-archive','empty-new','empty-open','empty-open-archive','themes','agent-skills','ai-chat','tile-content','add','duplicate','delete','move-up','move-down','source','slides','overview','present','media','new-note','preview-notes'])$(id).inert=true;
+ for(const id of ['new-project','open','open-archive','empty-new','empty-open','empty-open-archive','themes','upgrade-project','agent-skills','ai-chat','insert-menu','tile-content','figure-content','stat-content','video-content','columns-content','math-content','chart-content','mermaid-content','callout-content','github-repo-content','add','duplicate','delete','move-up','move-down','source','slides','overview','present','media','new-note','preview-notes'])$(id).inert=true;
  try{await fn();}catch(error){status(error.message||String(error));console.error(error);}
- finally{busy=false;for(const id of ['new-project','open','open-archive','empty-new','empty-open','empty-open-archive','themes','agent-skills','ai-chat','tile-content','add','duplicate','delete','move-up','move-down','source','slides','overview','present','media','new-note','preview-notes'])$(id).inert=false;updateSaveState();}
+ finally{busy=false;for(const id of ['new-project','open','open-archive','empty-new','empty-open','empty-open-archive','themes','upgrade-project','agent-skills','ai-chat','insert-menu','tile-content','figure-content','stat-content','video-content','columns-content','math-content','chart-content','mermaid-content','callout-content','github-repo-content','add','duplicate','delete','move-up','move-down','source','slides','overview','present','media','new-note','preview-notes'])$(id).inert=false;updateSaveState();}
 }
 $('dialog-cancel').onclick=()=>$('dialog').close('cancel');
 function dialog(title, description, initial, comparison) {
@@ -187,6 +194,18 @@ function updateNotesControl(){
  const button=$('preview-notes');button.disabled=!currentSlide()?.notes.length;button.textContent=notesPreview?'Back to slide':'Preview notes';button.classList.toggle('active',notesPreview);
 }
 function currentSlide(){return snapshot?.slides.find(s=>s.id===selected);}
+function updateInsertTitles(){
+ $('tile-content').title=snapshot?.supports_tiles?'Insert a nested tile composition':'Theme does not provide the nested tile shortcodes';
+ $('figure-content').title=snapshot?.supports_figure?'Insert an image figure':'Theme does not provide the figure shortcode';
+ $('stat-content').title=snapshot?.supports_stat?'Insert a statistic':'Theme does not provide the stat shortcode';
+ $('video-content').title=snapshot?.supports_video?'Insert a video':'Theme does not provide the video shortcode';
+ $('columns-content').title=snapshot?.supports_columns?'Insert a column composition':'Theme does not provide both columns shortcodes';
+ $('math-content').title=snapshot?.supports_math?'Insert a math equation':'Theme does not provide the math shortcode';
+ $('chart-content').title=snapshot?.supports_chart?'Insert a Chart.js chart':'Theme does not provide the chart shortcode and runtime';
+ $('mermaid-content').title=snapshot?.supports_mermaid?'Insert a Flowchart':'Theme does not provide the Mermaid shortcode';
+ $('callout-content').title=snapshot?.supports_callout?'Insert a callout':'Theme does not provide the callout shortcode';
+ $('github-repo-content').title=snapshot?.supports_github_repo?'Insert a GitHub repository card':'Theme does not provide the github-repo shortcode';
+}
 function renderSourceOptions() {
  const slide=currentSlide();$('source').replaceChildren();if(!slide)return;
  const option=(value,label)=>{const o=document.createElement('option');o.value=value;o.textContent=label;$('source').append(o);};
@@ -236,11 +255,11 @@ async function openProject(root,destination) {
  $('project').firstElementChild.textContent=snapshot.title||'Untitled deck';$('project').lastElementChild.textContent=`${snapshot.root} · ${snapshot.theme}`;$('project').title=snapshot.root;
  renderThemes();
  for(const id of ['overview','present','add','themes'])$(id).disabled=false;
- $('agent-skills').disabled=false;$('ai-chat').disabled=false;$('tile-content').disabled=false;
- $('tile-content').title=snapshot.supports_tiles?'Insert a nested tile composition':'Theme does not provide the nested tile shortcodes';
+ $('agent-skills').disabled=false;$('ai-chat').disabled=false;$('tile-content').disabled=false;$('figure-content').disabled=false;$('stat-content').disabled=false;$('video-content').disabled=false;$('columns-content').disabled=false;$('math-content').disabled=false;$('chart-content').disabled=false;$('mermaid-content').disabled=false;$('callout-content').disabled=false;$('github-repo-content').disabled=false;
+ updateInsertTitles();
  renderNavigation();updateModes();if(selected)await selectSlide(selected);
  if(!$('assistant-panel').hidden){$('assistant-panel').hidden=true;setAssistantPaneOpen(false);await openAIChat();}
- await updateRecent(snapshot.root);await startThumbnails();status(`Opened ${snapshot.title} · ${snapshot.slides.length} slides`);
+ await updateRecent(snapshot.root);await refreshProjectUpgradeStatus();await startThumbnails();status(`Opened ${snapshot.title} · ${snapshot.slides.length} slides`);
 }
 async function pickProject(){const path=await invoke('choose_path',{kind:'project'});if(path)await openProject(path);}
 async function pickProjectConfig(){const path=await invoke('choose_path',{kind:'project-config'});if(path)await openProject(path);}
@@ -289,7 +308,7 @@ async function save() {
 }
 async function refreshSnapshot(){
  const {snapshot:next}=await request('snapshot');const index=snapshot?.slides.findIndex(s=>s.id===selected)||0;
- selected=selectedAfterRefresh(next.slides,selected,index);snapshot=next;renderNavigation();
+ selected=selectedAfterRefresh(next.slides,selected,index);snapshot=next;updateInsertTitles();renderNavigation();
  const path=buffer?.path;renderSourceOptions();if(path)$('source').value=path;
 }
 async function poll(){
@@ -330,7 +349,7 @@ async function renderPreview(){
  }catch(error){markStale('Preview failed · last successful render remains visible');throw error;}
 }
 let previewLayoutPending=false, previewLayoutAgain=false, pendingNavigation=false;
-function appModalOpen(){return ['dialog','skills-dialog','tiling-dialog','themes-dialog','theme-source-dialog','ai-connect-dialog','ai-change-dialog'].some(id=>$(id).open);}
+function appModalOpen(){return $('insert-menu').open||['dialog','skills-dialog','tiling-dialog','figure-dialog','stat-dialog','video-dialog','columns-dialog','math-dialog','chart-dialog','mermaid-dialog','callout-dialog','github-repo-dialog','themes-dialog','theme-source-dialog','ai-connect-dialog','ai-change-dialog'].some(id=>$(id).open);}
 async function syncPreview(navigate=false){
  pendingNavigation ||= navigate;
  if(previewLayoutPending){previewLayoutAgain=true;return;}
@@ -346,7 +365,8 @@ async function syncPreview(navigate=false){
   } while(previewLayoutAgain||pendingNavigation);
  }catch(error){if(previewURL)status('Preview window: '+error);}finally{previewLayoutPending=false;}
 }
-for(const id of ['dialog','skills-dialog','tiling-dialog','themes-dialog','theme-source-dialog','ai-change-dialog'])$(id).addEventListener('close',()=>requestAnimationFrame(()=>syncPreview()));
+for(const id of ['dialog','skills-dialog','tiling-dialog','figure-dialog','stat-dialog','video-dialog','columns-dialog','math-dialog','chart-dialog','mermaid-dialog','callout-dialog','github-repo-dialog','themes-dialog','theme-source-dialog','ai-change-dialog'])$(id).addEventListener('close',()=>requestAnimationFrame(()=>syncPreview()));
+$('insert-menu').addEventListener('toggle',()=>requestAnimationFrame(()=>syncPreview()));
 function updateModes(){
  $('empty').hidden=!!snapshot;$('workspace').hidden=!snapshot||overview;$('grid').hidden=!snapshot||!overview;
  $('overview').classList.toggle('active',overview);$('presentation').hidden=!presentation;requestAnimationFrame(()=>syncPreview());
@@ -426,6 +446,274 @@ $('tile-content').onclick=()=>act(async()=>{
  const source=composeTiles(tilingLayout,count,ratio,trackCount)+'\n';
  editor.insert('\n'+source);editor.focus();await save();status('Tiling source inserted · edit the Markdown placeholders');
 });
+let figureSourcePath='';
+const figureDialog=$('figure-dialog'),statDialog=$('stat-dialog'),videoDialog=$('video-dialog'),columnsDialog=$('columns-dialog'),mathDialog=$('math-dialog'),chartDialog=$('chart-dialog'),mermaidDialog=$('mermaid-dialog'),calloutDialog=$('callout-dialog'),githubRepoDialog=$('github-repo-dialog');
+function shortcodeParam(value){return String(value).replace(/[\r\n]+/g,' ').replaceAll('\\','\\\\').replaceAll('"','\\"').trim();}
+function shortcodeTag(name,params){return '{{< '+name+' '+Object.entries(params).map(([key,value])=>key+'="'+shortcodeParam(value)+'"').join(' ')+' />}}';}
+function awaitDialogClose(element){return new Promise(resolve=>element.addEventListener('close',()=>resolve(element.returnValue),{once:true}));}
+async function insertGeneratedSource(source,label){
+ editor.insert('\n'+source+'\n');editor.focus();await save();status(label+' source inserted and saved');
+}
+async function insertFigure(){
+ if(!currentSlide()||notesPreview||buffer?.path!==currentSlide().path){status('Select the slide Markdown source before inserting a figure.');return;}
+ if(!snapshot?.supports_figure){status('This theme does not provide the figure shortcode. Add figure shortcode support to the active theme first.');return;}
+ if(!await resolveDirty())return;
+ figureSourcePath='';$('figure-file').textContent='No image selected';$('figure-error').hidden=true;$('figure-alt').value='';$('figure-caption').value='';$('figure-credit').value='';$('figure-fit').value='';
+ figureDialog.returnValue='';figureDialog.showModal();$('figure-alt').focus();syncPreview();
+ const result=await awaitDialogClose(figureDialog);if(result!=='insert')return;
+ const alt=$('figure-alt').value.trim();if(!figureSourcePath||!alt)return;
+ const imported=await request('media',{slide:selected,source:figureSourcePath,revision:snapshot.revision});
+ const asset=imported.markdown.match(/\]\(([^)]+)\)/)?.[1];if(!asset)throw new Error('Could not identify the imported image asset');
+ const params={src:decodeURIComponent(asset),alt};
+ for(const [key,id] of [['caption','figure-caption'],['credit','figure-credit'],['fit','figure-fit']]){const value=$(id).value.trim();if(value)params[key]=value;}
+ await insertGeneratedSource(shortcodeTag('figure',params),'Figure');
+}
+async function insertStat(){
+ if(!currentSlide()||notesPreview||buffer?.path!==currentSlide().path){status('Select the slide Markdown source before inserting a stat.');return;}
+ if(!snapshot?.supports_stat){status('This theme does not provide the stat shortcode. Add stat shortcode support to the active theme first.');return;}
+ if(!await resolveDirty())return;
+ $('stat-error').hidden=true;$('stat-value').value='';$('stat-label').value='';$('stat-detail').value='';statDialog.returnValue='';statDialog.showModal();$('stat-value').focus();syncPreview();
+ const result=await awaitDialogClose(statDialog);if(result!=='insert')return;
+ const value=$('stat-value').value.trim(),label=$('stat-label').value.trim();if(!value||!label)return;
+ const params={value,label},detail=$('stat-detail').value.trim();if(detail)params.detail=detail;
+ await insertGeneratedSource(shortcodeTag('stat',params),'Stat');
+}
+function composeColumns(count){
+ const columns=Array.from({length:count},(_,index)=>'{{< column >}}\nAdd content for column '+(index+1)+' here.\n{{< /column >}}');
+ return '{{< columns >}}\n'+columns.join('\n')+'\n{{< /columns >}}';
+}
+async function importSlideMedia(path,type){
+ const result=await request('media',{slide:selected,source:path,revision:snapshot.revision});
+ const asset=type==='video'?result.markdown.match(/src="([^"]+)"/)?.[1]:result.markdown.match(/\]\(([^)]+)\)/)?.[1];
+ if(!asset)throw new Error('Could not identify the imported '+type+' asset');
+ await refreshSnapshot();
+ return decodeURIComponent(asset);
+}
+let videoSourcePath='',videoPosterPath='';
+async function insertVideo(){
+ if(!currentSlide()||notesPreview||buffer?.path!==currentSlide().path){status('Select the slide Markdown source before inserting a video.');return;}
+ if(!snapshot?.supports_video){status('This theme does not provide the video shortcode. Add video shortcode support to the active theme first.');return;}
+ if(!await resolveDirty())return;
+ videoSourcePath='';videoPosterPath='';$('video-file').textContent='No video selected';$('video-poster-file').textContent='No poster selected';$('video-poster-clear').hidden=true;$('video-url').value='';$('video-caption').value='';$('video-error').hidden=true;$('video-source-kind').value='url';
+ $('video-url-row').hidden=false;$('video-file-row').hidden=true;videoDialog.returnValue='';videoDialog.showModal();$('video-url').focus();syncPreview();
+ const result=await awaitDialogClose(videoDialog);if(result!=='insert')return;
+ let src;
+ if($('video-source-kind').value==='local')src=await importSlideMedia(videoSourcePath,'video');
+ else src=$('video-url').value.trim();
+ const params={src};if(videoPosterPath)params.poster=await importSlideMedia(videoPosterPath,'image');
+ const caption=$('video-caption').value.trim();if(caption)params.caption=caption;
+ await insertGeneratedSource(shortcodeTag('video',params),'Video');
+}
+async function insertColumns(){
+ if(!currentSlide()||notesPreview||buffer?.path!==currentSlide().path){status('Select the slide Markdown source before inserting columns.');return;}
+ if(!snapshot?.supports_columns){status('This theme does not provide both columns shortcodes. Add columns and column shortcode support to the active theme first.');return;}
+ if(!await resolveDirty())return;
+ $('columns-count').value='2';$('columns-error').hidden=true;columnsDialog.returnValue='';columnsDialog.showModal();$('columns-count').focus();syncPreview();
+ const result=await awaitDialogClose(columnsDialog);if(result!=='insert')return;
+ await insertGeneratedSource(composeColumns(Number($('columns-count').value)),'Columns');
+}
+async function insertMath(){
+ if(!currentSlide()||notesPreview||buffer?.path!==currentSlide().path){status('Select the slide Markdown source before inserting an equation.');return;}
+ if(!snapshot?.supports_math){status('This theme does not provide the math shortcode. Add math shortcode support to the active theme first.');return;}
+ if(!await resolveDirty())return;
+ const mathField=$('math-editor');mathField.value='';$('math-caption').value='';$('math-error').hidden=true;mathDialog.returnValue='';window.mathVirtualKeyboard.container=mathDialog;mathDialog.showModal();requestAnimationFrame(()=>mathField.focus());syncPreview();
+ const result=await awaitDialogClose(mathDialog);if(result!=='insert')return;
+ const latex=mathField.value.trim();if(!latex)return;
+ const caption=$('math-caption').value.trim();const header=caption?'{{< math caption="'+shortcodeParam(caption)+'" >}}':'{{< math >}}';
+ await insertGeneratedSource(header+'\n'+latex+'\n{{< /math >}}','Math');
+}
+const chartPalette=['#4db6ac','#5b8def','#f39c6b','#9b7ede','#e26f8c','#91b85e','#d6a63e','#54a9c8'];
+let chartPreview=null;
+function appendChartRow(label='',value=''){
+ const row=document.createElement('tr');
+ const labelCell=document.createElement('td'),valueCell=document.createElement('td'),removeCell=document.createElement('td');
+ const labelInput=document.createElement('input');labelInput.type='text';labelInput.value=label;labelInput.placeholder='Category';labelInput.setAttribute('aria-label','Data point label');
+ const valueInput=document.createElement('input');valueInput.type='number';valueInput.step='any';valueInput.value=value;valueInput.placeholder='0';valueInput.setAttribute('aria-label','Data point value');
+ const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.title='Remove data point';remove.setAttribute('aria-label','Remove data point');
+ remove.onclick=()=>{row.remove();refreshChartPreview();};
+ labelInput.oninput=refreshChartPreview;valueInput.oninput=refreshChartPreview;
+ labelCell.append(labelInput);valueCell.append(valueInput);removeCell.append(remove);row.append(labelCell,valueCell,removeCell);$('chart-data-rows').append(row);
+}
+function chartConfiguration(){
+ const type=$('chart-type').value,rows=[...$('chart-data-rows').rows];
+ if(!rows.length)throw new Error('Add at least one data point.');
+ const labels=[],values=[];
+ for(const row of rows){
+  const label=row.cells[0].querySelector('input').value.trim(),raw=row.cells[1].querySelector('input').value;
+  if(!label)throw new Error('Each data point needs a label.');
+  if(raw===''||!Number.isFinite(Number(raw)))throw new Error('Enter a numeric value for every data point.');
+  labels.push(label);values.push(Number(raw));
+ }
+ const dataset={label:$('chart-series-label').value.trim()||'Series 1',data:values};
+ if(type==='pie'||type==='doughnut'){
+  dataset.backgroundColor=values.map((_,index)=>chartPalette[index%chartPalette.length]);dataset.borderColor='#ffffff';dataset.borderWidth=2;
+ }else{
+  const color=chartPalette[0];dataset.borderColor=color;dataset.backgroundColor=type==='line'||type==='radar'?'rgba(77, 182, 172, 0.22)':color;
+  if(type==='line'){dataset.fill=false;dataset.tension=0.25;}
+  if(type==='radar'){dataset.fill=true;dataset.pointBackgroundColor=color;}
+ }
+ return {type,data:{labels,datasets:[dataset]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:$('chart-legend').checked}}}};
+}
+function refreshChartPreview(){
+ const error=$('chart-error');error.hidden=true;error.textContent='';
+ let config;
+ try{config=chartConfiguration();}catch(problem){error.textContent=problem.message;error.hidden=false;if(chartPreview){chartPreview.destroy();chartPreview=null;}return;}
+ const canvas=$('chart-preview-canvas');canvas.parentElement.style.height=Math.max(180,Math.min(600,Number($('chart-height').value)||320))+'px';
+ if(chartPreview)chartPreview.destroy();
+ chartPreview=new Chart(canvas.getContext('2d'),config);
+}
+async function insertChart(){
+ if(!currentSlide()||notesPreview||buffer?.path!==currentSlide().path){status('Select the slide Markdown source before inserting a chart.');return;}
+ if(!snapshot?.supports_chart){status('This theme does not provide the chart shortcode and Chart.js runtime. Add chart support to the active theme first.');return;}
+ if(!await resolveDirty())return;
+ $('chart-type').value='bar';$('chart-series-label').value='Series 1';$('chart-height').value='320';$('chart-caption').value='';$('chart-legend').checked=true;$('chart-data-rows').replaceChildren();$('chart-error').hidden=true;
+ appendChartRow('Category 1','12');appendChartRow('Category 2','19');appendChartRow('Category 3','8');
+ chartDialog.returnValue='';chartDialog.showModal();requestAnimationFrame(()=>refreshChartPreview());syncPreview();
+ const result=await awaitDialogClose(chartDialog);if(result!=='insert')return;
+ const config=chartConfiguration(),params={height:(Number($('chart-height').value)||320)+'px'},caption=$('chart-caption').value.trim();if(caption)params.caption=caption;
+ const header='{{< chart '+Object.entries(params).map(([key,value])=>key+'="'+shortcodeParam(value)+'"').join(' ')+' >}}';
+ await insertGeneratedSource(header+'\n'+JSON.stringify(config,null,2)+'\n{{< /chart >}}','Chart');
+}
+$('chart-type').onchange=()=>{const pie=['pie','doughnut'].includes($('chart-type').value);$('chart-series-label').disabled=pie;refreshChartPreview();};
+$('chart-series-label').oninput=refreshChartPreview;$('chart-height').oninput=refreshChartPreview;$('chart-legend').onchange=refreshChartPreview;$('chart-caption').oninput=()=>{};
+$('chart-add-row').onclick=()=>{appendChartRow('','');$('chart-data-rows').lastElementChild.querySelector('input').focus();};
+$('chart-cancel').onclick=()=>chartDialog.close('cancel');
+$('chart-insert').onclick=()=>{try{chartConfiguration();chartDialog.close('insert');}catch(error){$('chart-error').textContent=error.message;$('chart-error').hidden=false;}};
+chartDialog.addEventListener('close',()=>{if(chartPreview){chartPreview.destroy();chartPreview=null;}});
+const mermaidTemplates={
+ flowchart:'flowchart LR\n  visitor[Visitor] --> request{Choose a plan}\n  request -->|Starter| starter[Starter plan]\n  request -->|Team| team[Team plan]\n  starter --> checkout[Complete checkout]\n  team --> invite[Invite teammates]\n  invite --> checkout\n  checkout --> active([Account active])',
+ sequence:'sequenceDiagram\n  autonumber\n  actor Customer\n  participant App as Margo app\n  participant Engine as Margo engine\n  Customer->>App: Choose Insert > Flowchart\n  App->>Engine: Check shortcode support\n  Engine-->>App: Theme supports Flowchart\n  App-->>Customer: Open source editor\n  Customer->>App: Insert diagram\n  App-->>Customer: Add editable shortcode',
+ class:'classDiagram\n  classDef service fill:#e8f1ff,stroke:#3569a8,color:#16324f\n  class Account {\n    +string name\n    +string email\n    +activate()\n  }\n  class Project {\n    +string title\n    +addSlide()\n  }\n  class Slide {\n    +string title\n    +render()\n  }\n  Account \"1\" --> \"many\" Project : owns\n  Project \"1\" *-- \"many\" Slide : contains\n  class Account,Project,Slide service',
+ state:'stateDiagram-v2\n  [*] --> Draft\n  Draft --> InReview: submit\n  InReview --> Draft: request changes\n  InReview --> Approved: approve\n  Approved --> Published: publish\n  Published --> Archived: archive\n  Archived --> [*]',
+ er:'erDiagram\n  CUSTOMER ||--o{ ORDER : places\n  ORDER ||--|{ ORDER_ITEM : contains\n  PRODUCT ||--o{ ORDER_ITEM : appears_in\n  CUSTOMER {\n    int customer_id PK\n    string name\n    string email UK\n  }\n  ORDER {\n    int order_id PK\n    date placed_on\n    string status\n  }\n  PRODUCT {\n    int product_id PK\n    string name\n    decimal unit_price\n  }',
+ gantt:'gantt\n  title Product launch plan\n  dateFormat YYYY-MM-DD\n  axisFormat %b %d\n  section Prepare\n  Confirm scope           :done, scope, 2026-01-05, 5d\n  Build first release     :active, build, after scope, 10d\n  section Launch\n  Run customer pilot      :pilot, after build, 7d\n  Publish release         :milestone, release, after pilot, 0d',
+ pie:'pie showData\n  title Sample budget allocation\n  \"Product\" : 42\n  \"Operations\" : 25\n  \"Marketing\" : 18\n  \"Reserve\" : 15',
+ git:'gitGraph\n  commit id: \"project start\"\n  branch feature/diagram-editor\n  checkout feature/diagram-editor\n  commit id: \"add editor\"\n  commit id: \"add preview\"\n  checkout main\n  commit id: \"release v1\" tag: \"v1.0\"\n  merge feature/diagram-editor id: \"merge feature\" tag: \"v1.1\"',
+ mindmap:'mindmap\n  root((Product launch))\n    Product\n      Core workflow\n      Quality checks\n      Documentation\n    Customers\n      Early access group\n      Feedback sessions\n    Launch\n      Release notes\n      Support plan',
+ timeline:'timeline\n  title Product release timeline\n  2025 Q4 : Confirm customer needs\n          : Agree on scope\n  2026 Q1 : Build the first release\n          : Test with early users\n  2026 Q2 : Publish launch materials\n          : Release to customers',
+ quadrant:'quadrantChart\n  title Prioritize this quarter\n  x-axis Low effort --> High effort\n  y-axis Low impact --> High impact\n  quadrant-1 Plan next\n  quadrant-2 Do first\n  quadrant-3 Revisit later\n  quadrant-4 Quick wins\n  Onboarding guide: [0.25, 0.82]\n  Export polish: [0.78, 0.71]\n  Color presets: [0.24, 0.31]\n  Shortcut keys: [0.74, 0.34]',
+ xychart:'xychart-beta\n  title \"Monthly active users\"\n  x-axis [Jan, Feb, Mar, Apr, May, Jun]\n  y-axis \"Users (thousands)\" 0 --> 60\n  bar [12, 18, 27, 31, 42, 53]\n  line [10, 16, 24, 35, 39, 50]',
+ sankey:'sankey-beta\n  Website visitors,Product page,420\n  Website visitors,Help center,180\n  Product page,Started trial,160\n  Product page,Left site,260\n  Help center,Started trial,45\n  Help center,Left site,135\n  Started trial,Converted,72\n  Started trial,Not converted,133',
+};
+let mermaidRenderTimer=0,mermaidRenderVersion=0,mermaidRenderValid=false,mermaidPromise=null;
+async function renderMermaidPreview(){
+ const source=$('mermaid-source').value.trim(),version=++mermaidRenderVersion,preview=$('mermaid-preview'),error=$('mermaid-error');
+ mermaidRenderValid=false;error.hidden=true;error.textContent='';
+ if(!source){preview.replaceChildren();preview.textContent='Enter Mermaid source to see a preview.';return false;}
+ preview.textContent='Rendering preview…';
+ try{
+  if(!mermaidPromise)mermaidPromise=import('mermaid').then(module=>module.default);
+  const mermaid=await mermaidPromise;
+  mermaid.initialize({startOnLoad:false,securityLevel:'strict',theme:getComputedStyle(document.documentElement).colorScheme==='dark'?'dark':'default'});
+  const {svg}=await mermaid.render('margo-mermaid-preview-'+version,source);
+  if(version!==mermaidRenderVersion)return false;
+  preview.innerHTML=DOMPurify.sanitize(svg,{USE_PROFILES:{svg:true,svgFilters:true}});mermaidRenderValid=true;return true;
+ }catch(problem){
+  if(version!==mermaidRenderVersion)return false;
+  preview.replaceChildren();preview.textContent='Fix the diagram source to see its preview.';error.textContent=String(problem?.message||problem).split('\n')[0].slice(0,500);error.hidden=false;return false;
+ }
+}
+function scheduleMermaidPreview(){
+ clearTimeout(mermaidRenderTimer);mermaidRenderVersion++;mermaidRenderValid=false;$('mermaid-error').hidden=true;$('mermaid-preview').textContent='Updating preview…';
+ mermaidRenderTimer=setTimeout(()=>renderMermaidPreview(),350);
+}
+async function insertMermaid(){
+ if(!currentSlide()||notesPreview||buffer?.path!==currentSlide().path){status('Select the slide Markdown source before inserting a Mermaid diagram.');return;}
+ if(!snapshot?.supports_mermaid){status('This theme does not provide the Mermaid shortcode. Add Mermaid shortcode support to the active theme first.');return;}
+ if(!await resolveDirty())return;
+ clearTimeout(mermaidRenderTimer);$('mermaid-template').value='flowchart';$('mermaid-source').value=mermaidTemplates.flowchart;$('mermaid-caption').value='';$('mermaid-align').value='center';$('mermaid-error').hidden=true;mermaidDialog.returnValue='';mermaidDialog.showModal();syncPreview();
+ requestAnimationFrame(()=>renderMermaidPreview());
+ const result=await awaitDialogClose(mermaidDialog);if(result!=='insert')return;
+ const source=$('mermaid-source').value.trim(),params={};const caption=$('mermaid-caption').value.trim(),align=$('mermaid-align').value;
+ if(caption)params.caption=caption;if(align!=='center')params.align=align;
+ const header=Object.keys(params).length?'{{< mermaid '+Object.entries(params).map(([key,value])=>key+'="'+shortcodeParam(value)+'"').join(' ')+' >}}':'{{< mermaid >}}';
+ await insertGeneratedSource(header+'\n'+source+'\n{{< /mermaid >}}','Mermaid');
+}
+async function insertCallout(){
+ if(!currentSlide()||notesPreview||buffer?.path!==currentSlide().path){status('Select the slide Markdown source before inserting a callout.');return;}
+ if(!snapshot?.supports_callout){status('This theme does not provide the callout shortcode. Add callout shortcode support to the active theme first.');return;}
+ if(!await resolveDirty())return;
+ $('callout-tone').value='info';$('callout-body').value='Add the key point here.';$('callout-error').hidden=true;calloutDialog.returnValue='';calloutDialog.showModal();$('callout-body').focus();syncPreview();
+ const result=await awaitDialogClose(calloutDialog);if(result!=='insert')return;
+ const tone=$('callout-tone').value,body=$('callout-body').value.trim();if(!body)return;
+ await insertGeneratedSource('{{< callout tone="'+shortcodeParam(tone)+'" >}}\n'+body+'\n{{< /callout >}}','Callout');
+}
+async function insertGitHubRepo(){
+ if(!currentSlide()||notesPreview||buffer?.path!==currentSlide().path){status('Select the slide Markdown source before inserting a GitHub repo card.');return;}
+ if(!snapshot?.supports_github_repo){status('This theme does not provide the github-repo shortcode. Add github-repo shortcode support to the active theme first.');return;}
+ if(!await resolveDirty())return;
+ $('github-repo-name').value='';$('github-repo-caption').value='';$('github-repo-class').value='';$('github-repo-error').hidden=true;githubRepoDialog.returnValue='';githubRepoDialog.showModal();$('github-repo-name').focus();syncPreview();
+ const result=await awaitDialogClose(githubRepoDialog);if(result!=='insert')return;
+ const repo=$('github-repo-name').value.trim(),params={repo},caption=$('github-repo-caption').value.trim(),extraClass=$('github-repo-class').value.trim();
+ if(caption)params.caption=caption;if(extraClass)params.class=extraClass;
+ await insertGeneratedSource(shortcodeTag('github-repo',params),'GitHub repo');
+}
+$('mermaid-source').oninput=scheduleMermaidPreview;
+$('mermaid-template').onchange=()=>{$('mermaid-source').value=mermaidTemplates[$('mermaid-template').value]||mermaidTemplates.flowchart;scheduleMermaidPreview();$('mermaid-source').focus();};
+$('mermaid-cancel').onclick=()=>mermaidDialog.close('cancel');
+$('mermaid-insert').onclick=async()=>{clearTimeout(mermaidRenderTimer);if(await renderMermaidPreview())mermaidDialog.close('insert');};
+mermaidDialog.addEventListener('close',()=>{clearTimeout(mermaidRenderTimer);mermaidRenderValid=false;$('mermaid-preview').replaceChildren();});
+$('callout-cancel').onclick=()=>calloutDialog.close('cancel');
+$('callout-insert').onclick=()=>{if(!$('callout-body').value.trim()){$('callout-error').textContent='Enter the callout text.';$('callout-error').hidden=false;return;}calloutDialog.close('insert');};
+$('github-repo-cancel').onclick=()=>githubRepoDialog.close('cancel');
+$('github-repo-insert').onclick=()=>{const repo=$('github-repo-name').value.trim();if(!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)){$('github-repo-error').textContent='Enter a repository as owner/name, using letters, numbers, dots, underscores, or hyphens.';$('github-repo-error').hidden=false;return;}githubRepoDialog.close('insert');};
+$('video-source-kind').onchange=()=>{
+ const local=$('video-source-kind').value==='local';$('video-url-row').hidden=local;$('video-file-row').hidden=!local;$('video-error').hidden=true;
+};
+$('video-choose').onclick=async()=>{
+ try{const path=await invoke('choose_path',{kind:'video'});if(path){videoSourcePath=path;$('video-file').textContent=path.split(/[\\/]/).pop();}}
+ catch(error){status(error.message||String(error));}
+};
+$('video-poster-choose').onclick=async()=>{
+ try{const path=await invoke('choose_path',{kind:'image'});if(path){videoPosterPath=path;$('video-poster-file').textContent=path.split(/[\\/]/).pop();$('video-poster-clear').hidden=false;}}
+ catch(error){status(error.message||String(error));}
+};
+$('video-poster-clear').onclick=()=>{videoPosterPath='';$('video-poster-file').textContent='No poster selected';$('video-poster-clear').hidden=true;};
+$('video-cancel').onclick=()=>videoDialog.close('cancel');
+$('video-insert').onclick=()=>{
+ const local=$('video-source-kind').value==='local',value=$('video-url').value.trim();let error='';
+ if(local&&!videoSourcePath)error='Choose a local video file.';
+ if(!local){try{const url=new URL(value);if(!['http:','https:'].includes(url.protocol))error='Use an http or https video URL.';}catch{error='Enter a valid http or https video URL.';}}
+ if(error){$('video-error').textContent=error;$('video-error').hidden=false;return;}
+ videoDialog.close('insert');
+};
+$('columns-cancel').onclick=()=>columnsDialog.close('cancel');
+$('columns-insert').onclick=()=>columnsDialog.close('insert');
+$('math-cancel').onclick=()=>mathDialog.close('cancel');
+$('math-insert').onclick=()=>{
+ if(!$('math-editor').value.trim()){$('math-error').textContent='Enter an equation before inserting.';$('math-error').hidden=false;return;}
+ mathDialog.close('insert');
+};
+mathDialog.addEventListener('close',()=>{
+ window.mathVirtualKeyboard.hide();
+ window.mathVirtualKeyboard.container=document.body;
+});
+$('figure-choose').onclick=async()=>{
+ try{const path=await invoke('choose_path',{kind:'image'});if(path){figureSourcePath=path;$('figure-file').textContent=path.split(/[\\/]/).pop();}}
+ catch(error){status(error.message||String(error));}
+};
+$('figure-cancel').onclick=()=>figureDialog.close('cancel');
+$('figure-insert').onclick=()=>{
+ const missing=[];if(!figureSourcePath)missing.push('choose an image');if(!$('figure-alt').value.trim())missing.push('enter alt text');
+ if(missing.length){$('figure-error').textContent='Please '+missing.join(' and ')+'.';$('figure-error').hidden=false;return;}
+ figureDialog.close('insert');
+};
+$('stat-cancel').onclick=()=>statDialog.close('cancel');
+$('stat-insert').onclick=()=>{
+ const missing=[];if(!$('stat-value').value.trim())missing.push('enter a value');if(!$('stat-label').value.trim())missing.push('enter a label');
+ if(missing.length){$('stat-error').textContent='Please '+missing.join(' and ')+'.';$('stat-error').hidden=false;return;}
+ statDialog.close('insert');
+};
+$('figure-content').onclick=()=>{ $('insert-menu').open=false;act(insertFigure); };
+$('stat-content').onclick=()=>{ $('insert-menu').open=false;act(insertStat); };
+$('video-content').onclick=()=>{ $('insert-menu').open=false;act(insertVideo); };
+$('columns-content').onclick=()=>{ $('insert-menu').open=false;act(insertColumns); };
+$('math-content').onclick=()=>{ $('insert-menu').open=false;act(insertMath); };
+$('chart-content').onclick=()=>{ $('insert-menu').open=false;act(insertChart); };
+$('mermaid-content').onclick=()=>{ $('insert-menu').open=false;act(insertMermaid); };
+$('callout-content').onclick=()=>{ $('insert-menu').open=false;act(insertCallout); };
+$('github-repo-content').onclick=()=>{ $('insert-menu').open=false;act(insertGitHubRepo); };
+$('tile-content').addEventListener('click',()=>{$('insert-menu').open=false;});
 $('agent-skills').onclick=()=>act(()=>showProjectSkills());
 $('ai-chat').onclick=()=>openAIChat();
 let agentSkills=[];
@@ -471,7 +759,7 @@ $('skills-copy').onclick=async()=>{
  try{await navigator.clipboard.writeText($('skills-content').value);$('skills-dialog').close();status('Complete agent prompt copied. Paste it into an agent with access to this deck folder.');}
  catch{$('skills-content').focus();$('skills-content').select();status('Clipboard access is unavailable. The skill text is selected; copy it manually.');}
 };
-let aiRequest='', aiBusy=false, aiConversation=[], aiConnection=null, aiProjectGuidance='', aiProjectReferences='';
+let aiRequest='', aiBusy=false, aiConversation=[], aiConnection=null, aiProjectGuidance='', aiProjectReferences='', projectUpgradeAvailable=false;
 const aiKey=root=>'margo.ai-chat.'+(root||'new-deck');
 function readAIBool(key,fallback){try{const value=localStorage.getItem(key);return value===null?fallback:value==='true';}catch{return fallback;}}
 function drawAIConversation(){
@@ -612,9 +900,9 @@ async function openAIChat(){
  updateAIChatGate();$('ai-input').focus();syncPreview();
 }
 async function refreshAIProjectGuidance(){
- if(!snapshot){aiProjectGuidance='';aiProjectReferences='';$('ai-project-guidance').hidden=true;return;}
- let statusResult=null;try{statusResult=await request('upgrade-status');}catch(error){console.warn('Could not check project upgrade status:',error);}
- $('ai-project-guidance').hidden=!statusResult?.upgrade_available;
+ if(!snapshot){aiProjectGuidance='';aiProjectReferences='';$('ai-project-guidance').hidden=true;await refreshProjectUpgradeStatus();return;}
+ const upgradeAvailable=await refreshProjectUpgradeStatus();
+ $('ai-project-guidance').hidden=!upgradeAvailable;
  const read=async path=>{try{return (await request('ai-read',{path})).file?.content||'';}catch{return '';}};
  const [guidance,resources,theme]=await Promise.all([
   read('AGENTS.md'),
@@ -624,17 +912,26 @@ async function refreshAIProjectGuidance(){
  aiProjectGuidance=guidance.slice(0,24000);
  aiProjectReferences=[resources?`.agents/README.md\n${resources.slice(0,8000)}`:'',theme?`Active theme metadata (themes/${snapshot.theme}/theme.yaml)\n${theme.slice(0,8000)}`:''].filter(Boolean).join('\n\n');
 }
+async function refreshProjectUpgradeStatus(){
+ let statusResult=null;
+ if(snapshot){try{statusResult=await request('upgrade-status');}catch(error){console.warn('Could not check project upgrade status:',error);}}
+ projectUpgradeAvailable=!!statusResult?.upgrade_available;
+ const button=$('upgrade-project');button.disabled=!projectUpgradeAvailable;button.title=projectUpgradeAvailable?'Upgrade project to the latest Margo scaffold version':'Project is up to date';
+ try{await invoke('set_project_upgrade_enabled',{enabled:projectUpgradeAvailable});}catch(error){console.warn('Could not update the Projects menu:',error);}
+ return projectUpgradeAvailable;
+}
 async function upgradeProjectGuidance(){
- if(!snapshot)return;
+ if(!snapshot||!await refreshProjectUpgradeStatus())return;
  const plan=await request('upgrade-plan');
  const changes=plan.upgrade_changes||[];
  const description=changes.length?changes.map(change=>`${change.action.toUpperCase()}  ${change.path}  (${change.reason})`).join('\n'):'No scaffold files need changes.';
- const approved=await dialog('Review project upgrade',`Margo ${snapshot.root} has older project guidance. Review these planned changes. Customized files marked SKIP will be preserved.\n\n${description}\n\nMargo will back up files it updates under .margo-backups/ before applying the plan.`);
+ const approved=await dialog('Upgrade project',`Review the upgrade plan for ${snapshot.title||snapshot.root}. Margo will update managed project scaffold files and the project version in .margo/scaffold-manifest.yaml. Customized files marked SKIP will be preserved.\n\n${description}\n\nMargo will back up files it updates under .margo-backups/ before applying the plan.`);
  if(!approved)return;
  const result=await request('upgrade-apply');
  await refreshAIProjectGuidance();
- status(result.artifact?`Project guidance upgraded · backups: ${result.artifact}`:'Project guidance is up to date');
+ status(result.artifact?`Project upgraded · backups: ${result.artifact}`:'Project is up to date');
 }
+$('upgrade-project').onclick=()=>act(upgradeProjectGuidance);
 $('ai-upgrade-project').onclick=()=>act(upgradeProjectGuidance);
 function getAIContext(){
  const context=[];
@@ -786,6 +1083,7 @@ function renderThemes(){
 async function showThemes(){if(!snapshot)return;renderThemes();$('theme-error').hidden=true;$('theme-error').textContent='';$('theme-import-menu').open=false;$('themes-dialog').showModal();syncPreview();}
 async function refreshThemeResult(result){
  if(result.snapshot)snapshot=result.snapshot;
+ updateInsertTitles();
  thumbnailRevision='';thumbnailCursor=0;thumbnailsDone=true;thumbnails.clear();renderThemes();renderNavigation();
  $('project').lastElementChild.textContent=`${snapshot.root} · ${snapshot.theme}`;
  if(!$('assistant-panel').hidden)await refreshAIProjectGuidance();
@@ -893,6 +1191,17 @@ listen('margo-native-menu',event=>{
  else if(action==='open-project-archive')act(pickProjectArchive);
  else if(action==='open-project-config')act(pickProjectConfig);
  else if(action==='themes')act(showThemes);
+ else if(action==='upgrade-project')act(upgradeProjectGuidance);
+ else if(action==='insert-tiles')$('tile-content').click();
+ else if(action==='insert-figure')act(insertFigure);
+ else if(action==='insert-stat')act(insertStat);
+ else if(action==='insert-video')act(insertVideo);
+ else if(action==='insert-columns')act(insertColumns);
+ else if(action==='insert-math')act(insertMath);
+ else if(action==='insert-chart')act(insertChart);
+ else if(action==='insert-mermaid')act(insertMermaid);
+ else if(action==='insert-callout')act(insertCallout);
+ else if(action==='insert-github-repo')act(insertGitHubRepo);
  else if(action==='export'&&format)act(()=>exportDeck(format));
 }).catch(error=>status(String(error)));
 
