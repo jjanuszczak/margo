@@ -9,6 +9,7 @@
     "web:dev": "vite --host 127.0.0.1 --port 1420 --strictPort",
     "web:build": "vite build",
     "engine": "node scripts/build-engine.mjs",
+    "ai-sdk:spike": "node scripts/ai-sdk-spike.mjs",
     "test": "node --test src/*.test.js",
     "icons": "node scripts/build-icons.mjs"
   },
@@ -17,7 +18,11 @@
     "monaco-editor": "0.57.0"
   },
   "devDependencies": {
+    "@ai-sdk/anthropic": "^4.0.94",
+    "@ai-sdk/google": "^4.0.109",
+    "@ai-sdk/openai": "^4.0.106",
     "@tauri-apps/cli": "^2.8.0",
+    "ai": "^7.0.159",
     "vite": "^6.4.1"
   },
   "overrides": {

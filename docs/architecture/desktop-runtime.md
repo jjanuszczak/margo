@@ -35,6 +35,15 @@ navigate outside the Go session prefix or create another window. This design fol
 [Tauri's Linux iframe caveat](https://tauri.app/security/capabilities/) and uses its
 native child-webview API, currently behind Tauri's `unstable` feature.
 
+The native Rust layer also owns the Sign in with ChatGPT connection. It runs the
+PKCE authorization callback on loopback, verifies the returned OpenID token and
+ChatGPT plan-use scope. By default, the session-only option keeps OAuth tokens in
+Rust process memory and avoids Keychain prompts; persistent sign-in stores renewable
+credentials in the OS keychain when the user opts in. OAuth tokens never enter the
+webview or project files. ChatGPT plan requests use the public
+Responses API with `store: false`; API-key and compatible-provider requests continue
+through the configured Chat Completions endpoint.
+
 The Go HTTP listener binds to `127.0.0.1:0`. Its URL contains a random 192-bit token.
 It serves only completed generated files, checks Host, rejects writes, symlinks and
 directory listings, sets no-referrer/no-store headers, and has no JSON/API endpoints.
@@ -61,8 +70,14 @@ Messages are capped at 16 MiB. Errors carry `error`, structured `diagnostics`, a
 | `create-project` | destination `root`, `name`, optional `theme_repo` and `theme_ref` | scaffolded project `snapshot` |
 | `close` | | clear selected project scope |
 | `snapshot` | | `snapshot` |
-| `skills` | | project-local skill files and referenced Markdown |
+| `skills` | | skills and references read from the open project's `.agents/skills/`; also reports whether `AGENTS.md` is missing |
 | `read` | project-relative `path` | `file` |
+| `ai-read` | project-relative text-file `path` | bounded text `file`, confined to the open project; missing `AGENTS.md` directs the user to `margo upgrade` |
+| `ai-list` | optional project-relative directory `path` | up to 100 directory entries |
+| `ai-search` | text `query` | up to 20 matches across a bounded set of source files |
+| `ai-outline` | project-relative Markdown `path` | heading lines with source locations |
+| `ai-propose-edit` | project-relative `path` | current text and revision, or an empty `new` revision for a new file in an existing folder |
+| `ai-apply-edit` | `path`, replacement `content`, expected source revision | atomically replaced or created `file`; rejects changed files and paths outside config, slide Markdown, or the active theme |
 | `save` | `path`, full `content`, expected file `revision` | new `file` |
 | `preview` | `slide`, optional `presentation` or `notes`, selected note `path` | `preview` URL and diagnostics |
 | `create` | `name`, expected project `revision` | snapshot, `selected` ID |
@@ -90,6 +105,13 @@ excluded. Clean editor buffers reload external changes; dirty buffers preserve t
 base revision until explicit conflict reconciliation. Saving uses a same-directory
 temporary file, fsync, hash recheck, and atomic rename. Like ordinary local file editors,
 this is optimistic concurrency, not a filesystem lock against uncooperative writers.
+
+The assistant never writes directly. Its `propose_file_edit` tool stages a complete
+replacement in the trusted editor UI, where the user can compare the current and
+proposed contents. Only the explicit Apply action calls `ai-apply-edit`. Go checks
+the path, text size, symlink boundary, active-theme scope, and source revision again
+before an atomic replacement. New files can be created only inside an existing
+project folder and are published without replacing a path created after review.
 
 ## Performance evidence
 

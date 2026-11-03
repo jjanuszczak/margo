@@ -96,5 +96,6 @@ export function createSourceEditor(element, onChange) {
     setTheme(theme) { monaco.editor.setTheme(theme); },
     focus() { editor.focus(); },
     hasFocus() { return editor.hasTextFocus() || editor.hasWidgetFocus(); },
+    selectedText() { const selection = editor.getSelection(); return selection && !selection.isEmpty() ? editor.getModel()?.getValueInRange(selection) || '' : ''; },
   };
 }

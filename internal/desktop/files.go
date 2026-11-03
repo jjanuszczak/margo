@@ -81,6 +81,34 @@ func atomicWrite(path string, data []byte, mode fs.FileMode) error {
 	return os.Rename(f.Name(), path)
 }
 
+// atomicCreate publishes a completed file without replacing a path that appeared
+// after the assistant proposal was reviewed.
+func atomicCreate(path string, data []byte, mode fs.FileMode) error {
+	f, err := os.CreateTemp(filepath.Dir(path), ".margo-save-*")
+	if err != nil {
+		return err
+	}
+	temp := f.Name()
+	defer os.Remove(temp)
+	defer f.Close()
+	if err = f.Chmod(mode); err != nil {
+		return err
+	}
+	if _, err = f.Write(data); err != nil {
+		return err
+	}
+	if err = f.Sync(); err != nil {
+		return err
+	}
+	if err = f.Close(); err != nil {
+		return err
+	}
+	if err = os.Link(temp, path); err != nil {
+		return err
+	}
+	return nil
+}
+
 // projectRevision includes source and all engine inputs, including includes,
 // partials, shortcodes and manifests. Generated output and tool state are excluded.
 func projectRevision(root string) (string, error) {
