@@ -444,7 +444,9 @@ async fn chat_stream(
             {"type":"function","function":{"name":"list_project_directory","description":"List entries in a project directory using a project-relative path. Use an empty path for the project root.","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}}},
             {"type":"function","function":{"name":"search_project","description":"Search Markdown, config, theme, and source files in the open project.","parameters":{"type":"object","properties":{"query":{"type":"string"}},"required":["query"],"additionalProperties":false}}},
             {"type":"function","function":{"name":"get_file_outline","description":"Return Markdown headings for one file inside the open project.","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}}},
-            {"type":"function","function":{"name":"propose_file_edit","description":"Stage a replacement or new file in the project for user review. No disk write occurs until the user applies it in Margo. Use only project config, slide Markdown, or active-theme text files, and create files only inside existing folders.","parameters":{"type":"object","properties":{"path":{"type":"string"},"content":{"type":"string"}},"required":["path","content"],"additionalProperties":false}}}
+            {"type":"function","function":{"name":"propose_file_edit","description":"Stage a replacement or new file in the project for user review. No disk write occurs until the user applies it in Margo. Use only project config, slide Markdown, or active-theme text files, and create files only inside existing folders.","parameters":{"type":"object","properties":{"path":{"type":"string"},"content":{"type":"string"}},"required":["path","content"],"additionalProperties":false}}},
+            {"type":"function","function":{"name":"choose_project_location","description":"Open the native folder picker so the user can select where a new Margo deck should be created.","parameters":{"type":"object","properties":{},"additionalProperties":false}}},
+            {"type":"function","function":{"name":"create_margo_deck","description":"Create a new starter Margo deck, using the same scaffold as `margo new`. Only call after the user has asked to create a deck and confirmed the deck name and parent folder. The parent folder must be an existing absolute path; the new deck folder must not already exist.","parameters":{"type":"object","properties":{"name":{"type":"string"},"parent":{"type":"string"}},"required":["name","parent"],"additionalProperties":false}}}
         ])
     } else {
         Value::Null
@@ -532,6 +534,11 @@ async fn chat_stream(
                 "search_project" => ("ai-search", json!({"query":args["query"]})),
                 "get_file_outline" => ("ai-outline", json!({"path":args["path"]})),
                 "propose_file_edit" => ("ai-propose-edit", json!({"path":args["path"]})),
+                "choose_project_location" => ("", json!({})),
+                "create_margo_deck" => (
+                    "ai-create-project",
+                    json!({"name":args["name"],"root":args["parent"]}),
+                ),
                 _ => {
                     messages.push(json!({"role":"tool","tool_call_id":call["id"],"content":"Unsupported read-only tool"}));
                     continue;
@@ -541,16 +548,40 @@ async fn chat_stream(
                 "margo-chat-tool",
                 json!({"id":request.request_id,"name":name,"arguments":args}),
             );
-            let payload = json!({"protocol":1,"op":op,"root":"","path":params["path"],"query":params["query"]});
-            let engine_state = state.0.clone();
-            let result = tauri::async_runtime::spawn_blocking(move || {
-                let mut guard = engine_state.lock().map_err(|_| "Engine lock failed")?;
-                guard.as_mut().ok_or("Engine unavailable")?.call(payload)
-            })
-            .await
-            .map_err(|e| e.to_string())?
-            .unwrap_or_else(|e| json!({"error":e}));
-            let output = if name == "propose_file_edit" && result["file"].is_object() {
+            let result = if name == "choose_project_location" {
+                tauri::async_runtime::spawn_blocking(|| {
+                    rfd::FileDialog::new()
+                        .set_title("Choose where to create the Margo deck")
+                        .pick_folder()
+                        .map(|path| json!({"location":path.to_string_lossy()}))
+                        .unwrap_or_else(|| json!({"error":"No destination folder was selected."}))
+                })
+                .await
+                .map_err(|e| e.to_string())?
+            } else {
+                let payload = json!({"protocol":1,"op":op,"root":params["root"],"name":params["name"],"path":params["path"],"query":params["query"]});
+                let engine_state = state.0.clone();
+                tauri::async_runtime::spawn_blocking(move || {
+                    let mut guard = engine_state.lock().map_err(|_| "Engine lock failed")?;
+                    guard.as_mut().ok_or("Engine unavailable")?.call(payload)
+                })
+                .await
+                .map_err(|e| e.to_string())?
+                .unwrap_or_else(|e| json!({"error":e}))
+            };
+            let output = if result["error"].is_string() {
+                format!(
+                    "Failed: {}",
+                    result["error"].as_str().unwrap_or("Tool failed.")
+                )
+            } else if name == "choose_project_location" {
+                result["location"]
+                    .as_str()
+                    .map(str::to_string)
+                    .unwrap_or_else(|| "Failed: No destination folder was selected.".to_string())
+            } else if name == "create_margo_deck" {
+                result["project_path"].as_str().map(|path| format!("Created the Margo deck at {path}. The user can open that folder in Margo when ready.")).unwrap_or_else(|| result.to_string())
+            } else if name == "propose_file_edit" && result["file"].is_object() {
                 if let Some(content) = args["content"].as_str() {
                     if content.len() <= 512 * 1024 && !content.contains('\0') {
                         let _ = app.emit(
@@ -642,7 +673,9 @@ async fn chatgpt_chat_stream(
             {"type":"function","name":"list_project_directory","description":"List entries in a project directory using a project-relative path. Use an empty path for the project root.","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}},
             {"type":"function","name":"search_project","description":"Search Markdown, config, theme, and source files in the open project.","parameters":{"type":"object","properties":{"query":{"type":"string"}},"required":["query"],"additionalProperties":false}},
             {"type":"function","name":"get_file_outline","description":"Return Markdown headings for one file inside the open project.","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"],"additionalProperties":false}},
-            {"type":"function","name":"propose_file_edit","description":"Stage a replacement or new file in the project for user review. No disk write occurs until the user applies it in Margo. Use only project config, slide Markdown, or active-theme text files, and create files only inside existing folders.","parameters":{"type":"object","properties":{"path":{"type":"string"},"content":{"type":"string"}},"required":["path","content"],"additionalProperties":false}}
+            {"type":"function","name":"propose_file_edit","description":"Stage a replacement or new file in the project for user review. No disk write occurs until the user applies it in Margo. Use only project config, slide Markdown, or active-theme text files, and create files only inside existing folders.","parameters":{"type":"object","properties":{"path":{"type":"string"},"content":{"type":"string"}},"required":["path","content"],"additionalProperties":false}},
+            {"type":"function","name":"choose_project_location","description":"Open the native folder picker so the user can select where a new Margo deck should be created.","parameters":{"type":"object","properties":{},"additionalProperties":false}},
+            {"type":"function","name":"create_margo_deck","description":"Create a new starter Margo deck, using the same scaffold as `margo new`. Only call after the user has asked to create a deck and confirmed the deck name and parent folder. The parent folder must be an existing absolute path; the new deck folder must not already exist.","parameters":{"type":"object","properties":{"name":{"type":"string"},"parent":{"type":"string"}},"required":["name","parent"],"additionalProperties":false}}
         ])
     } else {
         Value::Null
@@ -784,6 +817,11 @@ async fn chatgpt_chat_stream(
                 "search_project" => ("ai-search", json!({"query":args["query"]})),
                 "get_file_outline" => ("ai-outline", json!({"path":args["path"]})),
                 "propose_file_edit" => ("ai-propose-edit", json!({"path":args["path"]})),
+                "choose_project_location" => ("", json!({})),
+                "create_margo_deck" => (
+                    "ai-create-project",
+                    json!({"name":args["name"],"root":args["parent"]}),
+                ),
                 _ => {
                     input.push(json!({"type":"function_call_output","call_id":call["call_id"],"output":"Unsupported read-only tool"}));
                     continue;
@@ -793,16 +831,40 @@ async fn chatgpt_chat_stream(
                 "margo-chat-tool",
                 json!({"id":request.request_id,"name":name,"arguments":args}),
             );
-            let payload = json!({"protocol":1,"op":op,"root":"","path":params["path"],"query":params["query"]});
-            let engine_state = state.0.clone();
-            let result = tauri::async_runtime::spawn_blocking(move || {
-                let mut guard = engine_state.lock().map_err(|_| "Engine lock failed")?;
-                guard.as_mut().ok_or("Engine unavailable")?.call(payload)
-            })
-            .await
-            .map_err(|error| error.to_string())?
-            .unwrap_or_else(|error| json!({"error":error}));
-            let result_text = if name == "propose_file_edit" && result["file"].is_object() {
+            let result = if name == "choose_project_location" {
+                tauri::async_runtime::spawn_blocking(|| {
+                    rfd::FileDialog::new()
+                        .set_title("Choose where to create the Margo deck")
+                        .pick_folder()
+                        .map(|path| json!({"location":path.to_string_lossy()}))
+                        .unwrap_or_else(|| json!({"error":"No destination folder was selected."}))
+                })
+                .await
+                .map_err(|error| error.to_string())?
+            } else {
+                let payload = json!({"protocol":1,"op":op,"root":params["root"],"name":params["name"],"path":params["path"],"query":params["query"]});
+                let engine_state = state.0.clone();
+                tauri::async_runtime::spawn_blocking(move || {
+                    let mut guard = engine_state.lock().map_err(|_| "Engine lock failed")?;
+                    guard.as_mut().ok_or("Engine unavailable")?.call(payload)
+                })
+                .await
+                .map_err(|error| error.to_string())?
+                .unwrap_or_else(|error| json!({"error":error}))
+            };
+            let result_text = if result["error"].is_string() {
+                format!(
+                    "Failed: {}",
+                    result["error"].as_str().unwrap_or("Tool failed.")
+                )
+            } else if name == "choose_project_location" {
+                result["location"]
+                    .as_str()
+                    .map(str::to_string)
+                    .unwrap_or_else(|| "Failed: No destination folder was selected.".to_string())
+            } else if name == "create_margo_deck" {
+                result["project_path"].as_str().map(|path| format!("Created the Margo deck at {path}. The user can open that folder in Margo when ready.")).unwrap_or_else(|| result.to_string())
+            } else if name == "propose_file_edit" && result["file"].is_object() {
                 if let Some(content) = args["content"].as_str() {
                     if content.len() <= 512 * 1024 && !content.contains('\0') {
                         let _ = app.emit(

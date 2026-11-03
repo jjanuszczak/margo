@@ -39,6 +39,7 @@ type Response struct {
 	Snapshot               *Snapshot                `json:"snapshot,omitempty"`
 	File                   *File                    `json:"file,omitempty"`
 	Preview                string                   `json:"preview,omitempty"`
+	ProjectPath            string                   `json:"project_path,omitempty"`
 	Selected               string                   `json:"selected,omitempty"`
 	Artifact               string                   `json:"artifact,omitempty"`
 	Markdown               string                   `json:"markdown,omitempty"`

@@ -185,6 +185,28 @@ func (e *Engine) handle(r Request) (Response, error) {
 		snapshot, err := e.snapshot()
 		return Response{Snapshot: snapshot}, err
 	}
+	if r.Op == "ai-create-project" {
+		name := strings.TrimSpace(r.Name)
+		if name == "" || name == "." || name == ".." || filepath.Base(name) != name || strings.ContainsAny(name, `/\\`) {
+			return Response{}, fmt.Errorf("provide a deck name without a folder path")
+		}
+		parent := strings.TrimSpace(r.Root)
+		if !filepath.IsAbs(parent) {
+			return Response{}, fmt.Errorf("choose an absolute destination folder")
+		}
+		info, err := os.Stat(parent)
+		if err != nil {
+			return Response{}, fmt.Errorf("destination folder is unavailable: %w", err)
+		}
+		if !info.IsDir() {
+			return Response{}, fmt.Errorf("destination must be a folder")
+		}
+		destination := filepath.Join(parent, name)
+		if err := scaffold.CreateDeck(scaffold.DeckOptions{Name: name, TargetDir: destination}); err != nil {
+			return Response{}, err
+		}
+		return Response{ProjectPath: destination}, nil
+	}
 	if r.Op == "close" {
 		e.stopThumbnails()
 		e.root = ""
