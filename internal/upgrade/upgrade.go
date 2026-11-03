@@ -89,6 +89,8 @@ func BuildPlan(root string) (Plan, error) {
 	}
 	if !hasManifest {
 		plan.Changes = append(plan.Changes, Change{Path: scaffold.ManifestPath, Action: Add, Reason: "record upgrade-managed scaffold baselines"})
+	} else if manifest.Margo != version.Current() {
+		plan.Changes = append(plan.Changes, Change{Path: scaffold.ManifestPath, Action: Update, Reason: "project scaffold version is outdated"})
 	}
 	return plan, nil
 }

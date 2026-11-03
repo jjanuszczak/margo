@@ -19,7 +19,7 @@ import (
 )
 
 var tagPattern = regexp.MustCompile(`\{\{<\s*(/)?\s*([a-zA-Z0-9_-]+)(.*?)>\}\}`)
-var attrPattern = regexp.MustCompile(`([a-zA-Z_][a-zA-Z0-9_-]*)\s*=\s*"([^"]*)"`)
+var attrPattern = regexp.MustCompile(`([a-zA-Z_][a-zA-Z0-9_-]*)\s*=\s*"((?:\\.|[^"])*)"`)
 
 type Context struct {
 	ProjectRoot string
@@ -138,7 +138,7 @@ func parseAttrs(raw string) (map[string]string, error) {
 			return nil, fmt.Errorf("unsupported shortcode arguments %q", strings.TrimSpace(raw))
 		}
 		key := raw[match[2]:match[3]]
-		value := raw[match[4]:match[5]]
+		value := strings.NewReplacer(`\"`, `"`, `\\`, `\`).Replace(raw[match[4]:match[5]])
 		params[key] = value
 		consumed.WriteString(raw[match[0]:match[1]])
 		last = match[1]

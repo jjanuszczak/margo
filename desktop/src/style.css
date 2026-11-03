@@ -92,6 +92,14 @@ header { display: flex; align-items: center; gap: 9px; padding: 14px 18px; borde
 #appearance-toggle::-webkit-details-marker { display: none; }
 #appearance-menu[open] #appearance-toggle { background: var(--selected); border-color: var(--selected-border); }
 #appearance-toggle .chevron { width: 13px; height: 13px; color: var(--muted); }
+.insert-menu { position: relative; flex-shrink: 0; }
+#insert-toggle { list-style: none; padding: 7px 11px; border: 1px solid var(--line); border-radius: 6px; background: var(--control); cursor: pointer; white-space: nowrap; }
+#insert-toggle::-webkit-details-marker { display: none; }
+#insert-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#insert-menu[open] #insert-toggle { background: var(--selected); border-color: var(--selected-border); }
+.insert-popover { position: absolute; z-index: 30; top: calc(100% + 6px); right: 0; width: 190px; padding: 5px; border: 1px solid var(--frame-line); border-radius: 8px; background: var(--panel); box-shadow: 0 12px 36px #0007; }
+.insert-popover button { display: block; width: 100%; padding: 8px; border-color: transparent; background: transparent; text-align: left; }
+.insert-popover button:hover { background: var(--control-hover); }
 .appearance-popover { position: absolute; z-index: 30; top: calc(100% + 6px); right: 0; width: 150px; padding: 5px; border: 1px solid var(--frame-line); border-radius: 8px; background: var(--panel); box-shadow: 0 12px 36px #0007; }
 .appearance-popover button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 8px; text-align: left; border-color: transparent; background: transparent; }
 .appearance-popover button[aria-checked="true"] { background: var(--selected); color: var(--accent); }
@@ -126,7 +134,7 @@ h1 { font-size: 27px; font-weight: 500; letter-spacing: -.7px; }
 .empty-actions button { min-width: 175px; padding: 11px 16px; }
 .empty-actions button:first-child { border-color: var(--selected-border); color: var(--accent); }
 #workspace { height: 100%; display: flex; flex-direction: column; }
-.slide-toolbar { height: 44px; display: flex; gap: 7px; align-items: center; padding: 7px 16px; flex-shrink: 0; overflow: hidden; }
+.slide-toolbar { position: relative; z-index: 4; height: 44px; display: flex; gap: 7px; align-items: center; padding: 7px 16px; flex-shrink: 0; overflow: visible; }
 .slide-toolbar > strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 50%; }
 .slide-toolbar button { font-size: 11px; padding: 4px 8px; flex-shrink: 0; }
 #slide-meta { font-size: 11px; color: var(--muted); }
@@ -259,6 +267,57 @@ dialog p { line-height: 1.6; color: var(--muted); }
 #ai-model-picker-label[hidden] { display: none; }
 #ai-model-confirm { border-color: var(--selected-border); color: var(--accent); }
 #tiling-dialog { width: min(820px, 92vw); }
+#figure-dialog, #stat-dialog { width: min(520px, calc(100vw - 32px)); max-height: min(84vh, 760px); overflow: auto; }
+#video-dialog, #columns-dialog, #math-dialog { width: min(620px, calc(100vw - 32px)); max-height: min(84vh, 760px); overflow: auto; }
+#chart-dialog { width: min(820px, calc(100vw - 32px)); max-height: min(90vh, 900px); overflow: auto; }
+#mermaid-dialog { width: min(1080px, calc(100vw - 32px)); max-height: min(90vh, 900px); overflow: auto; }
+#figure-dialog > label, #stat-dialog > label { display: block; margin: 13px 0; color: var(--muted); font-size: 12px; }
+#video-dialog > label, #columns-dialog > label, #math-dialog > label { display: block; margin: 13px 0; color: var(--muted); font-size: 12px; }
+#figure-dialog input, #figure-dialog select, #stat-dialog input { display: block; width: 100%; margin-top: 6px; padding: 9px; background: var(--background); color: var(--text); border: 1px solid var(--frame-line); border-radius: 6px; }
+#callout-dialog input, #github-repo-dialog input { display: block; width: 100%; margin-top: 6px; padding: 9px; background: var(--background); color: var(--text); border: 1px solid var(--frame-line); border-radius: 6px; }
+#callout-body { box-sizing: border-box; display: block; width: 100%; min-height: 120px; margin-top: 6px; resize: vertical; padding: 9px; background: var(--background); color: var(--text); border: 1px solid var(--frame-line); border-radius: 6px; font: 13px/1.5 system-ui, sans-serif; }
+#video-dialog input, #video-dialog select, #columns-dialog select, #math-dialog input { display: block; width: 100%; margin-top: 6px; padding: 9px; background: var(--background); color: var(--text); border: 1px solid var(--frame-line); border-radius: 6px; }
+#chart-dialog input, #chart-dialog select { font: inherit; color: var(--text); }
+.chart-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.chart-fields label { display: block; color: var(--muted); font-size: 12px; }
+.chart-fields input, .chart-fields select { display: block; width: 100%; margin-top: 5px; padding: 8px; border: 1px solid var(--frame-line); border-radius: 6px; background: var(--background); }
+.chart-legend-option { display: flex; align-items: center; gap: 8px; margin: 12px 0; color: var(--muted); font-size: 12px; }
+.chart-data-heading { display: flex; align-items: center; justify-content: space-between; margin: 12px 0 6px; font-size: 12px; }
+.chart-table-scroll { max-height: 180px; overflow: auto; border: 1px solid var(--frame-line); border-radius: 6px; }
+#chart-data-table { width: 100%; border-collapse: collapse; }
+#chart-data-table th { position: sticky; top: 0; background: var(--panel); color: var(--muted); font-size: 11px; font-weight: 500; text-align: left; }
+#chart-data-table th, #chart-data-table td { padding: 5px 7px; border-bottom: 1px solid var(--line); }
+#chart-data-table th:nth-child(2), #chart-data-table td:nth-child(2) { width: 150px; }
+#chart-data-table th:last-child, #chart-data-table td:last-child { width: 48px; text-align: center; }
+#chart-data-table input { width: 100%; padding: 7px; border: 1px solid var(--frame-line); border-radius: 5px; background: var(--background); }
+#chart-data-table button { padding: 4px 10px; }
+.chart-preview-wrap { height: 320px; margin-top: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--background); }
+.chart-preview-wrap canvas { display: block; width: 100%; height: 100%; }
+#chart-error { color: var(--error); }
+.mermaid-toolbar { display: flex; align-items: end; gap: 10px; margin: 12px 0; }
+.mermaid-toolbar label, .mermaid-fields label { display: block; color: var(--muted); font-size: 12px; }
+.mermaid-toolbar select, .mermaid-fields input, .mermaid-fields select { display: block; width: 100%; margin-top: 5px; padding: 8px; border: 1px solid var(--frame-line); border-radius: 6px; background: var(--background); color: var(--text); }
+.mermaid-toolbar label { width: 230px; }
+.mermaid-editor-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.mermaid-editor-grid > label, .mermaid-preview-column > span { display: block; margin-bottom: 5px; color: var(--muted); font-size: 12px; }
+#mermaid-source { display: block; width: 100%; min-height: 350px; resize: vertical; padding: 11px; border: 1px solid var(--frame-line); border-radius: 6px; background: var(--background); color: var(--text); font: 12px/1.55 monospace; tab-size: 2; }
+.mermaid-preview-column { min-width: 0; }
+#mermaid-preview { display: flex; align-items: center; justify-content: center; min-height: 350px; max-height: 520px; overflow: auto; padding: 14px; border: 1px solid var(--frame-line); border-radius: 6px; background: var(--background); color: var(--text); }
+#mermaid-preview > p { text-align: center; }
+#mermaid-preview svg { display: block; width: 100%; max-width: 100%; max-height: 480px; height: auto; }
+.mermaid-fields { display: grid; grid-template-columns: minmax(0, 1fr) 180px; gap: 12px; margin-top: 12px; }
+#mermaid-error { color: var(--error); white-space: pre-wrap; overflow-wrap: anywhere; }
+#figure-dialog select { min-height: 36px; }
+#figure-choose { margin: 6px 10px 0 0; }
+#figure-file { display: inline-block; max-width: 260px; overflow: hidden; vertical-align: middle; text-overflow: ellipsis; }
+#video-file, #video-poster-file { display: inline-block; max-width: 240px; overflow: hidden; vertical-align: middle; text-overflow: ellipsis; }
+.media-picker-row { display: flex; align-items: center; gap: 8px; margin: 14px 0; color: var(--muted); font-size: 12px; }
+.media-picker-row #video-poster-clear { margin-left: auto; }
+.math-editor-label { margin-bottom: 6px !important; }
+#math-editor { display: block; width: 100%; min-height: 90px; margin: 6px 0 14px; padding: 14px; border: 1px solid var(--frame-line); border-radius: 7px; background: var(--background); color: var(--text); font-size: 24px; --caret-color: var(--accent); --selection-background-color: color-mix(in srgb, var(--accent) 28%, transparent); --contains-highlight-background-color: color-mix(in srgb, var(--accent) 16%, transparent); }
+#math-editor:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+#math-editor::part(virtual-keyboard-toggle) { color: var(--accent); }
+#figure-error, #stat-error { color: var(--error); }
 #layout-options { min-inline-size: 0; border: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; margin: 18px 0; }
 .layout-card { position: relative; min-width: 0; padding: 9px; display: flex; flex-direction: column; gap: 6px; text-align: left; cursor: pointer; border: 1px solid var(--line); border-radius: 6px; background: var(--background); color: var(--text); }
 .layout-card:hover { background: var(--control-hover); }
@@ -288,6 +347,9 @@ dialog p { line-height: 1.6; color: var(--muted); }
 @media(max-width:760px) {
   #layout-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .layout-card-copy { min-height: 0; }
+  .chart-fields { grid-template-columns: 1fr; }
+  .mermaid-editor-grid { grid-template-columns: 1fr; }
+  #mermaid-source, #mermaid-preview { min-height: 250px; }
 }
 .dialog-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 22px; }
 #dialog-ok { border-color: var(--selected-border); color: var(--accent); }

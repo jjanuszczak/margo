@@ -15,6 +15,10 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2.8.0",
+    "chart.js": "4.4.3",
+    "dompurify": "3.4.17",
+    "mathlive": "^0.111.4",
+    "mermaid": "^11.17.2",
     "monaco-editor": "0.57.0"
   },
   "devDependencies": {
